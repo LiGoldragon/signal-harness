@@ -30,10 +30,9 @@ Records local to this contract:
 - `InteractionResolved`
 - `HarnessStarted`, `HarnessStopped`, `HarnessCrashed`
 
-The `body: String` on `DeliverMessage` is provisional —
-will become the typed text payload chosen by the
-Nexus-in-NOTA path (per operator/77 §7 +
-`primary-kxb` #3).
+The `body: String` on `DeliverMessage` is provisional. The destination is a
+typed Nexus record written in NOTA syntax (per operator/77 §7 + `primary-kxb`
+#3), not a new text format.
 
 ## Messages
 
@@ -91,8 +90,8 @@ HarnessEvent::DeliveryFailed(DeliveryFailed {
 
 - No router daemon — that's `persona-router`.
 - No harness daemon — that's `persona-harness`.
-- No PTY adapter — that's `persona-wezterm` (via
-  `signal-persona-terminal`, future channel).
+- No PTY adapter — that's `persona-wezterm`; a terminal contract is future
+  work, not part of this channel.
 - No safety-property enforcement (router-side; gated by
   `signal-persona-system` observations).
 - No transport.
@@ -118,5 +117,5 @@ tests/
   the messages this channel delivers
 - `signal-persona-system` — companion channel carrying the
   focus/input-buffer facts the router uses to gate
-- `signal-persona-terminal` (future) — harness ↔ wezterm
-  internal-PTY channel; downstream from this one
+- future terminal contract — harness ↔ wezterm internal-PTY channel;
+  downstream from this one once the boundary is concrete
