@@ -1,15 +1,18 @@
 # ARCHITECTURE — signal-persona-harness
 
 The Signal contract between `persona-router` and
-`persona-harness` — bidirectional. The whole channel is one
-`signal_channel!` invocation in `src/lib.rs`.
+`persona-harness` — bidirectional. It relates one router delivery
+owner to one or more harnesses: the router requests delivery,
+interaction, and cancellation vectors; harnesses push delivery and
+lifecycle facts. The whole channel is one `signal_channel!`
+invocation in `src/lib.rs`.
 
 ## Channel
 
 | Side | Component |
 |---|---|
-| Request side | `persona-router` (sends `Deliver*` /
-                 `SurfaceInteraction` / `CancelDelivery`) |
+| Request side | `persona-router` (sends `MessageDelivery` /
+                 `InteractionPrompt` / `DeliveryCancellation`) |
 | Event side | `persona-harness` (pushes
                  `Delivery*` acks + interaction resolutions
                  + lifecycle events) |
@@ -24,30 +27,31 @@ without paired requests.
 Records local to this contract:
 - `HarnessName` (could lift to umbrella later if other
   channels need it)
-- `DeliverMessage`, `SurfaceInteraction`, `CancelDelivery`
+- `MessageDelivery`, `InteractionPrompt`, `DeliveryCancellation`
 - `DeliveryCompleted`, `DeliveryFailed`,
   `DeliveryFailureReason`
 - `InteractionResolved`
 - `HarnessStarted`, `HarnessStopped`, `HarnessCrashed`
 
-The `body: String` on `DeliverMessage` is provisional. The destination is a
-typed Nexus record written in NOTA syntax (per operator/77 §7 + `primary-kxb`
-#3), not a new text format.
+The `MessageBody` on `MessageDelivery` is provisional. The destination is
+a typed Nexus record written in NOTA syntax (per operator/77 §7 +
+`primary-kxb` #3), not a new text format.
 
 ## Messages
 
 ```
 HarnessRequest                   HarnessEvent
-├─ DeliverMessage                ├─ DeliveryCompleted
-├─ SurfaceInteraction            ├─ DeliveryFailed { reason }
-└─ CancelDelivery                ├─ InteractionResolved
+├─ MessageDelivery               ├─ DeliveryCompleted
+├─ InteractionPrompt             ├─ DeliveryFailed { reason }
+└─ DeliveryCancellation          ├─ InteractionResolved
                                  ├─ HarnessStarted
                                  ├─ HarnessStopped
                                  └─ HarnessCrashed
 ```
 
 Closed enums; typed `DeliveryFailureReason` (3 variants:
-`TransportRejected`, `HumanRaceLost`, `HarnessTeardown`).
+`TransportRejected`, `HumanInputIntervened`,
+`HarnessStoppedBeforeDelivery`).
 
 ## Versioning
 
@@ -59,31 +63,31 @@ Schema-level changes are breaking; coordinate
 
 ```text
 ;; router → harness: deliver a message after the safety gate cleared
-HarnessRequest::DeliverMessage(DeliverMessage {
+HarnessRequest::MessageDelivery(MessageDelivery {
     harness: HarnessName::new("designer"),
-    sender: "operator".to_string(),
-    body: "stack test 2026-05-09".to_string(),
-    message_slot: 1024,
+    sender: MessageSender::new("operator"),
+    body: MessageBody::new("stack test 2026-05-09"),
+    message_slot: MessageSlot::new(1024),
 })
 
 ;; harness → router: delivery succeeded
 HarnessEvent::DeliveryCompleted(DeliveryCompleted {
     harness: HarnessName::new("designer"),
-    message_slot: 1024,
+    message_slot: MessageSlot::new(1024),
 })
 
 ;; harness → router: human typed during the gate window;
 ;; we aborted to preserve the draft
 HarnessEvent::DeliveryFailed(DeliveryFailed {
     harness: HarnessName::new("designer"),
-    message_slot: 1024,
-    reason: DeliveryFailureReason::HumanRaceLost,
+    message_slot: MessageSlot::new(1024),
+    reason: DeliveryFailureReason::HumanInputIntervened,
 })
 ```
 
 ## Round trips
 
-13 round-trip tests in `tests/round_trip.rs` covering all
+11 round-trip tests in `tests/round_trip.rs` covering all
 9 variants + the failure-reason enum + From-impl witnesses.
 
 ## Non-ownership
@@ -111,7 +115,7 @@ tests/
   §2.1 — channel inventory
 - `~/primary/reports/operator/67-signal-actor-messaging-gap-audit.md`
   — the safety property the router enforces before
-  sending DeliverMessage
+  sending `MessageDelivery`
 - `signal-core/src/channel.rs` — the macro
 - `signal-persona-message` — upstream channel producing
   the messages this channel delivers

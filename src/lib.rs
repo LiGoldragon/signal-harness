@@ -14,8 +14,9 @@
 //!   resolutions.
 //!
 //! The channel is **bidirectional**: both sides initiate.
-//! The router sends `Deliver*` requests; the harness
-//! pushes `Harness*` events independent of any request.
+//! The router sends `MessageDelivery` / `InteractionPrompt`
+//! / `DeliveryCancellation` requests; the harness pushes
+//! lifecycle and resolution events independent of any request.
 //!
 //! See `ARCHITECTURE.md` for the channel's role and
 //! boundaries; `~/primary/reports/designer/72-harmonized-implementation-plan.md`
@@ -42,6 +43,45 @@ impl HarnessName {
     }
 }
 
+#[derive(Archive, RkyvSerialize, RkyvDeserialize, Debug, Clone, PartialEq, Eq, Hash)]
+pub struct MessageSender(String);
+
+impl MessageSender {
+    pub fn new(value: impl Into<String>) -> Self {
+        Self(value.into())
+    }
+
+    pub fn as_str(&self) -> &str {
+        &self.0
+    }
+}
+
+#[derive(Archive, RkyvSerialize, RkyvDeserialize, Debug, Clone, PartialEq, Eq, Hash)]
+pub struct MessageBody(String);
+
+impl MessageBody {
+    pub fn new(value: impl Into<String>) -> Self {
+        Self(value.into())
+    }
+
+    pub fn as_str(&self) -> &str {
+        &self.0
+    }
+}
+
+#[derive(Archive, RkyvSerialize, RkyvDeserialize, Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub struct MessageSlot(u64);
+
+impl MessageSlot {
+    pub const fn new(value: u64) -> Self {
+        Self(value)
+    }
+
+    pub const fn into_u64(self) -> u64 {
+        self.0
+    }
+}
+
 // ─── Delivery requests (router → harness) ─────────────────
 
 /// Deliver a message to the harness's input surface. The
@@ -49,23 +89,23 @@ impl HarnessName {
 /// not human-owned + input buffer empty); the harness
 /// performs the actual injection.
 #[derive(Archive, RkyvSerialize, RkyvDeserialize, Debug, Clone, PartialEq, Eq)]
-pub struct DeliverMessage {
+pub struct MessageDelivery {
     pub harness: HarnessName,
-    pub sender: String,
-    pub body: String,
+    pub sender: MessageSender,
+    pub body: MessageBody,
     /// The router-minted slot from `persona-sema` so the
     /// harness can reference the message in subsequent
     /// observations (e.g. "delivered slot N").
-    pub message_slot: u64,
+    pub message_slot: MessageSlot,
 }
 
 /// Surface an interaction (a typed prompt awaiting human
 /// input) in the harness — used for authorization decisions
 /// and any place the system needs human confirmation. The
 /// harness shows the prompt; the human's response comes
-/// back via `InteractionResolution` event.
+/// back via `InteractionResolved` event.
 #[derive(Archive, RkyvSerialize, RkyvDeserialize, Debug, Clone, PartialEq, Eq)]
-pub struct SurfaceInteraction {
+pub struct InteractionPrompt {
     pub harness: HarnessName,
     pub interaction_id: String,
     pub prompt: String,
@@ -76,9 +116,9 @@ pub struct SurfaceInteraction {
 /// offline before delivery completed, or the router is
 /// shutting down).
 #[derive(Archive, RkyvSerialize, RkyvDeserialize, Debug, Clone, PartialEq, Eq)]
-pub struct CancelDelivery {
+pub struct DeliveryCancellation {
     pub harness: HarnessName,
-    pub message_slot: u64,
+    pub message_slot: MessageSlot,
 }
 
 // ─── Delivery acknowledgements (harness → router) ─────────
@@ -89,14 +129,14 @@ pub struct CancelDelivery {
 #[derive(Archive, RkyvSerialize, RkyvDeserialize, Debug, Clone, PartialEq, Eq)]
 pub struct DeliveryCompleted {
     pub harness: HarnessName,
-    pub message_slot: u64,
+    pub message_slot: MessageSlot,
 }
 
 /// Delivery failed — typed reason carried.
 #[derive(Archive, RkyvSerialize, RkyvDeserialize, Debug, Clone, PartialEq, Eq)]
 pub struct DeliveryFailed {
     pub harness: HarnessName,
-    pub message_slot: u64,
+    pub message_slot: MessageSlot,
     pub reason: DeliveryFailureReason,
 }
 
@@ -108,10 +148,10 @@ pub enum DeliveryFailureReason {
     /// The human typed into the input buffer between the
     /// router's safety check and the harness's injection.
     /// The harness aborted to preserve the human's draft.
-    HumanRaceLost,
+    HumanInputIntervened,
     /// The harness was tearing down when the delivery
     /// arrived.
-    HarnessTeardown,
+    HarnessStoppedBeforeDelivery,
 }
 
 /// Human resolved a previously-surfaced interaction — they
@@ -150,9 +190,9 @@ pub struct HarnessCrashed {
 
 signal_channel! {
     request HarnessRequest {
-        DeliverMessage(DeliverMessage),
-        SurfaceInteraction(SurfaceInteraction),
-        CancelDelivery(CancelDelivery),
+        MessageDelivery(MessageDelivery),
+        InteractionPrompt(InteractionPrompt),
+        DeliveryCancellation(DeliveryCancellation),
     }
     reply HarnessEvent {
         DeliveryCompleted(DeliveryCompleted),
