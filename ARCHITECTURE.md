@@ -94,8 +94,8 @@ HarnessEvent::DeliveryFailed(DeliveryFailed {
 
 - No router daemon — that's `persona-router`.
 - No harness daemon — that's `persona-harness`.
-- No PTY adapter — that's `persona-wezterm`; a terminal contract is future
-  work, not part of this channel.
+- No PTY adapter or terminal transport — that's `persona-terminal`, below
+  the `signal-persona-terminal` contract.
 - No safety-property enforcement (router-side; gated by
   `signal-persona-system` observations).
 - No transport.
@@ -121,5 +121,5 @@ tests/
   the messages this channel delivers
 - `signal-persona-system` — companion channel carrying the
   focus/input-buffer facts the router uses to gate
-- future terminal contract — harness ↔ wezterm internal-PTY channel;
-  downstream from this one once the boundary is concrete
+- `signal-persona-terminal` — terminal contract for harness/terminal PTY
+  coordination; downstream from this channel
