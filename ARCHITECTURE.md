@@ -25,8 +25,8 @@ without paired requests.
 ## Record source
 
 Records local to this contract:
-- `HarnessName` (could lift to umbrella later if other
-  channels need it)
+- `HarnessName` (local until another concrete relation needs a matching
+  contract)
 - `MessageDelivery`, `InteractionPrompt`, `DeliveryCancellation`
 - `DeliveryCompleted`, `DeliveryFailed`,
   `DeliveryFailureReason`

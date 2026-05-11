@@ -93,7 +93,7 @@ pub struct MessageDelivery {
     pub harness: HarnessName,
     pub sender: MessageSender,
     pub body: MessageBody,
-    /// The router-minted slot from `persona-sema` so the
+    /// The router-minted durable message slot so the
     /// harness can reference the message in subsequent
     /// observations (e.g. "delivered slot N").
     pub message_slot: MessageSlot,
