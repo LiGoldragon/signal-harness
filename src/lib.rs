@@ -22,6 +22,7 @@
 //! boundaries; `~/primary/reports/designer/72-harmonized-implementation-plan.md`
 //! §6 for the contract-creation discipline.
 
+use nota_codec::{NotaEnum, NotaRecord, NotaTransparent};
 use rkyv::{Archive, Deserialize as RkyvDeserialize, Serialize as RkyvSerialize};
 use signal_core::signal_channel;
 
@@ -30,7 +31,9 @@ use signal_core::signal_channel;
 /// A typed name for one harness instance. Multiple
 /// harnesses on one machine each have their own
 /// `HarnessName`; the router routes by name.
-#[derive(Archive, RkyvSerialize, RkyvDeserialize, Debug, Clone, PartialEq, Eq, Hash)]
+#[derive(
+    Archive, RkyvSerialize, RkyvDeserialize, NotaTransparent, Debug, Clone, PartialEq, Eq, Hash,
+)]
 pub struct HarnessName(String);
 
 impl HarnessName {
@@ -43,7 +46,9 @@ impl HarnessName {
     }
 }
 
-#[derive(Archive, RkyvSerialize, RkyvDeserialize, Debug, Clone, PartialEq, Eq, Hash)]
+#[derive(
+    Archive, RkyvSerialize, RkyvDeserialize, NotaTransparent, Debug, Clone, PartialEq, Eq, Hash,
+)]
 pub struct MessageSender(String);
 
 impl MessageSender {
@@ -56,7 +61,9 @@ impl MessageSender {
     }
 }
 
-#[derive(Archive, RkyvSerialize, RkyvDeserialize, Debug, Clone, PartialEq, Eq, Hash)]
+#[derive(
+    Archive, RkyvSerialize, RkyvDeserialize, NotaTransparent, Debug, Clone, PartialEq, Eq, Hash,
+)]
 pub struct MessageBody(String);
 
 impl MessageBody {
@@ -69,7 +76,18 @@ impl MessageBody {
     }
 }
 
-#[derive(Archive, RkyvSerialize, RkyvDeserialize, Debug, Clone, Copy, PartialEq, Eq, Hash)]
+#[derive(
+    Archive,
+    RkyvSerialize,
+    RkyvDeserialize,
+    NotaTransparent,
+    Debug,
+    Clone,
+    Copy,
+    PartialEq,
+    Eq,
+    Hash,
+)]
 pub struct MessageSlot(u64);
 
 impl MessageSlot {
@@ -88,7 +106,7 @@ impl MessageSlot {
 /// This request does not certify prompt cleanliness. The
 /// harness / terminal adapter must acquire the terminal input
 /// gate before programmatic injection.
-#[derive(Archive, RkyvSerialize, RkyvDeserialize, Debug, Clone, PartialEq, Eq)]
+#[derive(Archive, RkyvSerialize, RkyvDeserialize, NotaRecord, Debug, Clone, PartialEq, Eq)]
 pub struct MessageDelivery {
     pub harness: HarnessName,
     pub sender: MessageSender,
@@ -104,7 +122,7 @@ pub struct MessageDelivery {
 /// and any place the system needs human confirmation. The
 /// harness shows the prompt; the human's response comes
 /// back via `InteractionResolved` event.
-#[derive(Archive, RkyvSerialize, RkyvDeserialize, Debug, Clone, PartialEq, Eq)]
+#[derive(Archive, RkyvSerialize, RkyvDeserialize, NotaRecord, Debug, Clone, PartialEq, Eq)]
 pub struct InteractionPrompt {
     pub harness: HarnessName,
     pub interaction_id: String,
@@ -115,7 +133,7 @@ pub struct InteractionPrompt {
 /// Cancel a pending delivery (e.g. the recipient went
 /// offline before delivery completed, or the router is
 /// shutting down).
-#[derive(Archive, RkyvSerialize, RkyvDeserialize, Debug, Clone, PartialEq, Eq)]
+#[derive(Archive, RkyvSerialize, RkyvDeserialize, NotaRecord, Debug, Clone, PartialEq, Eq)]
 pub struct DeliveryCancellation {
     pub harness: HarnessName,
     pub message_slot: MessageSlot,
@@ -126,21 +144,21 @@ pub struct DeliveryCancellation {
 /// The harness successfully delivered the message — the
 /// bytes hit the input surface. The router can mark the
 /// message as delivered in its store.
-#[derive(Archive, RkyvSerialize, RkyvDeserialize, Debug, Clone, PartialEq, Eq)]
+#[derive(Archive, RkyvSerialize, RkyvDeserialize, NotaRecord, Debug, Clone, PartialEq, Eq)]
 pub struct DeliveryCompleted {
     pub harness: HarnessName,
     pub message_slot: MessageSlot,
 }
 
 /// Delivery failed — typed reason carried.
-#[derive(Archive, RkyvSerialize, RkyvDeserialize, Debug, Clone, PartialEq, Eq)]
+#[derive(Archive, RkyvSerialize, RkyvDeserialize, NotaRecord, Debug, Clone, PartialEq, Eq)]
 pub struct DeliveryFailed {
     pub harness: HarnessName,
     pub message_slot: MessageSlot,
     pub reason: DeliveryFailureReason,
 }
 
-#[derive(Archive, RkyvSerialize, RkyvDeserialize, Debug, Clone, PartialEq, Eq)]
+#[derive(Archive, RkyvSerialize, RkyvDeserialize, NotaEnum, Debug, Clone, PartialEq, Eq)]
 pub enum DeliveryFailureReason {
     /// The harness's transport (PTY, terminal) couldn't
     /// accept the bytes.
@@ -156,7 +174,7 @@ pub enum DeliveryFailureReason {
 
 /// Human resolved a previously-surfaced interaction — they
 /// picked one of the options.
-#[derive(Archive, RkyvSerialize, RkyvDeserialize, Debug, Clone, PartialEq, Eq)]
+#[derive(Archive, RkyvSerialize, RkyvDeserialize, NotaRecord, Debug, Clone, PartialEq, Eq)]
 pub struct InteractionResolved {
     pub harness: HarnessName,
     pub interaction_id: String,
@@ -166,21 +184,21 @@ pub struct InteractionResolved {
 // ─── Lifecycle observations (harness → router) ────────────
 
 /// Harness started; ready to receive deliveries.
-#[derive(Archive, RkyvSerialize, RkyvDeserialize, Debug, Clone, PartialEq, Eq)]
+#[derive(Archive, RkyvSerialize, RkyvDeserialize, NotaRecord, Debug, Clone, PartialEq, Eq)]
 pub struct HarnessStarted {
     pub harness: HarnessName,
 }
 
 /// Harness shut down cleanly. The router stops sending
 /// deliveries to this harness.
-#[derive(Archive, RkyvSerialize, RkyvDeserialize, Debug, Clone, PartialEq, Eq)]
+#[derive(Archive, RkyvSerialize, RkyvDeserialize, NotaRecord, Debug, Clone, PartialEq, Eq)]
 pub struct HarnessStopped {
     pub harness: HarnessName,
 }
 
 /// Harness crashed / died unexpectedly. The router needs
 /// to retry or escalate.
-#[derive(Archive, RkyvSerialize, RkyvDeserialize, Debug, Clone, PartialEq, Eq)]
+#[derive(Archive, RkyvSerialize, RkyvDeserialize, NotaRecord, Debug, Clone, PartialEq, Eq)]
 pub struct HarnessCrashed {
     pub harness: HarnessName,
     pub detail: String,

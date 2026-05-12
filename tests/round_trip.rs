@@ -1,6 +1,7 @@
 //! Architectural-truth round-trip tests for the
 //! `signal-persona-harness` channel.
 
+use nota_codec::{Decoder, Encoder, NotaDecode, NotaEncode};
 use signal_core::{FrameBody, Reply, Request, SemaVerb};
 use signal_persona_harness::{
     DeliveryCancellation, DeliveryCompleted, DeliveryFailed, DeliveryFailureReason, Frame,
@@ -143,6 +144,43 @@ fn from_impl_lifts_delivery_completed_into_event() {
     };
     let event: HarnessEvent = payload.clone().into();
     assert_eq!(event, HarnessEvent::DeliveryCompleted(payload));
+}
+
+#[test]
+fn message_delivery_request_round_trips_through_nota_text() {
+    let request = HarnessRequest::MessageDelivery(MessageDelivery {
+        harness: harness(),
+        sender: MessageSender::new("operator"),
+        body: MessageBody::new("via nota"),
+        message_slot: MessageSlot::new(42),
+    });
+
+    let mut encoder = Encoder::new();
+    request.encode(&mut encoder).expect("encode request");
+    let text = encoder.into_string();
+    let mut decoder = Decoder::new(&text);
+    let recovered = HarnessRequest::decode(&mut decoder).expect("decode request");
+
+    assert_eq!(recovered, request);
+    assert_eq!(text, "(MessageDelivery designer operator \"via nota\" 42)");
+}
+
+#[test]
+fn delivery_failed_event_round_trips_through_nota_text() {
+    let event = HarnessEvent::DeliveryFailed(DeliveryFailed {
+        harness: harness(),
+        message_slot: MessageSlot::new(42),
+        reason: DeliveryFailureReason::TransportRejected,
+    });
+
+    let mut encoder = Encoder::new();
+    event.encode(&mut encoder).expect("encode event");
+    let text = encoder.into_string();
+    let mut decoder = Decoder::new(&text);
+    let recovered = HarnessEvent::decode(&mut decoder).expect("decode event");
+
+    assert_eq!(recovered, event);
+    assert_eq!(text, "(DeliveryFailed designer 42 TransportRejected)");
 }
 
 #[test]
