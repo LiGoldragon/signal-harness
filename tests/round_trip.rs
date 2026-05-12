@@ -5,9 +5,10 @@ use nota_codec::{Decoder, Encoder, NotaDecode, NotaEncode};
 use signal_core::{FrameBody, Reply, Request, SemaVerb};
 use signal_persona_harness::{
     DeliveryCancellation, DeliveryCompleted, DeliveryFailed, DeliveryFailureReason, Frame,
-    HarnessCrashed, HarnessEvent, HarnessName, HarnessOperationKind, HarnessRequest,
-    HarnessStarted, HarnessStopped, InteractionPrompt, InteractionResolved, MessageBody,
-    MessageDelivery, MessageSender, MessageSlot,
+    HarnessCrashed, HarnessEvent, HarnessHealth, HarnessName, HarnessOperationKind,
+    HarnessReadiness, HarnessRequest, HarnessRequestUnimplemented, HarnessStarted, HarnessStatus,
+    HarnessStatusQuery, HarnessStopped, HarnessUnimplementedReason, InteractionPrompt,
+    InteractionResolved, MessageBody, MessageDelivery, MessageSender, MessageSlot,
 };
 
 fn harness() -> HarnessName {
@@ -69,6 +70,13 @@ fn delivery_cancellation_round_trips() {
 }
 
 #[test]
+fn harness_status_query_round_trips() {
+    let request = HarnessRequest::HarnessStatusQuery(HarnessStatusQuery { harness: harness() });
+
+    assert_eq!(round_trip_request(request.clone()), request);
+}
+
+#[test]
 fn harness_request_exposes_contract_owned_operation_kind() {
     let cases = [
         (
@@ -95,6 +103,10 @@ fn harness_request_exposes_contract_owned_operation_kind() {
                 message_slot: MessageSlot::new(1),
             }),
             HarnessOperationKind::DeliveryCancellation,
+        ),
+        (
+            HarnessRequest::HarnessStatusQuery(HarnessStatusQuery { harness: harness() }),
+            HarnessOperationKind::HarnessStatusQuery,
         ),
     ];
 
@@ -149,6 +161,28 @@ fn interaction_resolved_round_trips() {
         interaction_id: "i-abc".into(),
         chosen: "yes".into(),
     });
+    assert_eq!(round_trip_event(event.clone()), event);
+}
+
+#[test]
+fn harness_unimplemented_event_round_trips() {
+    let event = HarnessEvent::HarnessRequestUnimplemented(HarnessRequestUnimplemented {
+        harness: harness(),
+        operation: HarnessOperationKind::InteractionPrompt,
+        reason: HarnessUnimplementedReason::NotBuiltYet,
+    });
+
+    assert_eq!(round_trip_event(event.clone()), event);
+}
+
+#[test]
+fn harness_status_event_round_trips() {
+    let event = HarnessEvent::HarnessStatus(HarnessStatus {
+        harness: harness(),
+        health: HarnessHealth::Running,
+        readiness: HarnessReadiness::Ready,
+    });
+
     assert_eq!(round_trip_event(event.clone()), event);
 }
 
@@ -230,6 +264,27 @@ fn delivery_failed_event_round_trips_through_nota_text() {
 
     assert_eq!(recovered, event);
     assert_eq!(text, "(DeliveryFailed designer 42 TransportRejected)");
+}
+
+#[test]
+fn harness_unimplemented_event_round_trips_through_nota_text() {
+    let event = HarnessEvent::HarnessRequestUnimplemented(HarnessRequestUnimplemented {
+        harness: harness(),
+        operation: HarnessOperationKind::MessageDelivery,
+        reason: HarnessUnimplementedReason::NotBuiltYet,
+    });
+
+    let mut encoder = Encoder::new();
+    event.encode(&mut encoder).expect("encode event");
+    let text = encoder.into_string();
+    let mut decoder = Decoder::new(&text);
+    let recovered = HarnessEvent::decode(&mut decoder).expect("decode event");
+
+    assert_eq!(recovered, event);
+    assert_eq!(
+        text,
+        "(HarnessRequestUnimplemented designer MessageDelivery NotBuiltYet)"
+    );
 }
 
 #[test]

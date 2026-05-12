@@ -139,6 +139,16 @@ pub struct DeliveryCancellation {
     pub message_slot: MessageSlot,
 }
 
+/// Ask the harness daemon for its current minimal readiness facts.
+///
+/// This is intentionally small. Detailed lifecycle and transcript history are
+/// harness-owned state, but a supervised engine needs one cheap typed probe
+/// before it treats the daemon as started.
+#[derive(Archive, RkyvSerialize, RkyvDeserialize, NotaRecord, Debug, Clone, PartialEq, Eq)]
+pub struct HarnessStatusQuery {
+    pub harness: HarnessName,
+}
+
 #[derive(
     Archive, RkyvSerialize, RkyvDeserialize, NotaEnum, Debug, Clone, Copy, PartialEq, Eq, Hash,
 )]
@@ -146,6 +156,7 @@ pub enum HarnessOperationKind {
     MessageDelivery,
     InteractionPrompt,
     DeliveryCancellation,
+    HarnessStatusQuery,
 }
 
 // ─── Delivery acknowledgements (harness → router) ─────────
@@ -190,6 +201,43 @@ pub struct InteractionResolved {
     pub chosen: String,
 }
 
+/// A valid request reached a harness daemon, but the daemon's current runtime
+/// does not implement the operation yet.
+#[derive(Archive, RkyvSerialize, RkyvDeserialize, NotaRecord, Debug, Clone, PartialEq, Eq)]
+pub struct HarnessRequestUnimplemented {
+    pub harness: HarnessName,
+    pub operation: HarnessOperationKind,
+    pub reason: HarnessUnimplementedReason,
+}
+
+#[derive(Archive, RkyvSerialize, RkyvDeserialize, NotaEnum, Debug, Clone, Copy, PartialEq, Eq)]
+pub enum HarnessUnimplementedReason {
+    NotBuiltYet,
+    DependencyTrackNotLanded,
+}
+
+/// Minimal health surface for the daemon skeleton and supervisor witness.
+#[derive(Archive, RkyvSerialize, RkyvDeserialize, NotaRecord, Debug, Clone, PartialEq, Eq)]
+pub struct HarnessStatus {
+    pub harness: HarnessName,
+    pub health: HarnessHealth,
+    pub readiness: HarnessReadiness,
+}
+
+#[derive(Archive, RkyvSerialize, RkyvDeserialize, NotaEnum, Debug, Clone, Copy, PartialEq, Eq)]
+pub enum HarnessHealth {
+    Running,
+    Degraded,
+    Stopped,
+}
+
+#[derive(Archive, RkyvSerialize, RkyvDeserialize, NotaEnum, Debug, Clone, Copy, PartialEq, Eq)]
+pub enum HarnessReadiness {
+    Ready,
+    Starting,
+    Unavailable,
+}
+
 // ─── Lifecycle observations (harness → router) ────────────
 
 /// Harness started; ready to receive deliveries.
@@ -220,11 +268,14 @@ signal_channel! {
         MessageDelivery(MessageDelivery),
         InteractionPrompt(InteractionPrompt),
         DeliveryCancellation(DeliveryCancellation),
+        HarnessStatusQuery(HarnessStatusQuery),
     }
     reply HarnessEvent {
         DeliveryCompleted(DeliveryCompleted),
         DeliveryFailed(DeliveryFailed),
         InteractionResolved(InteractionResolved),
+        HarnessRequestUnimplemented(HarnessRequestUnimplemented),
+        HarnessStatus(HarnessStatus),
         HarnessStarted(HarnessStarted),
         HarnessStopped(HarnessStopped),
         HarnessCrashed(HarnessCrashed),
@@ -237,6 +288,7 @@ impl HarnessRequest {
             Self::MessageDelivery(_) => HarnessOperationKind::MessageDelivery,
             Self::InteractionPrompt(_) => HarnessOperationKind::InteractionPrompt,
             Self::DeliveryCancellation(_) => HarnessOperationKind::DeliveryCancellation,
+            Self::HarnessStatusQuery(_) => HarnessOperationKind::HarnessStatusQuery,
         }
     }
 }

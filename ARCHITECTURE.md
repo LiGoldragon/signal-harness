@@ -12,10 +12,11 @@ invocation in `src/lib.rs`.
 | Side | Component |
 |---|---|
 | Request side | `persona-router` (sends `MessageDelivery` /
-                 `InteractionPrompt` / `DeliveryCancellation`) |
+                 `InteractionPrompt` / `DeliveryCancellation` /
+                 `HarnessStatusQuery`) |
 | Event side | `persona-harness` (pushes
                  `Delivery*` acks + interaction resolutions
-                 + lifecycle events) |
+                 + skeleton honesty + lifecycle events) |
 
 Bidirectional steady-state: router sends one request;
 harness emits one or more events. Lifecycle events
@@ -27,10 +28,13 @@ without paired requests.
 Records local to this contract:
 - `HarnessName` (local until another concrete relation needs a matching
   contract)
-- `MessageDelivery`, `InteractionPrompt`, `DeliveryCancellation`
+- `MessageDelivery`, `InteractionPrompt`, `DeliveryCancellation`,
+  `HarnessStatusQuery`
 - `DeliveryCompleted`, `DeliveryFailed`,
   `DeliveryFailureReason`
 - `InteractionResolved`
+- `HarnessRequestUnimplemented`, `HarnessUnimplementedReason`
+- `HarnessStatus`, `HarnessHealth`, `HarnessReadiness`
 - `HarnessStarted`, `HarnessStopped`, `HarnessCrashed`
 
 The `MessageBody` on `MessageDelivery` is provisional. The destination is
@@ -43,7 +47,9 @@ a typed Nexus record written in NOTA syntax (per operator/77 §7 +
 HarnessRequest                   HarnessEvent
 ├─ MessageDelivery               ├─ DeliveryCompleted
 ├─ InteractionPrompt             ├─ DeliveryFailed { reason }
-└─ DeliveryCancellation          ├─ InteractionResolved
+├─ DeliveryCancellation          ├─ InteractionResolved
+└─ HarnessStatusQuery            ├─ HarnessRequestUnimplemented
+                                 ├─ HarnessStatus
                                  ├─ HarnessStarted
                                  ├─ HarnessStopped
                                  └─ HarnessCrashed
@@ -51,7 +57,20 @@ HarnessRequest                   HarnessEvent
 
 Closed enums; typed `DeliveryFailureReason` (3 variants:
 `TransportRejected`, `HumanInputIntervened`,
-`HarnessStoppedBeforeDelivery`).
+`HarnessStoppedBeforeDelivery`). `HarnessOperationKind` is the closed
+request discriminator used by skeleton honesty events.
+
+## Constraints
+
+- A harness skeleton can answer `HarnessStatusQuery` with typed health and
+  readiness.
+- A valid request that reaches a skeleton harness daemon but is not implemented
+  yet returns `HarnessRequestUnimplemented`.
+- `HarnessRequestUnimplemented.operation` is a closed `HarnessOperationKind`,
+  not a string.
+- Skeleton honesty uses `HarnessUnimplementedReason`, not free text.
+- Prompt cleanliness and input gates stay below this contract in
+  `signal-persona-terminal`.
 
 ## Versioning
 
@@ -87,9 +106,10 @@ HarnessEvent::DeliveryFailed(DeliveryFailed {
 
 ## Round trips
 
-Round-trip tests in `tests/round_trip.rs` cover all 9 request/event variants,
-the failure-reason enum, From-impl witnesses, and representative NOTA text
-witnesses for `MessageDelivery` and `DeliveryFailed`.
+Round-trip tests in `tests/round_trip.rs` cover every request/event variant,
+the operation-kind and failure-reason enums, From-impl witnesses, and
+representative NOTA text witnesses for `MessageDelivery`, `DeliveryFailed`, and
+`HarnessRequestUnimplemented`.
 
 ## Non-ownership
 
