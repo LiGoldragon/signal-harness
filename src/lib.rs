@@ -139,6 +139,15 @@ pub struct DeliveryCancellation {
     pub message_slot: MessageSlot,
 }
 
+#[derive(
+    Archive, RkyvSerialize, RkyvDeserialize, NotaEnum, Debug, Clone, Copy, PartialEq, Eq, Hash,
+)]
+pub enum HarnessOperationKind {
+    MessageDelivery,
+    InteractionPrompt,
+    DeliveryCancellation,
+}
+
 // ─── Delivery acknowledgements (harness → router) ─────────
 
 /// The harness successfully delivered the message — the
@@ -219,5 +228,15 @@ signal_channel! {
         HarnessStarted(HarnessStarted),
         HarnessStopped(HarnessStopped),
         HarnessCrashed(HarnessCrashed),
+    }
+}
+
+impl HarnessRequest {
+    pub fn operation_kind(&self) -> HarnessOperationKind {
+        match self {
+            Self::MessageDelivery(_) => HarnessOperationKind::MessageDelivery,
+            Self::InteractionPrompt(_) => HarnessOperationKind::InteractionPrompt,
+            Self::DeliveryCancellation(_) => HarnessOperationKind::DeliveryCancellation,
+        }
     }
 }

@@ -5,9 +5,9 @@ use nota_codec::{Decoder, Encoder, NotaDecode, NotaEncode};
 use signal_core::{FrameBody, Reply, Request, SemaVerb};
 use signal_persona_harness::{
     DeliveryCancellation, DeliveryCompleted, DeliveryFailed, DeliveryFailureReason, Frame,
-    HarnessCrashed, HarnessEvent, HarnessName, HarnessRequest, HarnessStarted, HarnessStopped,
-    InteractionPrompt, InteractionResolved, MessageBody, MessageDelivery, MessageSender,
-    MessageSlot,
+    HarnessCrashed, HarnessEvent, HarnessName, HarnessOperationKind, HarnessRequest,
+    HarnessStarted, HarnessStopped, InteractionPrompt, InteractionResolved, MessageBody,
+    MessageDelivery, MessageSender, MessageSlot,
 };
 
 fn harness() -> HarnessName {
@@ -66,6 +66,55 @@ fn delivery_cancellation_round_trips() {
         message_slot: MessageSlot::new(7),
     });
     assert_eq!(round_trip_request(request.clone()), request);
+}
+
+#[test]
+fn harness_request_exposes_contract_owned_operation_kind() {
+    let cases = [
+        (
+            HarnessRequest::MessageDelivery(MessageDelivery {
+                harness: harness(),
+                sender: MessageSender::new("operator"),
+                body: MessageBody::new("kind witness"),
+                message_slot: MessageSlot::new(1),
+            }),
+            HarnessOperationKind::MessageDelivery,
+        ),
+        (
+            HarnessRequest::InteractionPrompt(InteractionPrompt {
+                harness: harness(),
+                interaction_id: "i-kind".into(),
+                prompt: "Approve?".into(),
+                options: vec!["yes".into(), "no".into()],
+            }),
+            HarnessOperationKind::InteractionPrompt,
+        ),
+        (
+            HarnessRequest::DeliveryCancellation(DeliveryCancellation {
+                harness: harness(),
+                message_slot: MessageSlot::new(1),
+            }),
+            HarnessOperationKind::DeliveryCancellation,
+        ),
+    ];
+
+    for (request, operation) in cases {
+        assert_eq!(request.operation_kind(), operation);
+    }
+}
+
+#[test]
+fn harness_operation_kind_round_trips_through_nota_text() {
+    let mut encoder = Encoder::new();
+    HarnessOperationKind::MessageDelivery
+        .encode(&mut encoder)
+        .expect("encode operation kind");
+    let text = encoder.into_string();
+    let mut decoder = Decoder::new(&text);
+    let recovered = HarnessOperationKind::decode(&mut decoder).expect("decode operation kind");
+
+    assert_eq!(recovered, HarnessOperationKind::MessageDelivery);
+    assert_eq!(text, "MessageDelivery");
 }
 
 #[test]
