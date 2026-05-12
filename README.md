@@ -13,15 +13,16 @@ Read `src/lib.rs` for the public interface — two enums
 
 ```rust
 use signal_persona_harness::{
-    DeliverMessage, Frame, HarnessName, HarnessRequest,
+    Frame, HarnessName, HarnessRequest, MessageBody, MessageDelivery,
+    MessageSender, MessageSlot,
 };
 use signal_core::{FrameBody, Request};
 
-let request = HarnessRequest::DeliverMessage(DeliverMessage {
+let request = HarnessRequest::MessageDelivery(MessageDelivery {
     harness: HarnessName::new("designer"),
-    sender: "operator".into(),
-    body: "delivery test".into(),
-    message_slot: 1024,
+    sender: MessageSender::new("operator"),
+    body: MessageBody::new("delivery test"),
+    message_slot: MessageSlot::new(1024),
 });
 let frame = Frame::new(FrameBody::Request(Request::assert(request)));
 let bytes = frame.encode_length_prefixed()?;
@@ -41,6 +42,5 @@ The harness pushes `HarnessEvent::DeliveryCompleted` (or
 - `~/primary/skills/contract-repo.md` — contract-repo discipline
 - `signal-persona-message` — upstream channel that drives
   these deliveries
-- `signal-persona-system` — companion channel carrying the
-  focus + input-buffer facts the router uses to gate
-  deliveries
+- `signal-persona-terminal` — terminal control channel carrying
+  prompt patterns, input gates, and write-injection acknowledgements

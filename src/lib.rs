@@ -6,8 +6,8 @@
 //!
 //! - **Delivery requests** from the router to a harness:
 //!   "deliver this typed payload (a message, a system
-//!   notification, a prompt) to the human inhabiting this
-//!   harness."
+//!   notification, a prompt) through this harness's terminal
+//!   delivery path."
 //! - **Harness observations** from the harness back to the
 //!   router: lifecycle events (started / stopped /
 //!   crashed), input acknowledgements, interaction
@@ -84,10 +84,10 @@ impl MessageSlot {
 
 // ─── Delivery requests (router → harness) ─────────────────
 
-/// Deliver a message to the harness's input surface. The
-/// router has already verified the safety property (focus
-/// not human-owned + input buffer empty); the harness
-/// performs the actual injection.
+/// Deliver a message through the harness's terminal path.
+/// This request does not certify prompt cleanliness. The
+/// harness / terminal adapter must acquire the terminal input
+/// gate before programmatic injection.
 #[derive(Archive, RkyvSerialize, RkyvDeserialize, Debug, Clone, PartialEq, Eq)]
 pub struct MessageDelivery {
     pub harness: HarnessName,
@@ -145,9 +145,9 @@ pub enum DeliveryFailureReason {
     /// The harness's transport (PTY, terminal) couldn't
     /// accept the bytes.
     TransportRejected,
-    /// The human typed into the input buffer between the
-    /// router's safety check and the harness's injection.
-    /// The harness aborted to preserve the human's draft.
+    /// The terminal input gate observed human input before
+    /// programmatic injection. The harness aborted to preserve
+    /// the human's draft.
     HumanInputIntervened,
     /// The harness was tearing down when the delivery
     /// arrived.

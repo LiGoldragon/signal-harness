@@ -144,3 +144,54 @@ fn from_impl_lifts_delivery_completed_into_event() {
     let event: HarnessEvent = payload.clone().into();
     assert_eq!(event, HarnessEvent::DeliveryCompleted(payload));
 }
+
+#[test]
+fn harness_contract_cannot_claim_router_or_system_prompt_gate_precheck() {
+    let scan = DriftScan::new(env!("CARGO_MANIFEST_DIR"));
+
+    scan.assert_absent(&[
+        "already verified",
+        "focus not human-owned",
+        "input buffer empty",
+        "signal-persona-system",
+        "focus/input-buffer",
+        "focus + input-buffer",
+        "safety gate cleared",
+    ]);
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+struct DriftScan {
+    root: std::path::PathBuf,
+}
+
+impl DriftScan {
+    fn new(root: impl Into<std::path::PathBuf>) -> Self {
+        Self { root: root.into() }
+    }
+
+    fn assert_absent(&self, forbidden_fragments: &[&str]) {
+        let mut violations = Vec::new();
+        self.collect_violations("src/lib.rs", forbidden_fragments, &mut violations);
+        assert!(
+            violations.is_empty(),
+            "prompt-gate precheck belongs to terminal control, not this harness contract:\n{}",
+            violations.join("\n")
+        );
+    }
+
+    fn collect_violations(
+        &self,
+        relative_path: &str,
+        forbidden_fragments: &[&str],
+        violations: &mut Vec<String>,
+    ) {
+        let path = self.root.join(relative_path);
+        let content = std::fs::read_to_string(&path).expect("scan source file");
+        for fragment in forbidden_fragments {
+            if content.contains(fragment) {
+                violations.push(format!("{relative_path} contains {fragment}"));
+            }
+        }
+    }
+}

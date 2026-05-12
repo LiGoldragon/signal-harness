@@ -62,7 +62,7 @@ Schema-level changes are breaking; coordinate
 ## Examples
 
 ```text
-;; router → harness: deliver a message after the safety gate cleared
+;; router → harness: deliver a routed message
 HarnessRequest::MessageDelivery(MessageDelivery {
     harness: HarnessName::new("designer"),
     sender: MessageSender::new("operator"),
@@ -76,8 +76,8 @@ HarnessEvent::DeliveryCompleted(DeliveryCompleted {
     message_slot: MessageSlot::new(1024),
 })
 
-;; harness → router: human typed during the gate window;
-;; we aborted to preserve the draft
+;; harness → router: terminal input gate saw human intervention;
+;; delivery aborted to preserve the draft
 HarnessEvent::DeliveryFailed(DeliveryFailed {
     harness: HarnessName::new("designer"),
     message_slot: MessageSlot::new(1024),
@@ -96,8 +96,9 @@ HarnessEvent::DeliveryFailed(DeliveryFailed {
 - No harness daemon — that's `persona-harness`.
 - No PTY adapter or terminal transport — that's `persona-terminal`, below
   the `signal-persona-terminal` contract.
-- No safety-property enforcement (router-side; gated by
-  `signal-persona-system` observations).
+- No terminal prompt cleanliness or input-gate enforcement. Those are
+  `signal-persona-terminal`, `persona-terminal`, and `terminal-cell`
+  concerns.
 - No transport.
 
 ## Code map
@@ -119,7 +120,5 @@ tests/
 - `signal-core/src/channel.rs` — the macro
 - `signal-persona-message` — upstream channel producing
   the messages this channel delivers
-- `signal-persona-system` — companion channel carrying the
-  focus/input-buffer facts the router uses to gate
 - `signal-persona-terminal` — terminal contract for harness/terminal PTY
   coordination; downstream from this channel

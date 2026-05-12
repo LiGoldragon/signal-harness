@@ -33,5 +33,6 @@ Before changing code in this repo, read:
 - The router actor or its delivery state machine.
 - The harness actor or its PTY adapter.
 - Transport (UDS path, reconnect, timeouts).
-- The safety-property enforcement (router-side; uses
-  `signal-persona-system` events to gate deliveries).
+- Terminal prompt cleanliness, input gates, and write-injection
+  safety (owned by `signal-persona-terminal`, `persona-terminal`,
+  and `terminal-cell`).
