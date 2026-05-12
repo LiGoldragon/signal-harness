@@ -87,8 +87,9 @@ HarnessEvent::DeliveryFailed(DeliveryFailed {
 
 ## Round trips
 
-11 round-trip tests in `tests/round_trip.rs` covering all
-9 variants + the failure-reason enum + From-impl witnesses.
+Round-trip tests in `tests/round_trip.rs` cover all 9 request/event variants,
+the failure-reason enum, From-impl witnesses, and representative NOTA text
+witnesses for `MessageDelivery` and `DeliveryFailed`.
 
 ## Non-ownership
 
@@ -107,7 +108,7 @@ HarnessEvent::DeliveryFailed(DeliveryFailed {
 src/
 └── lib.rs    — payloads + signal_channel! invocation
 tests/
-└── round_trip.rs — per-variant wire-form round trips
+└── round_trip.rs — per-variant frame round trips + NOTA text witnesses
 ```
 
 ## See also
