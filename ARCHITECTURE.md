@@ -41,6 +41,37 @@ The `MessageBody` on `MessageDelivery` is provisional. The destination is
 a typed Nexus record written in NOTA syntax (per operator/77 §7 +
 `primary-kxb` #3), not a new text format.
 
+## Recipient → harness → terminal resolution mapping
+
+Per
+`~/primary/reports/designer/144-prototype-architecture-final-cleanup-after-da36.md` §3.4,
+the prototype-one resolution chain is:
+
+```text
+MessageRecipient (role name, e.g. "designer")
+  → HarnessName (same role-named harness from harness registry)
+  → TerminalName (same role-named terminal session, per
+                  signal-persona-terminal's TerminalName namespace)
+  → terminal-cell session (the cell bound to the role-named terminal)
+```
+
+**One harness per role for prototype one.** The harness registry
+maps `MessageRecipient` → `HarnessName` by string equality at the
+role-name level. The `HarnessName` and `TerminalName` namespaces
+**align**: a harness named `"designer"` writes into the terminal
+session named `"designer"`. Future cases (multiple harnesses per
+role, harness pools, separate identity/transport namespaces) get a
+richer resolution when they surface.
+
+The constraint witness:
+
+```text
+recipient_resolves_to_role_named_harness_and_terminal
+  — assert MessageRecipient::new("designer") routes through
+    HarnessName::new("designer") which writes to
+    TerminalName::new("designer"). The three names match exactly.
+```
+
 ## Messages
 
 ```
