@@ -41,10 +41,6 @@ Delivery and interaction prompts use `Assert`; delivery cancellation uses
 ## See also
 
 - `ARCHITECTURE.md` — channel role + boundaries
-- `~/primary/reports/designer/72-harmonized-implementation-plan.md`
-  §2.1 — channel inventory
-- `~/primary/reports/operator/67-signal-actor-messaging-gap-audit.md`
-  — the safety property + delivery state machine
 - `~/primary/skills/contract-repo.md` — contract-repo discipline
 - `signal-persona-message` — upstream channel that drives
   these deliveries
