@@ -43,9 +43,7 @@ a typed Nexus record written in NOTA syntax (per operator/77 §7 +
 
 ## Recipient → harness → terminal resolution mapping
 
-Per
-`~/primary/reports/designer/144-prototype-architecture-final-cleanup-after-da36.md` §3.4,
-the prototype-one resolution chain is:
+The prototype-one resolution chain is:
 
 ```text
 MessageRecipient (role name, e.g. "designer")
@@ -183,11 +181,6 @@ tests/
 
 ## See also
 
-- `~/primary/reports/designer/72-harmonized-implementation-plan.md`
-  §2.1 — channel inventory
-- `~/primary/reports/operator/67-signal-actor-messaging-gap-audit.md`
-  — the safety property the router enforces before
-  sending `MessageDelivery`
 - `signal-core/src/channel.rs` — the macro
 - `signal-persona-message` — upstream channel producing
   the messages this channel delivers
