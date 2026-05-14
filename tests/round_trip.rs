@@ -2,7 +2,7 @@
 //! `signal-persona-harness` channel.
 
 use nota_codec::{Decoder, Encoder, NotaDecode, NotaEncode};
-use signal_core::{FrameBody, Reply, Request, SemaVerb};
+use signal_core::{FrameBody, Reply, Request, SignalVerb};
 use signal_persona_harness::{
     DeliveryCancellation, DeliveryCompleted, DeliveryFailed, DeliveryFailureReason, Frame,
     HarnessCrashed, HarnessEvent, HarnessHealth, HarnessName, HarnessOperationKind,
@@ -17,10 +17,7 @@ fn harness() -> HarnessName {
 
 fn round_trip_request(request: HarnessRequest) -> HarnessRequest {
     let expected_verb = request.signal_verb();
-    let frame = Frame::new(FrameBody::Request(Request::operation(
-        expected_verb,
-        request,
-    )));
+    let frame = Frame::new(FrameBody::Request(request.into_signal_request()));
     let bytes = frame.encode_length_prefixed().expect("encode");
     let decoded = Frame::decode_length_prefixed(&bytes).expect("decode");
     match decoded.into_body() {
@@ -129,7 +126,7 @@ fn harness_request_variants_declare_expected_signal_root_verbs() {
                 body: MessageBody::new("verb witness"),
                 message_slot: MessageSlot::new(1),
             }),
-            SemaVerb::Assert,
+            SignalVerb::Assert,
         ),
         (
             HarnessRequest::InteractionPrompt(InteractionPrompt {
@@ -138,18 +135,18 @@ fn harness_request_variants_declare_expected_signal_root_verbs() {
                 prompt: "Approve?".into(),
                 options: vec!["yes".into(), "no".into()],
             }),
-            SemaVerb::Assert,
+            SignalVerb::Assert,
         ),
         (
             HarnessRequest::DeliveryCancellation(DeliveryCancellation {
                 harness: harness(),
                 message_slot: MessageSlot::new(1),
             }),
-            SemaVerb::Retract,
+            SignalVerb::Retract,
         ),
         (
             HarnessRequest::HarnessStatusQuery(HarnessStatusQuery { harness: harness() }),
-            SemaVerb::Match,
+            SignalVerb::Match,
         ),
     ];
 

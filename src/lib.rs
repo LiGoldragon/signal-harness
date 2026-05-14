@@ -24,7 +24,7 @@
 
 use nota_codec::{NotaEnum, NotaRecord, NotaTransparent};
 use rkyv::{Archive, Deserialize as RkyvDeserialize, Serialize as RkyvSerialize};
-use signal_core::{SemaVerb, signal_channel};
+use signal_core::signal_channel;
 
 // ─── Harness identity ─────────────────────────────────────
 
@@ -265,10 +265,10 @@ pub struct HarnessCrashed {
 
 signal_channel! {
     request HarnessRequest {
-        MessageDelivery(MessageDelivery),
-        InteractionPrompt(InteractionPrompt),
-        DeliveryCancellation(DeliveryCancellation),
-        HarnessStatusQuery(HarnessStatusQuery),
+        Assert MessageDelivery(MessageDelivery),
+        Assert InteractionPrompt(InteractionPrompt),
+        Retract DeliveryCancellation(DeliveryCancellation),
+        Match HarnessStatusQuery(HarnessStatusQuery),
     }
     reply HarnessEvent {
         DeliveryCompleted(DeliveryCompleted),
@@ -283,14 +283,6 @@ signal_channel! {
 }
 
 impl HarnessRequest {
-    pub const fn signal_verb(&self) -> SemaVerb {
-        match self {
-            Self::MessageDelivery(_) | Self::InteractionPrompt(_) => SemaVerb::Assert,
-            Self::DeliveryCancellation(_) => SemaVerb::Retract,
-            Self::HarnessStatusQuery(_) => SemaVerb::Match,
-        }
-    }
-
     pub fn operation_kind(&self) -> HarnessOperationKind {
         match self {
             Self::MessageDelivery(_) => HarnessOperationKind::MessageDelivery,
