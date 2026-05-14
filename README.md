@@ -24,13 +24,19 @@ let request = HarnessRequest::MessageDelivery(MessageDelivery {
     body: MessageBody::new("delivery test"),
     message_slot: MessageSlot::new(1024),
 });
-let frame = Frame::new(FrameBody::Request(Request::assert(request)));
+let frame = Frame::new(FrameBody::Request(Request::operation(
+    request.signal_verb(),
+    request,
+)));
 let bytes = frame.encode_length_prefixed()?;
 // router sends bytes to designer harness's UDS
 ```
 
 The harness pushes `HarnessEvent::DeliveryCompleted` (or
 `DeliveryFailed`) back over the same channel.
+
+Delivery and interaction prompts use `Assert`; delivery cancellation uses
+`Retract`; status reads use `Match`.
 
 ## See also
 

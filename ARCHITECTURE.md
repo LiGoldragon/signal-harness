@@ -91,6 +91,24 @@ Closed enums; typed `DeliveryFailureReason` (3 variants:
 `HarnessStoppedBeforeDelivery`). `HarnessOperationKind` is the closed
 request discriminator used by skeleton honesty events.
 
+### Signal root verbs
+
+Every `HarnessRequest` variant declares its root verb through
+`HarnessRequest::signal_verb()`. The method currently returns
+`signal_core::SemaVerb`; this crate keeps that spelling until the
+coordinated `signal-core` `SignalVerb` rename lands.
+
+```text
+MessageDelivery      -> Assert
+InteractionPrompt    -> Assert
+DeliveryCancellation -> Retract
+HarnessStatusQuery   -> Match
+```
+
+Delivery and interaction prompts assert new harness work. Cancellation
+retracts pending work. Status is a read and must not be wrapped as
+`Assert`.
+
 ## Constraints
 
 - A harness skeleton can answer `HarnessStatusQuery` with typed health and
@@ -141,6 +159,7 @@ Round-trip tests in `tests/round_trip.rs` cover every request/event variant,
 the operation-kind and failure-reason enums, From-impl witnesses, and
 representative NOTA text witnesses for `MessageDelivery`, `DeliveryFailed`, and
 `HarnessRequestUnimplemented`.
+Request frame tests assert each variant's `signal_verb()` mapping.
 
 ## Non-ownership
 
