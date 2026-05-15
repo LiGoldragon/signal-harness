@@ -7,12 +7,11 @@ use signal_core::{
     SignalVerb, SubReply,
 };
 use signal_persona_harness::{
-    DeliveryCancellation, DeliveryCompleted, DeliveryFailed, DeliveryFailureReason,
-    HarnessCrashed, HarnessEvent, HarnessFrame, HarnessFrameBody, HarnessHealth, HarnessName,
-    HarnessOperationKind, HarnessReadiness, HarnessRequest, HarnessRequestUnimplemented,
-    HarnessStarted, HarnessStatus, HarnessStatusQuery, HarnessStopped, HarnessUnimplementedReason,
-    InteractionPrompt, InteractionResolved, MessageBody, MessageDelivery, MessageSender,
-    MessageSlot,
+    DeliveryCancellation, DeliveryCompleted, DeliveryFailed, DeliveryFailureReason, HarnessCrashed,
+    HarnessEvent, HarnessFrame, HarnessFrameBody, HarnessHealth, HarnessName, HarnessOperationKind,
+    HarnessReadiness, HarnessRequest, HarnessRequestUnimplemented, HarnessStarted, HarnessStatus,
+    HarnessStatusQuery, HarnessStopped, HarnessUnimplementedReason, InteractionPrompt,
+    InteractionResolved, MessageBody, MessageDelivery, MessageSender, MessageSlot,
 };
 
 fn harness() -> HarnessName {

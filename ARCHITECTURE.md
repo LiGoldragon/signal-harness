@@ -92,7 +92,7 @@ request discriminator used by skeleton honesty events.
 
 Every `HarnessRequest` variant declares its root verb in the
 `signal_channel!` declaration. `signal-core` generates
-`HarnessRequest::signal_verb()` and `HarnessRequest::into_signal_request()`
+`HarnessRequest::signal_verb()` and `HarnessRequest::into_request()`
 from that declaration.
 
 ```text

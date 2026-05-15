@@ -12,19 +12,29 @@ Read `src/lib.rs` for the public interface — two enums
 ## Quick reference
 
 ```rust
-use signal_persona_harness::{
-    Frame, HarnessName, HarnessRequest, MessageBody, MessageDelivery,
-    MessageSender, MessageSlot,
+use signal_core::{
+    ExchangeIdentifier, ExchangeLane, LaneSequence, RequestPayload, SessionEpoch,
 };
-use signal_core::FrameBody;
+use signal_persona_harness::{
+    HarnessFrame, HarnessFrameBody, HarnessName, HarnessRequest,
+    MessageBody, MessageDelivery, MessageSender, MessageSlot,
+};
 
+let exchange = ExchangeIdentifier::new(
+    SessionEpoch::new(1),
+    ExchangeLane::Connector,
+    LaneSequence::first(),
+);
 let request = HarnessRequest::MessageDelivery(MessageDelivery {
     harness: HarnessName::new("designer"),
     sender: MessageSender::new("operator"),
     body: MessageBody::new("delivery test"),
     message_slot: MessageSlot::new(1024),
 });
-let frame = Frame::new(FrameBody::Request(request.into_signal_request()));
+let frame = HarnessFrame::new(HarnessFrameBody::Request {
+    exchange,
+    request: request.into_request(),
+});
 let bytes = frame.encode_length_prefixed()?;
 // router sends bytes to designer harness's UDS
 ```
