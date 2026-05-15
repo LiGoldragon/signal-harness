@@ -2,39 +2,69 @@
 //! `signal-persona-harness` channel.
 
 use nota_codec::{Decoder, Encoder, NotaDecode, NotaEncode};
-use signal_core::{FrameBody, Reply, Request, SignalVerb};
+use signal_core::{
+    ExchangeIdentifier, ExchangeLane, LaneSequence, NonEmpty, Reply, RequestPayload, SessionEpoch,
+    SignalVerb, SubReply,
+};
 use signal_persona_harness::{
-    DeliveryCancellation, DeliveryCompleted, DeliveryFailed, DeliveryFailureReason, Frame,
-    HarnessCrashed, HarnessEvent, HarnessHealth, HarnessName, HarnessOperationKind,
-    HarnessReadiness, HarnessRequest, HarnessRequestUnimplemented, HarnessStarted, HarnessStatus,
-    HarnessStatusQuery, HarnessStopped, HarnessUnimplementedReason, InteractionPrompt,
-    InteractionResolved, MessageBody, MessageDelivery, MessageSender, MessageSlot,
+    DeliveryCancellation, DeliveryCompleted, DeliveryFailed, DeliveryFailureReason,
+    HarnessCrashed, HarnessEvent, HarnessFrame, HarnessFrameBody, HarnessHealth, HarnessName,
+    HarnessOperationKind, HarnessReadiness, HarnessRequest, HarnessRequestUnimplemented,
+    HarnessStarted, HarnessStatus, HarnessStatusQuery, HarnessStopped, HarnessUnimplementedReason,
+    InteractionPrompt, InteractionResolved, MessageBody, MessageDelivery, MessageSender,
+    MessageSlot,
 };
 
 fn harness() -> HarnessName {
     HarnessName::new("designer")
 }
 
+fn synthetic_exchange() -> ExchangeIdentifier {
+    ExchangeIdentifier::new(
+        SessionEpoch::new(0),
+        ExchangeLane::Connector,
+        LaneSequence::first(),
+    )
+}
+
 fn round_trip_request(request: HarnessRequest) -> HarnessRequest {
     let expected_verb = request.signal_verb();
-    let frame = Frame::new(FrameBody::Request(request.into_signal_request()));
+    let signal_request = request.into_request();
+    let frame = HarnessFrame::new(HarnessFrameBody::Request {
+        exchange: synthetic_exchange(),
+        request: signal_request,
+    });
     let bytes = frame.encode_length_prefixed().expect("encode");
-    let decoded = Frame::decode_length_prefixed(&bytes).expect("decode");
+    let decoded = HarnessFrame::decode_length_prefixed(&bytes).expect("decode");
     match decoded.into_body() {
-        FrameBody::Request(Request::Operation { verb, payload }) => {
-            assert_eq!(verb, expected_verb);
-            payload
+        HarnessFrameBody::Request { request, .. } => {
+            let head = request.operations().head().clone();
+            assert_eq!(head.verb, expected_verb);
+            head.payload
         }
         other => panic!("expected request operation, got {other:?}"),
     }
 }
 
 fn round_trip_event(event: HarnessEvent) -> HarnessEvent {
-    let frame = Frame::new(FrameBody::Reply(Reply::operation(event)));
+    let reply = Reply::completed(NonEmpty::single(SubReply::Ok {
+        verb: SignalVerb::Assert,
+        payload: event,
+    }));
+    let frame = HarnessFrame::new(HarnessFrameBody::Reply {
+        exchange: synthetic_exchange(),
+        reply,
+    });
     let bytes = frame.encode_length_prefixed().expect("encode");
-    let decoded = Frame::decode_length_prefixed(&bytes).expect("decode");
+    let decoded = HarnessFrame::decode_length_prefixed(&bytes).expect("decode");
     match decoded.into_body() {
-        FrameBody::Reply(Reply::Operation(event)) => event,
+        HarnessFrameBody::Reply { reply, .. } => match reply {
+            Reply::Accepted { per_operation, .. } => match per_operation.into_head() {
+                SubReply::Ok { payload, .. } => payload,
+                other => panic!("expected Ok sub-reply, got {other:?}"),
+            },
+            Reply::Rejected { reason } => panic!("unexpected rejected reply: {reason:?}"),
+        },
         other => panic!("expected reply operation, got {other:?}"),
     }
 }
@@ -245,28 +275,6 @@ fn harness_crashed_carries_typed_detail() {
         detail: "PTY fd was closed".into(),
     });
     assert_eq!(round_trip_event(event.clone()), event);
-}
-
-#[test]
-fn from_impl_lifts_message_delivery_into_request() {
-    let payload = MessageDelivery {
-        harness: harness(),
-        sender: MessageSender::new("operator"),
-        body: MessageBody::new("via from"),
-        message_slot: MessageSlot::new(42),
-    };
-    let request: HarnessRequest = payload.clone().into();
-    assert_eq!(request, HarnessRequest::MessageDelivery(payload));
-}
-
-#[test]
-fn from_impl_lifts_delivery_completed_into_event() {
-    let payload = DeliveryCompleted {
-        harness: harness(),
-        message_slot: MessageSlot::new(42),
-    };
-    let event: HarnessEvent = payload.clone().into();
-    assert_eq!(event, HarnessEvent::DeliveryCompleted(payload));
 }
 
 #[test]

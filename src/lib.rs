@@ -264,21 +264,23 @@ pub struct HarnessCrashed {
 // ─── Channel declaration ───────────────────────────────────
 
 signal_channel! {
-    request HarnessRequest {
-        Assert MessageDelivery(MessageDelivery),
-        Assert InteractionPrompt(InteractionPrompt),
-        Retract DeliveryCancellation(DeliveryCancellation),
-        Match HarnessStatusQuery(HarnessStatusQuery),
-    }
-    reply HarnessEvent {
-        DeliveryCompleted(DeliveryCompleted),
-        DeliveryFailed(DeliveryFailed),
-        InteractionResolved(InteractionResolved),
-        HarnessRequestUnimplemented(HarnessRequestUnimplemented),
-        HarnessStatus(HarnessStatus),
-        HarnessStarted(HarnessStarted),
-        HarnessStopped(HarnessStopped),
-        HarnessCrashed(HarnessCrashed),
+    channel Harness {
+        request HarnessRequest {
+            Assert MessageDelivery(MessageDelivery),
+            Assert InteractionPrompt(InteractionPrompt),
+            Retract DeliveryCancellation(DeliveryCancellation),
+            Match HarnessStatusQuery(HarnessStatusQuery),
+        }
+        reply HarnessEvent {
+            DeliveryCompleted(DeliveryCompleted),
+            DeliveryFailed(DeliveryFailed),
+            InteractionResolved(InteractionResolved),
+            HarnessRequestUnimplemented(HarnessRequestUnimplemented),
+            HarnessStatus(HarnessStatus),
+            HarnessStarted(HarnessStarted),
+            HarnessStopped(HarnessStopped),
+            HarnessCrashed(HarnessCrashed),
+        }
     }
 }
 
