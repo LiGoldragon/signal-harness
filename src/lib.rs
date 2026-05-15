@@ -294,3 +294,44 @@ impl HarnessRequest {
         }
     }
 }
+
+// Hand-written From<Payload> for HarnessEvent (the channel's reply
+// enum) per /176 §3.
+impl From<DeliveryCompleted> for HarnessEvent {
+    fn from(p: DeliveryCompleted) -> Self { Self::DeliveryCompleted(p) }
+}
+impl From<DeliveryFailed> for HarnessEvent {
+    fn from(p: DeliveryFailed) -> Self { Self::DeliveryFailed(p) }
+}
+impl From<InteractionResolved> for HarnessEvent {
+    fn from(p: InteractionResolved) -> Self { Self::InteractionResolved(p) }
+}
+impl From<HarnessRequestUnimplemented> for HarnessEvent {
+    fn from(p: HarnessRequestUnimplemented) -> Self { Self::HarnessRequestUnimplemented(p) }
+}
+impl From<HarnessStatus> for HarnessEvent {
+    fn from(p: HarnessStatus) -> Self { Self::HarnessStatus(p) }
+}
+impl From<HarnessStarted> for HarnessEvent {
+    fn from(p: HarnessStarted) -> Self { Self::HarnessStarted(p) }
+}
+impl From<HarnessStopped> for HarnessEvent {
+    fn from(p: HarnessStopped) -> Self { Self::HarnessStopped(p) }
+}
+impl From<HarnessCrashed> for HarnessEvent {
+    fn from(p: HarnessCrashed) -> Self { Self::HarnessCrashed(p) }
+}
+
+// And the same for HarnessRequest payloads.
+impl From<MessageDelivery> for HarnessRequest {
+    fn from(p: MessageDelivery) -> Self { Self::MessageDelivery(p) }
+}
+impl From<InteractionPrompt> for HarnessRequest {
+    fn from(p: InteractionPrompt) -> Self { Self::InteractionPrompt(p) }
+}
+impl From<DeliveryCancellation> for HarnessRequest {
+    fn from(p: DeliveryCancellation) -> Self { Self::DeliveryCancellation(p) }
+}
+impl From<HarnessStatusQuery> for HarnessRequest {
+    fn from(p: HarnessStatusQuery) -> Self { Self::HarnessStatusQuery(p) }
+}

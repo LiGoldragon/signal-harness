@@ -37,9 +37,8 @@ Records local to this contract:
 - `HarnessStatus`, `HarnessHealth`, `HarnessReadiness`
 - `HarnessStarted`, `HarnessStopped`, `HarnessCrashed`
 
-The `MessageBody` on `MessageDelivery` is provisional. The destination is
-a typed Nexus record written in NOTA syntax (per operator/77 §7 +
-`primary-kxb` #3), not a new text format.
+The `MessageBody` on `MessageDelivery` is provisional. The destination
+is a typed Nexus record written in NOTA syntax, not a new text format.
 
 ## Recipient → harness → terminal resolution mapping
 
