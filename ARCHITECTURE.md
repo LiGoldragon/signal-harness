@@ -15,12 +15,14 @@ Transcript observation is push-based. The router subscribes once per
 harness on the `HarnessTranscriptStream`; the harness emits
 `TranscriptObservation` events as transcript lines become visible.
 
-Subscription close follows the **Path A** discipline per /181 and the
-user-settled lifecycle in
-`~/primary/reports/designer-assistant/91-user-decisions-after-designer-184-200-critique.md`
-§2: a typed request-side `Retract HarnessTranscriptRetraction` carries
-the per-stream `HarnessTranscriptToken`; the harness responds with
-`HarnessEvent::HarnessSubscriptionRetracted` echoing the token.
+Subscription close follows the canonical five-state lifecycle named
+in `~/primary/skills/subscription-lifecycle.md`: a typed request-side
+`Retract HarnessTranscriptRetraction` carries the per-stream
+`HarnessTranscriptToken`; the harness responds with
+`HarnessEvent::HarnessSubscriptionRetracted` echoing the token; the
+stream ends after that final ack. The kernel grammar at
+`signal-core/macros/src/validate.rs:303–331` enforces the
+close-is-Retract shape.
 
 ## 1 · Channel
 
@@ -33,7 +35,7 @@ Bidirectional steady-state: router sends one request; harness emits
 one or more events. Lifecycle events (`HarnessStarted` /
 `HarnessStopped` / `HarnessCrashed`) flow without paired requests.
 
-## 2 · Observation channel — Path A lifecycle
+## 2 · Observation channel — subscription lifecycle
 
 The harness is the push primitive for its own transcript state. The
 full lifecycle:
@@ -61,9 +63,9 @@ Both ends of the close exchange exist:
   carries the same token and is the final event a consumer binds its
   in-flight subscribe to before the stream ends.
 
-The pair is what /91 settles: "subscribe request, typed event
-stream, close/retract request, final acknowledgement event/reply,
-stream end. Raw socket close is not semantic protocol."
+The pair satisfies the canonical lifecycle: subscribe request,
+typed event stream, close/retract request, final acknowledgement
+event/reply, stream end. Raw socket close is not semantic protocol.
 
 `TranscriptObservation` carries a monotonic `HarnessTranscriptSequence`
 so the subscriber can detect gaps and re-anchor after reconnection.
@@ -187,7 +189,10 @@ it and the reply-side `HarnessSubscriptionRetracted` is the final ack.
 | Skeleton honesty uses `HarnessUnimplementedReason`, not free text. | Source review + round-trip witness. |
 | Prompt cleanliness and input gates stay below this contract in `signal-persona-terminal`. | Source scan: no prompt or gate vocabulary defined here. |
 | Transcript observation is pushed, not polled. | The harness's internal transcript event count is not the observation surface; `TranscriptObservation` on `HarnessTranscriptStream` is the only sanctioned way to read transcript progress. |
-| Subscription close uses **Path A**: a request-side `Retract HarnessTranscriptRetraction` carrying the token, plus a reply-side `HarnessSubscriptionRetracted` ack echoing the token. | The `signal_channel!` declaration names `Retract HarnessTranscriptRetraction(HarnessTranscriptToken)` and a `stream HarnessTranscriptStream { close HarnessTranscriptRetraction; … }` block. The kernel grammar (`signal-core::macros::validate`) rejects a `stream` block whose `close` is not a request-side `Retract` variant. `harness_transcript_retraction_round_trips` and `harness_subscription_retracted_reply_round_trips` are the wire witnesses. |
+| Subscription open returns a typed `HarnessTranscriptSnapshot` carrying the per-stream token and the current sequence pointer. | Round-trip witness on the snapshot reply; integration witness in `persona-harness` proves the snapshot is the first event a subscriber receives. |
+| Subscription deltas push as typed `TranscriptObservation` events; consumers do not re-ask for current state. | Source scan: no Match-shaped polling variant exists for transcript state. |
+| Subscription close uses the canonical lifecycle: a request-side `Retract HarnessTranscriptRetraction` carrying the token, plus a reply-side `HarnessSubscriptionRetracted` ack echoing the token. | The `signal_channel!` declaration names `Retract HarnessTranscriptRetraction(HarnessTranscriptToken)` and a `stream HarnessTranscriptStream { close HarnessTranscriptRetraction; … }` block. The kernel grammar (`signal-core/macros/src/validate.rs:303–331`) rejects a `stream` block whose `close` is not a request-side `Retract` variant. `harness_transcript_retraction_round_trips` and `harness_subscription_retracted_reply_round_trips` are the wire witnesses. |
+| `TranscriptObservation` carries a monotonic `HarnessTranscriptSequence` so the subscriber can detect gaps and re-anchor after reconnection. | Round-trip witness on the sequence field; the persona-harness integration witness asserts strictly-increasing sequence across multiple deltas. |
 | `HarnessKind` is closed: `Codex`, `Claude`, `Pi`, `Fixture` — no `Other` variant. | Exhaustive match witness (test fires when a new variant lands; `Fixture` is the next bump). |
 | Wire enums contain no `Unknown` variant. | Source scan + per-enum exhaustive-match round-trip witnesses. |
 | Any record name containing the word `Unknown` represents a positive "entity not in our state" rejection, not a polling-shape escape hatch. | This crate has no such records. |
@@ -244,13 +249,15 @@ tests/
 
 ## See also
 
+- `~/primary/skills/subscription-lifecycle.md` — canonical
+  five-state FSM the transcript-observation stream implements.
 - `signal-core/src/channel.rs` — the macro and stream-block grammar
   that enforces the request-side retract variant.
 - `signal-persona-message/ARCHITECTURE.md` — upstream channel
   producing the messages this channel delivers.
 - `signal-persona-terminal/ARCHITECTURE.md` — terminal contract for
   harness/terminal PTY coordination; downstream from this channel
-  and a sibling using the same Path A subscription discipline.
+  and a sibling using the same subscription discipline.
 - `signal-persona-system/ARCHITECTURE.md` and
   `signal-criome/ARCHITECTURE.md` — sibling contracts using the same
-  Path A subscription discipline.
+  subscription discipline.
