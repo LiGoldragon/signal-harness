@@ -486,3 +486,53 @@ impl From<TranscriptObservation> for HarnessStreamEvent {
         Self::TranscriptObservation(p)
     }
 }
+
+// ─── Daemon configuration ──────────────────────────────────
+//
+// Typed startup configuration for `persona-harness-daemon`. The
+// persona manager writes one of these (NOTA or rkyv) to a state-dir
+// path and passes that path as argv. The daemon decodes through
+// `nota_config::ConfigurationSource::from_argv()?.decode()?` and
+// runs with the resulting record. No environment variables on the
+// production launch path.
+
+/// The supervised harness runtime variant. Closed enum — every
+/// production harness ships with one of these kinds.
+#[derive(
+    Archive, RkyvSerialize, RkyvDeserialize, NotaEnum, Debug, Clone, Copy, PartialEq, Eq, Hash,
+)]
+pub enum HarnessKind {
+    Codex,
+    Claude,
+    Pi,
+    Fixture,
+}
+
+/// Startup configuration for `persona-harness-daemon`.
+///
+/// Replaces the previous `--socket`, `--harness`, `--kind`,
+/// `--terminal-socket`, `PERSONA_HARNESS_TERMINAL_SOCKET`,
+/// `PERSONA_SOCKET_MODE`, `PERSONA_SUPERVISION_SOCKET_PATH`, and
+/// `PERSONA_SUPERVISION_SOCKET_MODE` argv/environment-variable
+/// surface.
+#[derive(Archive, RkyvSerialize, RkyvDeserialize, NotaRecord, Debug, Clone, PartialEq, Eq)]
+pub struct HarnessDaemonConfiguration {
+    /// Where the daemon binds its harness Unix socket.
+    pub harness_socket_path: signal_persona::WirePath,
+    /// chmod applied to the harness socket after bind.
+    pub harness_socket_mode: signal_persona::SocketMode,
+    /// Where the daemon binds its supervision Unix socket.
+    pub supervision_socket_path: signal_persona::WirePath,
+    /// chmod applied to the supervision socket after bind.
+    pub supervision_socket_mode: signal_persona::SocketMode,
+    /// The harness name the daemon serves.
+    pub harness_name: HarnessName,
+    /// The supervised harness runtime variant.
+    pub harness_kind: HarnessKind,
+    /// Optional terminal endpoint the daemon delegates to.
+    pub terminal_socket_path: Option<signal_persona::WirePath>,
+    /// The engine owner identity passed to the harness daemon.
+    pub owner_identity: signal_persona_auth::OwnerIdentity,
+}
+
+nota_config::impl_rkyv_configuration!(HarnessDaemonConfiguration);
