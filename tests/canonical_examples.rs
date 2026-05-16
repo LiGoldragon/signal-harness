@@ -30,7 +30,9 @@ fn body() -> MessageBody {
 }
 
 fn token() -> HarnessTranscriptToken {
-    HarnessTranscriptToken { harness: designer() }
+    HarnessTranscriptToken {
+        harness: designer(),
+    }
 }
 
 #[test]
@@ -62,7 +64,9 @@ fn canonical_request_examples_round_trip() {
             "(DeliveryCancellation designer 1024)",
         ),
         (
-            HarnessRequest::HarnessStatusQuery(HarnessStatusQuery { harness: designer() }),
+            HarnessRequest::HarnessStatusQuery(HarnessStatusQuery {
+                harness: designer(),
+            }),
             "(HarnessStatusQuery designer)",
         ),
         (
@@ -137,11 +141,15 @@ fn canonical_reply_examples_round_trip() {
             "(HarnessStatus designer Running Ready)",
         ),
         (
-            HarnessEvent::HarnessStarted(HarnessStarted { harness: designer() }),
+            HarnessEvent::HarnessStarted(HarnessStarted {
+                harness: designer(),
+            }),
             "(HarnessStarted designer)",
         ),
         (
-            HarnessEvent::HarnessStopped(HarnessStopped { harness: designer() }),
+            HarnessEvent::HarnessStopped(HarnessStopped {
+                harness: designer(),
+            }),
             "(HarnessStopped designer)",
         ),
         (
