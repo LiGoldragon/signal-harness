@@ -13,15 +13,22 @@ invocation in `src/lib.rs`.
 |---|---|
 | Request side | `persona-router` (sends `MessageDelivery` /
                  `InteractionPrompt` / `DeliveryCancellation` /
-                 `HarnessStatusQuery`) |
+                 `HarnessStatusQuery` /
+                 `SubscribeHarnessTranscript` /
+                 `HarnessTranscriptRetraction`) |
 | Event side | `persona-harness` (pushes
                  `Delivery*` acks + interaction resolutions
-                 + skeleton honesty + lifecycle events) |
+                 + skeleton honesty + lifecycle events +
+                 transcript observations on the open stream) |
 
 Bidirectional steady-state: router sends one request;
 harness emits one or more events. Lifecycle events
 (HarnessStarted / HarnessStopped / HarnessCrashed) flow
-without paired requests.
+without paired requests. Transcript observations
+(`TranscriptObservation`) flow on the
+`HarnessTranscriptStream` after the router subscribes; the
+harness pushes one event per transcript line as it becomes
+visible.
 
 ## Record source
 
@@ -36,6 +43,9 @@ Records local to this contract:
 - `HarnessRequestUnimplemented`, `HarnessUnimplementedReason`
 - `HarnessStatus`, `HarnessHealth`, `HarnessReadiness`
 - `HarnessStarted`, `HarnessStopped`, `HarnessCrashed`
+- `SubscribeHarnessTranscript`, `HarnessTranscriptToken`,
+  `HarnessTranscriptSnapshot`, `HarnessSubscriptionRetracted`,
+  `TranscriptObservation`, `HarnessTranscriptSequence`
 
 The `MessageBody` on `MessageDelivery` is provisional. The destination
 is a typed Nexus record written in NOTA syntax, not a new text format.
@@ -72,21 +82,32 @@ recipient_resolves_to_role_named_harness_and_terminal
 ## Messages
 
 ```
-HarnessRequest                   HarnessEvent
-├─ MessageDelivery               ├─ DeliveryCompleted
-├─ InteractionPrompt             ├─ DeliveryFailed { reason }
-├─ DeliveryCancellation          ├─ InteractionResolved
-└─ HarnessStatusQuery            ├─ HarnessRequestUnimplemented
-                                 ├─ HarnessStatus
-                                 ├─ HarnessStarted
-                                 ├─ HarnessStopped
-                                 └─ HarnessCrashed
+HarnessRequest                            HarnessEvent
+├─ MessageDelivery                        ├─ DeliveryCompleted
+├─ InteractionPrompt                      ├─ DeliveryFailed { reason }
+├─ DeliveryCancellation                   ├─ InteractionResolved
+├─ HarnessStatusQuery                     ├─ HarnessRequestUnimplemented
+├─ SubscribeHarnessTranscript             ├─ HarnessStatus
+└─ HarnessTranscriptRetraction            ├─ HarnessStarted
+                                          ├─ HarnessStopped
+                                          ├─ HarnessCrashed
+                                          ├─ HarnessTranscriptSnapshot
+                                          └─ HarnessSubscriptionRetracted
+
+HarnessStreamEvent
+└─ TranscriptObservation belongs HarnessTranscriptStream
 ```
 
 Closed enums; typed `DeliveryFailureReason` (3 variants:
 `TransportRejected`, `HumanInputIntervened`,
 `HarnessStoppedBeforeDelivery`). `HarnessOperationKind` is the closed
 request discriminator used by skeleton honesty events.
+
+The `HarnessTranscriptStream` is the typed observation push primitive
+per `ESSENCE.md` §"Polling is forbidden". One stream per harness; one
+subscriber per stream (the router). `TranscriptObservation` carries a
+monotonic `HarnessTranscriptSequence` so the subscriber can detect gaps
+and re-anchor after reconnection.
 
 ### Signal root verbs
 
@@ -96,15 +117,18 @@ Every `HarnessRequest` variant declares its root verb in the
 from that declaration.
 
 ```text
-MessageDelivery      -> Assert
-InteractionPrompt    -> Assert
-DeliveryCancellation -> Retract
-HarnessStatusQuery   -> Match
+MessageDelivery               -> Assert
+InteractionPrompt             -> Assert
+DeliveryCancellation          -> Retract
+HarnessStatusQuery            -> Match
+SubscribeHarnessTranscript    -> Subscribe
+HarnessTranscriptRetraction   -> Retract
 ```
 
 Delivery and interaction prompts assert new harness work. Cancellation
 retracts pending work. Status is a read and must not be wrapped as
-`Assert`.
+`Assert`. Transcript subscription opens the `HarnessTranscriptStream`;
+the retraction request closes it.
 
 ## Constraints
 

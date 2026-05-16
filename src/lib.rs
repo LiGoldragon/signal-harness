@@ -157,6 +157,8 @@ pub enum HarnessOperationKind {
     InteractionPrompt,
     DeliveryCancellation,
     HarnessStatusQuery,
+    SubscribeHarnessTranscript,
+    HarnessTranscriptRetraction,
 }
 
 // ─── Delivery acknowledgements (harness → router) ─────────
@@ -261,6 +263,87 @@ pub struct HarnessCrashed {
     pub detail: String,
 }
 
+// ─── Transcript observation stream (harness → router) ─────
+
+/// Per-observation sequence pointer. Monotonic per harness, starting at
+/// `1` for the first transcript line published after subscription. The
+/// sequence pointer is the typed witness an observer uses to detect gaps,
+/// re-anchor after reconnection, and order events causally — replacing
+/// the implicit `transcript_event_count` field formerly carried only on
+/// the harness actor's local state.
+#[derive(
+    Archive,
+    RkyvSerialize,
+    RkyvDeserialize,
+    NotaTransparent,
+    Debug,
+    Clone,
+    Copy,
+    PartialEq,
+    Eq,
+    Hash,
+)]
+pub struct HarnessTranscriptSequence(u64);
+
+impl HarnessTranscriptSequence {
+    pub const fn new(value: u64) -> Self {
+        Self(value)
+    }
+
+    pub const fn into_u64(self) -> u64 {
+        self.0
+    }
+}
+
+/// Per-subscription identity for the harness transcript-observation
+/// stream. Matches the structural shape of `<Channel>SubscriptionToken`
+/// newtypes per signal-persona-terminal's `TerminalWorkerLifecycleToken`.
+/// One observer per harness; the token's identity is the harness it
+/// observes.
+#[derive(Archive, RkyvSerialize, RkyvDeserialize, NotaRecord, Debug, Clone, PartialEq, Eq)]
+pub struct HarnessTranscriptToken {
+    pub harness: HarnessName,
+}
+
+/// Subscribe to the harness's transcript-observation stream. The reply is
+/// a `HarnessTranscriptSnapshot` carrying the current sequence pointer;
+/// subsequent `TranscriptObservation` events arrive on the same
+/// connection as the stream pushes them.
+#[derive(Archive, RkyvSerialize, RkyvDeserialize, NotaRecord, Debug, Clone, PartialEq, Eq)]
+pub struct SubscribeHarnessTranscript {
+    pub harness: HarnessName,
+}
+
+/// Acknowledgement that a transcript-observation subscription opened.
+/// Carries the current sequence pointer so the subscriber knows the
+/// starting position; the next `TranscriptObservation` carries sequence
+/// `current_sequence + 1`.
+#[derive(Archive, RkyvSerialize, RkyvDeserialize, NotaRecord, Debug, Clone, PartialEq, Eq)]
+pub struct HarnessTranscriptSnapshot {
+    pub harness: HarnessName,
+    pub current_sequence: HarnessTranscriptSequence,
+}
+
+/// Typed acknowledgement that a transcript-observation subscription has
+/// been retracted. Returned in reply to `HarnessTranscriptRetraction`.
+/// Carries the retracted token so callers can match the ack to the
+/// request they sent.
+#[derive(Archive, RkyvSerialize, RkyvDeserialize, NotaRecord, Debug, Clone, PartialEq, Eq)]
+pub struct HarnessSubscriptionRetracted {
+    pub token: HarnessTranscriptToken,
+}
+
+/// One transcript line, pushed as it becomes visible to the harness.
+/// Carries the sequence pointer so the subscriber can detect gaps and
+/// order events causally. Bytes are typed as `String` for the prototype;
+/// the eventual shape carries typed Nexus records, not raw text.
+#[derive(Archive, RkyvSerialize, RkyvDeserialize, NotaRecord, Debug, Clone, PartialEq, Eq)]
+pub struct TranscriptObservation {
+    pub harness: HarnessName,
+    pub sequence: HarnessTranscriptSequence,
+    pub line: String,
+}
+
 // ─── Channel declaration ───────────────────────────────────
 
 signal_channel! {
@@ -270,6 +353,8 @@ signal_channel! {
             Assert InteractionPrompt(InteractionPrompt),
             Retract DeliveryCancellation(DeliveryCancellation),
             Match HarnessStatusQuery(HarnessStatusQuery),
+            Subscribe SubscribeHarnessTranscript(SubscribeHarnessTranscript) opens HarnessTranscriptStream,
+            Retract HarnessTranscriptRetraction(HarnessTranscriptToken),
         }
         reply HarnessEvent {
             DeliveryCompleted(DeliveryCompleted),
@@ -280,6 +365,17 @@ signal_channel! {
             HarnessStarted(HarnessStarted),
             HarnessStopped(HarnessStopped),
             HarnessCrashed(HarnessCrashed),
+            HarnessTranscriptSnapshot(HarnessTranscriptSnapshot),
+            HarnessSubscriptionRetracted(HarnessSubscriptionRetracted),
+        }
+        event HarnessStreamEvent {
+            TranscriptObservation(TranscriptObservation) belongs HarnessTranscriptStream,
+        }
+        stream HarnessTranscriptStream {
+            token HarnessTranscriptToken;
+            opened HarnessTranscriptSnapshot;
+            event TranscriptObservation;
+            close HarnessTranscriptRetraction;
         }
     }
 }
@@ -291,6 +387,10 @@ impl HarnessRequest {
             Self::InteractionPrompt(_) => HarnessOperationKind::InteractionPrompt,
             Self::DeliveryCancellation(_) => HarnessOperationKind::DeliveryCancellation,
             Self::HarnessStatusQuery(_) => HarnessOperationKind::HarnessStatusQuery,
+            Self::SubscribeHarnessTranscript(_) => HarnessOperationKind::SubscribeHarnessTranscript,
+            Self::HarnessTranscriptRetraction(_) => {
+                HarnessOperationKind::HarnessTranscriptRetraction
+            }
         }
     }
 }
@@ -337,6 +437,16 @@ impl From<HarnessCrashed> for HarnessEvent {
         Self::HarnessCrashed(p)
     }
 }
+impl From<HarnessTranscriptSnapshot> for HarnessEvent {
+    fn from(p: HarnessTranscriptSnapshot) -> Self {
+        Self::HarnessTranscriptSnapshot(p)
+    }
+}
+impl From<HarnessSubscriptionRetracted> for HarnessEvent {
+    fn from(p: HarnessSubscriptionRetracted) -> Self {
+        Self::HarnessSubscriptionRetracted(p)
+    }
+}
 
 // And the same for HarnessRequest payloads.
 impl From<MessageDelivery> for HarnessRequest {
@@ -357,5 +467,22 @@ impl From<DeliveryCancellation> for HarnessRequest {
 impl From<HarnessStatusQuery> for HarnessRequest {
     fn from(p: HarnessStatusQuery) -> Self {
         Self::HarnessStatusQuery(p)
+    }
+}
+impl From<SubscribeHarnessTranscript> for HarnessRequest {
+    fn from(p: SubscribeHarnessTranscript) -> Self {
+        Self::SubscribeHarnessTranscript(p)
+    }
+}
+impl From<HarnessTranscriptToken> for HarnessRequest {
+    fn from(p: HarnessTranscriptToken) -> Self {
+        Self::HarnessTranscriptRetraction(p)
+    }
+}
+
+// And for event variants on the stream.
+impl From<TranscriptObservation> for HarnessStreamEvent {
+    fn from(p: TranscriptObservation) -> Self {
+        Self::TranscriptObservation(p)
     }
 }

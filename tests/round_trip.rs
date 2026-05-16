@@ -10,8 +10,10 @@ use signal_persona_harness::{
     DeliveryCancellation, DeliveryCompleted, DeliveryFailed, DeliveryFailureReason, HarnessCrashed,
     HarnessEvent, HarnessFrame, HarnessFrameBody, HarnessHealth, HarnessName, HarnessOperationKind,
     HarnessReadiness, HarnessRequest, HarnessRequestUnimplemented, HarnessStarted, HarnessStatus,
-    HarnessStatusQuery, HarnessStopped, HarnessUnimplementedReason, InteractionPrompt,
-    InteractionResolved, MessageBody, MessageDelivery, MessageSender, MessageSlot,
+    HarnessStatusQuery, HarnessStopped, HarnessSubscriptionRetracted, HarnessTranscriptSequence,
+    HarnessTranscriptSnapshot, HarnessTranscriptToken, HarnessUnimplementedReason,
+    InteractionPrompt, InteractionResolved, MessageBody, MessageDelivery, MessageSender,
+    MessageSlot, SubscribeHarnessTranscript, TranscriptObservation,
 };
 
 fn harness() -> HarnessName {
@@ -107,6 +109,23 @@ fn harness_status_query_round_trips() {
 }
 
 #[test]
+fn subscribe_harness_transcript_round_trips() {
+    let request = HarnessRequest::SubscribeHarnessTranscript(SubscribeHarnessTranscript {
+        harness: harness(),
+    });
+
+    assert_eq!(round_trip_request(request.clone()), request);
+}
+
+#[test]
+fn harness_transcript_retraction_round_trips() {
+    let request =
+        HarnessRequest::HarnessTranscriptRetraction(HarnessTranscriptToken { harness: harness() });
+
+    assert_eq!(round_trip_request(request.clone()), request);
+}
+
+#[test]
 fn harness_request_exposes_contract_owned_operation_kind() {
     let cases = [
         (
@@ -137,6 +156,18 @@ fn harness_request_exposes_contract_owned_operation_kind() {
         (
             HarnessRequest::HarnessStatusQuery(HarnessStatusQuery { harness: harness() }),
             HarnessOperationKind::HarnessStatusQuery,
+        ),
+        (
+            HarnessRequest::SubscribeHarnessTranscript(SubscribeHarnessTranscript {
+                harness: harness(),
+            }),
+            HarnessOperationKind::SubscribeHarnessTranscript,
+        ),
+        (
+            HarnessRequest::HarnessTranscriptRetraction(HarnessTranscriptToken {
+                harness: harness(),
+            }),
+            HarnessOperationKind::HarnessTranscriptRetraction,
         ),
     ];
 
@@ -176,6 +207,18 @@ fn harness_request_variants_declare_expected_signal_root_verbs() {
         (
             HarnessRequest::HarnessStatusQuery(HarnessStatusQuery { harness: harness() }),
             SignalVerb::Match,
+        ),
+        (
+            HarnessRequest::SubscribeHarnessTranscript(SubscribeHarnessTranscript {
+                harness: harness(),
+            }),
+            SignalVerb::Subscribe,
+        ),
+        (
+            HarnessRequest::HarnessTranscriptRetraction(HarnessTranscriptToken {
+                harness: harness(),
+            }),
+            SignalVerb::Retract,
         ),
     ];
 
@@ -274,6 +317,46 @@ fn harness_crashed_carries_typed_detail() {
         detail: "PTY fd was closed".into(),
     });
     assert_eq!(round_trip_event(event.clone()), event);
+}
+
+#[test]
+fn harness_transcript_snapshot_round_trips() {
+    let event = HarnessEvent::HarnessTranscriptSnapshot(HarnessTranscriptSnapshot {
+        harness: harness(),
+        current_sequence: HarnessTranscriptSequence::new(0),
+    });
+    assert_eq!(round_trip_event(event.clone()), event);
+}
+
+#[test]
+fn harness_subscription_retracted_round_trips() {
+    let event = HarnessEvent::HarnessSubscriptionRetracted(HarnessSubscriptionRetracted {
+        token: HarnessTranscriptToken { harness: harness() },
+    });
+    assert_eq!(round_trip_event(event.clone()), event);
+}
+
+#[test]
+fn transcript_observation_event_round_trips_through_nota_text() {
+    let observation = TranscriptObservation {
+        harness: harness(),
+        sequence: HarnessTranscriptSequence::new(42),
+        line: "ready for prompt".into(),
+    };
+
+    let mut encoder = Encoder::new();
+    observation
+        .encode(&mut encoder)
+        .expect("encode observation");
+    let text = encoder.into_string();
+    let mut decoder = Decoder::new(&text);
+    let recovered = TranscriptObservation::decode(&mut decoder).expect("decode observation");
+
+    assert_eq!(recovered, observation);
+    assert_eq!(
+        text,
+        "(TranscriptObservation designer 42 \"ready for prompt\")"
+    );
 }
 
 #[test]
