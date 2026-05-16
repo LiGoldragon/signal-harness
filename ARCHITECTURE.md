@@ -1,211 +1,256 @@
-# ARCHITECTURE — signal-persona-harness
+# signal-persona-harness — architecture
 
-The Signal contract between `persona-router` and
-`persona-harness` — bidirectional. It relates one router delivery
-owner to one or more harnesses: the router requests delivery,
-interaction, and cancellation vectors; harnesses push delivery and
-lifecycle facts. The whole channel is one `signal_channel!`
-invocation in `src/lib.rs`.
+*The Signal contract between `persona-router` and `persona-harness` —
+bidirectional delivery, interaction, and observation channel.*
 
-## Channel
+## 0 · TL;DR
+
+`signal-persona-harness` carries the delivery channel between the
+router and one or more harness instances. The router asks for
+delivery, interaction, cancellation, status, and transcript
+observation; the harness pushes acks, interaction resolutions,
+status, lifecycle events, and transcript-observation events.
+
+Transcript observation is push-based. The router subscribes once per
+harness on the `HarnessTranscriptStream`; the harness emits
+`TranscriptObservation` events as transcript lines become visible.
+
+Subscription close follows the **Path A** discipline per /181 and the
+user-settled lifecycle in
+`~/primary/reports/designer-assistant/91-user-decisions-after-designer-184-200-critique.md`
+§2: a typed request-side `Retract HarnessTranscriptRetraction` carries
+the per-stream `HarnessTranscriptToken`; the harness responds with
+`HarnessEvent::HarnessSubscriptionRetracted` echoing the token.
+
+## 1 · Channel
 
 | Side | Component |
 |---|---|
-| Request side | `persona-router` (sends `MessageDelivery` /
-                 `InteractionPrompt` / `DeliveryCancellation` /
-                 `HarnessStatusQuery` /
-                 `SubscribeHarnessTranscript` /
-                 `HarnessTranscriptRetraction`) |
-| Event side | `persona-harness` (pushes
-                 `Delivery*` acks + interaction resolutions
-                 + skeleton honesty + lifecycle events +
-                 transcript observations on the open stream) |
+| Request side | `persona-router` (sends `MessageDelivery`, `InteractionPrompt`, `DeliveryCancellation`, `HarnessStatusQuery`, `SubscribeHarnessTranscript`, `HarnessTranscriptRetraction`). |
+| Reply / event side | `persona-harness` (emits `Delivery*` acks, interaction resolutions, skeleton honesty, status, lifecycle events, transcript snapshot, retraction ack, and `TranscriptObservation` events on the open stream). |
 
-Bidirectional steady-state: router sends one request;
-harness emits one or more events. Lifecycle events
-(HarnessStarted / HarnessStopped / HarnessCrashed) flow
-without paired requests. Transcript observations
-(`TranscriptObservation`) flow on the
-`HarnessTranscriptStream` after the router subscribes; the
-harness pushes one event per transcript line as it becomes
-visible.
+Bidirectional steady-state: router sends one request; harness emits
+one or more events. Lifecycle events (`HarnessStarted` /
+`HarnessStopped` / `HarnessCrashed`) flow without paired requests.
 
-## Record source
+## 2 · Observation channel — Path A lifecycle
+
+The harness is the push primitive for its own transcript state. The
+full lifecycle:
+
+```mermaid
+sequenceDiagram
+    participant Router as persona-router
+    participant Harness as persona-harness
+
+    Router->>Harness: SubscribeHarnessTranscript(harness)
+    Harness-->>Router: HarnessTranscriptSnapshot{harness, current_sequence}
+    Harness-->>Router: TranscriptObservation{sequence: N+1, line}
+    Harness-->>Router: TranscriptObservation{sequence: N+2, line}
+    Router->>Harness: HarnessTranscriptRetraction(HarnessTranscriptToken)
+    Harness-->>Router: HarnessSubscriptionRetracted{token}
+```
+
+Both ends of the close exchange exist:
+
+- **Request retraction** — `HarnessRequest::HarnessTranscriptRetraction(HarnessTranscriptToken)`
+  is the consumer-initiated close operation. The `signal_channel!`
+  stream-block grammar (`signal-core::macros::validate`) requires a
+  request-side `Retract` variant for any declared `stream` block.
+- **Reply retraction ack** — `HarnessEvent::HarnessSubscriptionRetracted(HarnessSubscriptionRetracted)`
+  carries the same token and is the final event a consumer binds its
+  in-flight subscribe to before the stream ends.
+
+The pair is what /91 settles: "subscribe request, typed event
+stream, close/retract request, final acknowledgement event/reply,
+stream end. Raw socket close is not semantic protocol."
+
+`TranscriptObservation` carries a monotonic `HarnessTranscriptSequence`
+so the subscriber can detect gaps and re-anchor after reconnection.
+
+## 3 · Wire vocabulary
 
 Records local to this contract:
-- `HarnessName` (local until another concrete relation needs a matching
-  contract)
+
+- `HarnessName` (the typed name for one harness instance).
+- `MessageSender`, `MessageBody`, `MessageSlot`.
 - `MessageDelivery`, `InteractionPrompt`, `DeliveryCancellation`,
-  `HarnessStatusQuery`
-- `DeliveryCompleted`, `DeliveryFailed`,
-  `DeliveryFailureReason`
-- `InteractionResolved`
-- `HarnessRequestUnimplemented`, `HarnessUnimplementedReason`
-- `HarnessStatus`, `HarnessHealth`, `HarnessReadiness`
-- `HarnessStarted`, `HarnessStopped`, `HarnessCrashed`
+  `HarnessStatusQuery`.
+- `DeliveryCompleted`, `DeliveryFailed`, `DeliveryFailureReason`.
+- `InteractionResolved`.
+- `HarnessRequestUnimplemented`, `HarnessUnimplementedReason`,
+  `HarnessOperationKind`.
+- `HarnessStatus`, `HarnessHealth`, `HarnessReadiness`.
+- `HarnessStarted`, `HarnessStopped`, `HarnessCrashed`.
 - `SubscribeHarnessTranscript`, `HarnessTranscriptToken`,
   `HarnessTranscriptSnapshot`, `HarnessSubscriptionRetracted`,
-  `TranscriptObservation`, `HarnessTranscriptSequence`
+  `TranscriptObservation`, `HarnessTranscriptSequence`.
 
-The `MessageBody` on `MessageDelivery` is provisional. The destination
-is a typed Nexus record written in NOTA syntax, not a new text format.
+The `MessageBody` on `MessageDelivery` is provisional. The
+destination is a typed Nexus record written in NOTA syntax, not a new
+text format.
 
-## Recipient → harness → terminal resolution mapping
+## 4 · Harness kinds
 
-The prototype-one resolution chain is:
+`HarnessKind` is the closed kind enum carried on `HarnessBinding`.
+Four variants, no `Other`:
+
+```text
+HarnessKind
+├─ Codex
+├─ Claude
+├─ Pi
+└─ Fixture
+```
+
+`Fixture` types a harness whose terminal endpoint is a test fixture
+(no real PTY delivery). A fixture harness must surface as
+`HarnessKind::Fixture`, not as a generic `Codex` or `Claude` binding;
+the kind is the type-level marker that downstream routing and
+introspection branch on. The constraint witness asserts the enum is
+exactly these four variants.
+
+> Status: destination shape. Current daemon code carries three
+> variants (`Codex`, `Claude`, `Pi`); the `Fixture` variant is the
+> next contract bump. Fixture identity is currently expressed
+> through `HarnessTerminalEndpoint::FixtureOnlyHuman`, which is the
+> runtime adapter for fixture delivery, not the kind label.
+
+## 5 · Recipient → harness → terminal resolution
+
+The prototype-one resolution chain:
 
 ```text
 MessageRecipient (role name, e.g. "designer")
-  → HarnessName (same role-named harness from harness registry)
+  → HarnessName  (same role-named harness from harness registry)
   → TerminalName (same role-named terminal session, per
                   signal-persona-terminal's TerminalName namespace)
   → terminal-cell session (the cell bound to the role-named terminal)
 ```
 
-**One harness per role for prototype one.** The harness registry
-maps `MessageRecipient` → `HarnessName` by string equality at the
+One harness per role for prototype one. The harness registry maps
+`MessageRecipient` → `HarnessName` by string equality at the
 role-name level. The `HarnessName` and `TerminalName` namespaces
-**align**: a harness named `"designer"` writes into the terminal
-session named `"designer"`. Future cases (multiple harnesses per
-role, harness pools, separate identity/transport namespaces) get a
-richer resolution when they surface.
+align: a harness named `"designer"` writes into the terminal session
+named `"designer"`. Future cases (multiple harnesses per role,
+harness pools, separate identity/transport namespaces) get a richer
+resolution when they surface.
 
-The constraint witness:
+## 6 · Messages
 
 ```text
-recipient_resolves_to_role_named_harness_and_terminal
-  — assert MessageRecipient::new("designer") routes through
-    HarnessName::new("designer") which writes to
-    TerminalName::new("designer"). The three names match exactly.
+HarnessRequest                          HarnessEvent
+├─ MessageDelivery                      ├─ DeliveryCompleted
+├─ InteractionPrompt                    ├─ DeliveryFailed { reason }
+├─ DeliveryCancellation                 ├─ InteractionResolved
+├─ HarnessStatusQuery                   ├─ HarnessRequestUnimplemented
+├─ SubscribeHarnessTranscript           ├─ HarnessStatus
+└─ HarnessTranscriptRetraction(token)   ├─ HarnessStarted
+                                        ├─ HarnessStopped
+                                        ├─ HarnessCrashed
+                                        ├─ HarnessTranscriptSnapshot
+                                        └─ HarnessSubscriptionRetracted(token)
+
+HarnessStreamEvent (on HarnessTranscriptStream)
+└─ TranscriptObservation
 ```
 
-## Messages
-
-```
-HarnessRequest                            HarnessEvent
-├─ MessageDelivery                        ├─ DeliveryCompleted
-├─ InteractionPrompt                      ├─ DeliveryFailed { reason }
-├─ DeliveryCancellation                   ├─ InteractionResolved
-├─ HarnessStatusQuery                     ├─ HarnessRequestUnimplemented
-├─ SubscribeHarnessTranscript             ├─ HarnessStatus
-└─ HarnessTranscriptRetraction            ├─ HarnessStarted
-                                          ├─ HarnessStopped
-                                          ├─ HarnessCrashed
-                                          ├─ HarnessTranscriptSnapshot
-                                          └─ HarnessSubscriptionRetracted
-
-HarnessStreamEvent
-└─ TranscriptObservation belongs HarnessTranscriptStream
-```
-
-Closed enums; typed `DeliveryFailureReason` (3 variants:
+Closed enums; typed `DeliveryFailureReason` (three variants:
 `TransportRejected`, `HumanInputIntervened`,
 `HarnessStoppedBeforeDelivery`). `HarnessOperationKind` is the closed
 request discriminator used by skeleton honesty events.
 
-The `HarnessTranscriptStream` is the typed observation push primitive
-per `ESSENCE.md` §"Polling is forbidden". One stream per harness; one
-subscriber per stream (the router). `TranscriptObservation` carries a
-monotonic `HarnessTranscriptSequence` so the subscriber can detect gaps
-and re-anchor after reconnection.
-
-### Signal root verbs
-
-Every `HarnessRequest` variant declares its root verb in the
-`signal_channel!` declaration. `signal-core` generates
-`HarnessRequest::signal_verb()` and `HarnessRequest::into_request()`
-from that declaration.
+## 7 · Signal root verbs
 
 ```text
 MessageDelivery               -> Assert
 InteractionPrompt             -> Assert
 DeliveryCancellation          -> Retract
 HarnessStatusQuery            -> Match
-SubscribeHarnessTranscript    -> Subscribe
-HarnessTranscriptRetraction   -> Retract
+SubscribeHarnessTranscript    -> Subscribe   (opens HarnessTranscriptStream)
+HarnessTranscriptRetraction   -> Retract     (closes HarnessTranscriptStream)
 ```
 
 Delivery and interaction prompts assert new harness work. Cancellation
 retracts pending work. Status is a read and must not be wrapped as
-`Assert`. Transcript subscription opens the `HarnessTranscriptStream`;
-the retraction request closes it.
+`Assert`. Transcript subscription opens the
+`HarnessTranscriptStream`; the request-side retraction variant closes
+it and the reply-side `HarnessSubscriptionRetracted` is the final ack.
 
-## Constraints
+## 8 · Constraints
 
-- A harness skeleton can answer `HarnessStatusQuery` with typed health and
-  readiness.
-- A valid request that reaches a skeleton harness daemon but is not implemented
-  yet returns `HarnessRequestUnimplemented`.
-- `HarnessRequestUnimplemented.operation` is a closed `HarnessOperationKind`,
-  not a string.
-- Skeleton honesty uses `HarnessUnimplementedReason`, not free text.
-- Prompt cleanliness and input gates stay below this contract in
-  `signal-persona-terminal`.
+| Constraint | Witness |
+|---|---|
+| A harness skeleton answers `HarnessStatusQuery` with typed health and readiness. | Round-trip witness on `HarnessStatus` reply. |
+| A valid request that reaches a skeleton harness daemon but is not implemented yet returns `HarnessRequestUnimplemented`. | `harness_request_unimplemented_round_trips_*`. |
+| `HarnessRequestUnimplemented.operation` is a closed `HarnessOperationKind`, not a string. | Source review + round-trip witness. |
+| Skeleton honesty uses `HarnessUnimplementedReason`, not free text. | Source review + round-trip witness. |
+| Prompt cleanliness and input gates stay below this contract in `signal-persona-terminal`. | Source scan: no prompt or gate vocabulary defined here. |
+| Transcript observation is pushed, not polled. | The harness's internal transcript event count is not the observation surface; `TranscriptObservation` on `HarnessTranscriptStream` is the only sanctioned way to read transcript progress. |
+| Subscription close uses **Path A**: a request-side `Retract HarnessTranscriptRetraction` carrying the token, plus a reply-side `HarnessSubscriptionRetracted` ack echoing the token. | The `signal_channel!` declaration names `Retract HarnessTranscriptRetraction(HarnessTranscriptToken)` and a `stream HarnessTranscriptStream { close HarnessTranscriptRetraction; … }` block. The kernel grammar (`signal-core::macros::validate`) rejects a `stream` block whose `close` is not a request-side `Retract` variant. `harness_transcript_retraction_round_trips` and `harness_subscription_retracted_reply_round_trips` are the wire witnesses. |
+| `HarnessKind` is closed: `Codex`, `Claude`, `Pi`, `Fixture` — no `Other` variant. | Exhaustive match witness (test fires when a new variant lands; `Fixture` is the next bump). |
+| Wire enums contain no `Unknown` variant. | Source scan + per-enum exhaustive-match round-trip witnesses. |
+| Any record name containing the word `Unknown` represents a positive "entity not in our state" rejection, not a polling-shape escape hatch. | This crate has no such records. |
+| Every `signal_channel!` request variant has a typed `signal_verb()` mapping. | `signal-core` generates `HarnessRequest::signal_verb()`; round-trip tests assert each variant's expected root. |
+| Round-trip witnesses cover every variant in rkyv. | `tests/round_trip.rs` covers every request, reply, and event variant through `Frame::encode_length_prefixed` / `decode_length_prefixed`. |
+| Round-trip witnesses cover every variant in NOTA. | `examples/canonical.nota` holds one canonical text example per request/reply/event variant; round-trip tests parse and re-emit each. |
+| No stringly-typed dispatch (`match s.as_str()`) for closed-set states. | All kind / reason / health / readiness fields are typed closed enums. |
+| Contract crate dependencies use a named API reference (branch or tag), not a raw revision pin. | `Cargo.toml` review: `signal-core` is declared `git = "..."` with a named-branch shape; raw `rev = "..."` pins are not used. |
+| Runtime code stays out of the contract. | Source scan: no Kameo, Tokio, socket, or redb code. |
 
-## Versioning
+## 9 · NOTA codec quirk on `signal_channel!` payload heads
 
-`signal_core::Frame` carries the protocol version.
-Schema-level changes are breaking; coordinate
-`persona-router` + `persona-harness` upgrades.
+The `signal_channel!` macro emits a request variant's NOTA head as
+the **payload's record head**, not the Rust variant name. For
+example, `HarnessRequest::HarnessTranscriptRetraction(HarnessTranscriptToken { .. })`
+encodes as `(HarnessTranscriptToken (...))`, not
+`(HarnessTranscriptRetraction ...)`. Canonical examples and
+round-trip tests carry the payload heads.
 
-## Examples
+## 10 · Versioning
+
+`signal_core::Frame` carries the protocol version. Schema-level
+changes are breaking; coordinate `persona-router` and
+`persona-harness` on the upgrade.
+
+This crate depends on `signal-core` via a named-branch reference, not
+a raw revision pin. The destination is a stable `signal-core` API
+branch/bookmark once that lane is declared.
+
+## 11 · Non-ownership
+
+- No router daemon — that is `persona-router`.
+- No harness daemon — that is `persona-harness`.
+- No PTY adapter or terminal transport — that is `persona-terminal`,
+  below the `signal-persona-terminal` contract.
+- No terminal prompt cleanliness or input-gate enforcement. Those
+  are `signal-persona-terminal`, `persona-terminal`, and
+  `terminal-cell` concerns.
+- No transport (UDS path, reconnect, timeouts).
+
+## 12 · Code map
 
 ```text
-;; router → harness: deliver a routed message
-HarnessRequest::MessageDelivery(MessageDelivery {
-    harness: HarnessName::new("designer"),
-    sender: MessageSender::new("operator"),
-    body: MessageBody::new("stack test 2026-05-09"),
-    message_slot: MessageSlot::new(1024),
-})
-
-;; harness → router: delivery succeeded
-HarnessEvent::DeliveryCompleted(DeliveryCompleted {
-    harness: HarnessName::new("designer"),
-    message_slot: MessageSlot::new(1024),
-})
-
-;; harness → router: terminal input gate saw human intervention;
-;; delivery aborted to preserve the draft
-HarnessEvent::DeliveryFailed(DeliveryFailed {
-    harness: HarnessName::new("designer"),
-    message_slot: MessageSlot::new(1024),
-    reason: DeliveryFailureReason::HumanInputIntervened,
-})
-```
-
-## Round trips
-
-Round-trip tests in `tests/round_trip.rs` cover every request/event variant,
-the operation-kind and failure-reason enums, From-impl witnesses, and
-representative NOTA text witnesses for `MessageDelivery`, `DeliveryFailed`, and
-`HarnessRequestUnimplemented`.
-Request frame tests assert each variant's `signal_verb()` mapping.
-
-## Non-ownership
-
-- No router daemon — that's `persona-router`.
-- No harness daemon — that's `persona-harness`.
-- No PTY adapter or terminal transport — that's `persona-terminal`, below
-  the `signal-persona-terminal` contract.
-- No terminal prompt cleanliness or input-gate enforcement. Those are
-  `signal-persona-terminal`, `persona-terminal`, and `terminal-cell`
-  concerns.
-- No transport.
-
-## Code map
-
-```
 src/
-└── lib.rs    — payloads + signal_channel! invocation
+└── lib.rs                — payloads + signal_channel! invocation
+examples/
+└── canonical.nota         — one canonical example per request/reply/event variant
 tests/
-└── round_trip.rs — per-variant frame round trips + NOTA text witnesses
+└── round_trip.rs          — per-variant frame round trips + NOTA witnesses
+                             + closed-enum + verb-mapping witnesses
+                             + canonical examples parser
+                             + full subscribe/event/retract/ack lifecycle witness
 ```
 
 ## See also
 
-- `signal-core/src/channel.rs` — the macro
-- `signal-persona-message` — upstream channel producing
-  the messages this channel delivers
-- `signal-persona-terminal` — terminal contract for harness/terminal PTY
-  coordination; downstream from this channel
+- `signal-core/src/channel.rs` — the macro and stream-block grammar
+  that enforces the request-side retract variant.
+- `signal-persona-message/ARCHITECTURE.md` — upstream channel
+  producing the messages this channel delivers.
+- `signal-persona-terminal/ARCHITECTURE.md` — terminal contract for
+  harness/terminal PTY coordination; downstream from this channel
+  and a sibling using the same Path A subscription discipline.
+- `signal-persona-system/ARCHITECTURE.md` and
+  `signal-criome/ARCHITECTURE.md` — sibling contracts using the same
+  Path A subscription discipline.
