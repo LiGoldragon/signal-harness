@@ -11,6 +11,44 @@ delivery, interaction, cancellation, status, and transcript
 observation; the harness pushes acks, interaction resolutions,
 status, lifecycle events, and transcript-observation events.
 
+## MUST IMPLEMENT — signal architecture migration
+
+This contract is migrating to contract-local verbs per
+`primary/reports/designer/238-signal-architecture-redirection-contract-local-verbs.md`
+and `primary/reports/designer/239-signal-architecture-migration-plan.md`.
+
+Drop the SignalVerb prefixes on every request variant. Candidate
+contract-local verbs by current variant: `Deliver` (for
+`MessageDelivery`, payload `Message`), `Prompt` (for
+`InteractionPrompt`, payload names the prompt shape), `Cancel`
+(for `DeliveryCancellation`, payload names the in-flight delivery
+identifier — `Retract` is not the public action; cancelling is),
+`Query` (for `HarnessStatusQuery`, payload names the status shape),
+`Watch` (for `SubscribeHarnessTranscript` — payload names the
+transcript subscription target; `Subscribe` is a Sema verb), and
+`Unwatch` (for `HarnessTranscriptRetraction` — the public action is
+unsubscribing). Drop the redundant `Harness*` prefix where the
+crate namespace already supplies it (e.g. `HarnessStatusQuery` →
+the payload of `Query` is `Status`; `HarnessTranscriptRetraction`
+payload becomes `TranscriptToken`). Move the verb-to-Sema lowering
+into the runtime executor.
+
+Open question for the designer: the close-stream pair (`Unwatch` +
+ack reply) needs to remain compatible with the
+`subscription-lifecycle` Path-A discipline. The `signal_channel!`
+stream-block grammar currently requires a request-side `Retract`
+variant; that grammar may need to evolve so the close verb is
+contract-local (`Unwatch`) while the daemon still lowers it to
+`Subscribe`/`Retract` Sema effects internally. Surface that to the
+designer pass on the macro before the operator picks this up.
+
+References: `primary/reports/designer/238-signal-architecture-redirection-contract-local-verbs.md`,
+`primary/reports/designer/239-signal-architecture-migration-plan.md`.
+
+**Note to remover:** when the refactor lands, remove this section and
+add a `## Migration history — contract-local verbs (2026-05-XX)`
+paragraph noting the shape change.
+
 Transcript observation is push-based. The router subscribes once per
 harness on the `HarnessTranscriptStream`; the harness emits
 `TranscriptObservation` events as transcript lines become visible.
