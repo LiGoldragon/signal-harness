@@ -11,42 +11,63 @@ delivery, interaction, cancellation, status, and transcript
 observation; the harness pushes acks, interaction resolutions,
 status, lifecycle events, and transcript-observation events.
 
-## MUST IMPLEMENT — signal architecture migration
+## MUST IMPLEMENT — three-layer migration
 
-This contract is migrating to contract-local verbs per
-`primary/reports/designer/238-signal-architecture-redirection-contract-local-verbs.md`
-and `primary/reports/designer/239-signal-architecture-migration-plan.md`.
+This contract is migrating to the three-layer model affirmed
+2026-05-20 per
+`primary/reports/designer/246-v4-bundled-fix-deep-design-with-examples.md`
+and `primary/reports/designer/248-three-layer-changes-for-operators.md`.
 
-Drop the SignalVerb prefixes on every request variant. Candidate
-contract-local verbs by current variant: `Deliver` (for
-`MessageDelivery`, payload `Message`), `Prompt` (for
-`InteractionPrompt`, payload names the prompt shape), `Cancel`
-(for `DeliveryCancellation`, payload names the in-flight delivery
-identifier — `Retract` is not the public action; cancelling is),
-`Query` (for `HarnessStatusQuery`, payload names the status shape),
-`Watch` (for `SubscribeHarnessTranscript` — payload names the
-transcript subscription target; `Subscribe` is a Sema verb), and
-`Unwatch` (for `HarnessTranscriptRetraction` — the public action is
-unsubscribing). Drop the redundant `Harness*` prefix where the
-crate namespace already supplies it (e.g. `HarnessStatusQuery` →
-the payload of `Query` is `Status`; `HarnessTranscriptRetraction`
-payload becomes `TranscriptToken`). Move the verb-to-Sema lowering
-into the runtime executor.
+**Layer 1 — Contract Operations on the wire (this crate).** Drop the
+SignalVerb wrappers entirely. Candidate contract-local verbs by
+current variant: `Deliver` (for `MessageDelivery`, payload `Message`),
+`Prompt` (for `InteractionPrompt`, payload names the prompt shape),
+`Cancel` (for `DeliveryCancellation`, payload names the in-flight
+delivery identifier), `Query` (for `HarnessStatusQuery`, payload names
+the status shape). Drop the redundant `Harness*` prefix where the
+crate namespace already supplies it (e.g. `HarnessStatusQuery` → the
+payload of `Query` is `Status`).
 
-Open question for the designer: the close-stream pair (`Unwatch` +
-ack reply) needs to remain compatible with the
-`subscription-lifecycle` Path-A discipline. The `signal_channel!`
-stream-block grammar currently requires a request-side `Retract`
-variant; that grammar may need to evolve so the close verb is
-contract-local (`Unwatch`) while the daemon still lowers it to
-`Subscribe`/`Retract` Sema effects internally. Surface that to the
-designer pass on the macro before the operator picks this up.
+**Mandatory `Tap`/`Untap` for persona components.** The harness is a
+persona component, so its observable surface is standardized.
+Replace the existing transcript-observation `SubscribeHarnessTranscript`
+/ `HarnessTranscriptRetraction` pair with the macro-injected
+`Tap(ObserverFilter)` / `Untap(HarnessObserverSubscriptionToken)`
+verbs from a mandatory `observable { … }` block. The harness's
+transcript stream is a domain observation; the *standardized
+observer hook* (operation/effect events) is a separate, mandatory
+surface that persona-introspect subscribes to uniformly across every
+persona daemon. If the contract still wants a domain-specific
+transcript stream alongside the standardized observability, it can
+keep one — but the observer-hook surface uses `Tap`/`Untap` without
+override.
 
-References: `primary/reports/designer/238-signal-architecture-redirection-contract-local-verbs.md`,
-`primary/reports/designer/239-signal-architecture-migration-plan.md`.
+**Layer 2 — Component Commands (persona-harness daemon).** The
+harness owns its typed Command enum (e.g.
+`HarnessCommand::QueueMessageDelivery`,
+`HarnessCommand::RecordInteractionResolution`,
+`HarnessCommand::ReadHarnessStatus`,
+`HarnessCommand::OpenTranscriptStream`) plus a `CommandExecutor`
+that knows the harness's tables.
+
+**Layer 3 — Sema classification (signal-sema).** Each Component
+Command projects to a payloadless `SemaOperation` class via
+`ToSemaOperation`. Persona-introspect filters cross-component
+activity by class. The harness does not import payload-bearing Sema
+variants.
+
+**Frame layer.** The dependency on `signal-core` shifts to
+`signal-frame`; the macro now lives at
+`signal-frame/macros/src/validate.rs`.
+
+References:
+- `primary/reports/designer/246-v4-bundled-fix-deep-design-with-examples.md`
+- `primary/reports/designer/248-three-layer-changes-for-operators.md`
+- `primary/skills/component-triad.md` §"Verbs come in three layers"
+- `primary/skills/contract-repo.md` §"Public contracts use contract-local operation verbs"
 
 **Note to remover:** when the refactor lands, remove this section and
-add a `## Migration history — contract-local verbs (2026-05-XX)`
+add a `## Migration history — three-layer model (2026-05-XX)`
 paragraph noting the shape change.
 
 Transcript observation is push-based. The router subscribes once per
@@ -58,9 +79,9 @@ in `~/primary/skills/subscription-lifecycle.md`: a typed request-side
 `Retract HarnessTranscriptRetraction` carries the per-stream
 `HarnessTranscriptToken`; the harness responds with
 `HarnessEvent::HarnessSubscriptionRetracted` echoing the token; the
-stream ends after that final ack. The kernel grammar at
-`signal-core/macros/src/validate.rs:303–331` enforces the
-close-is-Retract shape.
+stream ends after that final ack. The kernel grammar in
+`signal-frame/macros/src/validate.rs` enforces the close-is-Retract
+shape.
 
 ## 1 · Channel
 
@@ -95,7 +116,7 @@ Both ends of the close exchange exist:
 
 - **Request retraction** — `HarnessRequest::HarnessTranscriptRetraction(HarnessTranscriptToken)`
   is the consumer-initiated close operation. The `signal_channel!`
-  stream-block grammar (`signal-core::macros::validate`) requires a
+  stream-block grammar (`signal-frame::macros::validate`) requires a
   request-side `Retract` variant for any declared `stream` block.
 - **Reply retraction ack** — `HarnessEvent::HarnessSubscriptionRetracted(HarnessSubscriptionRetracted)`
   carries the same token and is the final event a consumer binds its
@@ -200,22 +221,25 @@ Closed enums; typed `DeliveryFailureReason` (three variants:
 `HarnessStoppedBeforeDelivery`). `HarnessOperationKind` is the closed
 request discriminator used by skeleton honesty events.
 
-## 7 · Signal root verbs
+## 7 · Sema-class projections (Layer 3)
+
+Once migrated, each Component Command projects to a payloadless Sema
+class for observation:
 
 ```text
-MessageDelivery               -> Assert
-InteractionPrompt             -> Assert
-DeliveryCancellation          -> Retract
-HarnessStatusQuery            -> Match
-SubscribeHarnessTranscript    -> Subscribe   (opens HarnessTranscriptStream)
-HarnessTranscriptRetraction   -> Retract     (closes HarnessTranscriptStream)
+Deliver                       -> Assert     (records new harness work)
+Prompt                        -> Assert     (records new interaction prompt)
+Cancel                        -> Retract    (retracts pending work)
+Query                         -> Match      (reads harness status)
+WatchTranscript (domain)      -> Subscribe  (opens HarnessTranscriptStream)
+UnwatchTranscript (domain)    -> Retract    (closes HarnessTranscriptStream)
+Tap (mandatory observability) -> Subscribe  (opens HarnessObserverStream)
+Untap (mandatory observability) -> Retract  (closes HarnessObserverStream)
 ```
 
-Delivery and interaction prompts assert new harness work. Cancellation
-retracts pending work. Status is a read and must not be wrapped as
-`Assert`. Transcript subscription opens the
-`HarnessTranscriptStream`; the request-side retraction variant closes
-it and the reply-side `HarnessSubscriptionRetracted` is the final ack.
+The wire form carries the contract-local verb only; the Sema class
+label is computed at observation publish time inside the daemon, not
+encoded into the request.
 
 ## 8 · Constraints
 
@@ -229,16 +253,16 @@ it and the reply-side `HarnessSubscriptionRetracted` is the final ack.
 | Transcript observation is pushed, not polled. | The harness's internal transcript event count is not the observation surface; `TranscriptObservation` on `HarnessTranscriptStream` is the only sanctioned way to read transcript progress. |
 | Subscription open returns a typed `HarnessTranscriptSnapshot` carrying the per-stream token and the current sequence pointer. | Round-trip witness on the snapshot reply; integration witness in `persona-harness` proves the snapshot is the first event a subscriber receives. |
 | Subscription deltas push as typed `TranscriptObservation` events; consumers do not re-ask for current state. | Source scan: no Match-shaped polling variant exists for transcript state. |
-| Subscription close uses the canonical lifecycle: a request-side `Retract HarnessTranscriptRetraction` carrying the token, plus a reply-side `HarnessSubscriptionRetracted` ack echoing the token. | The `signal_channel!` declaration names `Retract HarnessTranscriptRetraction(HarnessTranscriptToken)` and a `stream HarnessTranscriptStream { close HarnessTranscriptRetraction; … }` block. The kernel grammar (`signal-core/macros/src/validate.rs:303–331`) rejects a `stream` block whose `close` is not a request-side `Retract` variant. `harness_transcript_retraction_round_trips` and `harness_subscription_retracted_reply_round_trips` are the wire witnesses. |
+| Subscription close uses the canonical lifecycle: a request-side `Retract HarnessTranscriptRetraction` carrying the token, plus a reply-side `HarnessSubscriptionRetracted` ack echoing the token. | The `signal_channel!` declaration names `Retract HarnessTranscriptRetraction(HarnessTranscriptToken)` and a `stream HarnessTranscriptStream { close HarnessTranscriptRetraction; … }` block. The kernel grammar in `signal-frame/macros/src/validate.rs` rejects a `stream` block whose `close` is not a request-side `Retract` variant. `harness_transcript_retraction_round_trips` and `harness_subscription_retracted_reply_round_trips` are the wire witnesses. |
 | `TranscriptObservation` carries a monotonic `HarnessTranscriptSequence` so the subscriber can detect gaps and re-anchor after reconnection. | Round-trip witness on the sequence field; the persona-harness integration witness asserts strictly-increasing sequence across multiple deltas. |
 | `HarnessKind` is closed: `Codex`, `Claude`, `Pi`, `Fixture` — no `Other` variant. | Exhaustive match witness (test fires when a new variant lands; `Fixture` is the next bump). |
 | Wire enums contain no `Unknown` variant. | Source scan + per-enum exhaustive-match round-trip witnesses. |
 | Any record name containing the word `Unknown` represents a positive "entity not in our state" rejection, not a polling-shape escape hatch. | This crate has no such records. |
-| Every `signal_channel!` request variant has a typed `signal_verb()` mapping. | `signal-core` generates `HarnessRequest::signal_verb()`; round-trip tests assert each variant's expected root. |
+| Each variant's NOTA head matches the contract-local verb declared in `signal_channel!`. | Generated by the macro; round-trip tests assert each variant's head. Sema classification is daemon-side projection only. |
 | Round-trip witnesses cover every variant in rkyv. | `tests/round_trip.rs` covers every request, reply, and event variant through `Frame::encode_length_prefixed` / `decode_length_prefixed`. |
 | Round-trip witnesses cover every variant in NOTA. | `examples/canonical.nota` holds one canonical text example per request/reply/event variant; round-trip tests parse and re-emit each. |
 | No stringly-typed dispatch (`match s.as_str()`) for closed-set states. | All kind / reason / health / readiness fields are typed closed enums. |
-| Contract crate dependencies use a named API reference (branch or tag), not a raw revision pin. | `Cargo.toml` review: `signal-core` is declared `git = "..."` with a named-branch shape; raw `rev = "..."` pins are not used. |
+| Contract crate dependencies use a named API reference (branch or tag), not a raw revision pin. | `Cargo.toml` review: `signal-frame` is declared `git = "..."` with a named-branch shape; raw `rev = "..."` pins are not used. |
 | Runtime code stays out of the contract. | Source scan: no Kameo, Tokio, socket, or redb code. |
 
 ## 9 · NOTA codec quirk on `signal_channel!` payload heads
@@ -252,12 +276,12 @@ round-trip tests carry the payload heads.
 
 ## 10 · Versioning
 
-`signal_core::Frame` carries the protocol version. Schema-level
+`signal_frame::Frame` carries the protocol version. Schema-level
 changes are breaking; coordinate `persona-router` and
 `persona-harness` on the upgrade.
 
-This crate depends on `signal-core` via a named-branch reference, not
-a raw revision pin. The destination is a stable `signal-core` API
+This crate depends on `signal-frame` via a named-branch reference, not
+a raw revision pin. The destination is a stable `signal-frame` API
 branch/bookmark once that lane is declared.
 
 ## 11 · Non-ownership
@@ -289,8 +313,9 @@ tests/
 
 - `~/primary/skills/subscription-lifecycle.md` — canonical
   five-state FSM the transcript-observation stream implements.
-- `signal-core/src/channel.rs` — the macro and stream-block grammar
-  that enforces the request-side retract variant.
+- `~/primary/skills/component-triad.md` §"Verbs come in three layers".
+- `signal-frame/macros/src/validate.rs` — the macro and stream-block
+  grammar that enforces the request-side retract variant.
 - `signal-persona-message/ARCHITECTURE.md` — upstream channel
   producing the messages this channel delivers.
 - `signal-persona-terminal/ARCHITECTURE.md` — terminal contract for
