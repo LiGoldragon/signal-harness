@@ -72,12 +72,11 @@ ack echoing the token.
 
 ## Load-bearing invariants
 
-- **Subscription close uses both sides.** The kernel grammar at
-  `signal-core/macros/src/validate.rs:303–331` requires the
-  `stream` block to name a request-side `Retract` variant; the
-  reply-side `HarnessSubscriptionRetracted` ack is the final event
-  consumers bind to. Both are present in `src/lib.rs`. Do not
-  remove either.
+- **Subscription close uses both sides.** The kernel grammar in
+  `signal-frame/macros/src/validate.rs` requires the `stream` block
+  to name a request-side `Retract` variant; the reply-side
+  `HarnessSubscriptionRetracted` ack is the final event consumers
+  bind to. Both are present in `src/lib.rs`. Do not remove either.
 - **Wire enums are closed.** No `Unknown` variant on any wire enum.
   `HarnessKind` is closed: `Codex`, `Claude`, `Pi`, `Fixture` — no
   `Other`. A fixture harness types as `Fixture`, not as a
