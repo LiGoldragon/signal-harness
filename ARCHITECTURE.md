@@ -265,14 +265,13 @@ encoded into the request.
 | Contract crate dependencies use a named API reference (branch or tag), not a raw revision pin. | `Cargo.toml` review: `signal-frame` is declared `git = "..."` with a named-branch shape; raw `rev = "..."` pins are not used. |
 | Runtime code stays out of the contract. | Source scan: no Kameo, Tokio, socket, or redb code. |
 
-## 9 · NOTA codec quirk on `signal_channel!` payload heads
+## 9 · NOTA codec shape on `signal_channel!` variants
 
-The `signal_channel!` macro emits a request variant's NOTA head as
-the **payload's record head**, not the Rust variant name. For
-example, `HarnessRequest::HarnessTranscriptRetraction(HarnessTranscriptToken { .. })`
-encodes as `(HarnessTranscriptToken (...))`, not
-`(HarnessTranscriptRetraction ...)`. Canonical examples and
-round-trip tests carry the payload heads.
+The current `signal_channel!` macro emits the request/reply/event
+variant head and wraps the payload's positional fields. For example,
+`HarnessRequest::HarnessTranscriptRetraction(HarnessTranscriptToken { .. })`
+encodes as `(HarnessTranscriptRetraction (...))`. Canonical examples
+and round-trip tests carry the variant heads.
 
 ## 10 · Versioning
 

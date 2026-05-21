@@ -353,10 +353,7 @@ fn transcript_observation_event_round_trips_through_nota_text() {
     let recovered = TranscriptObservation::decode(&mut decoder).expect("decode observation");
 
     assert_eq!(recovered, observation);
-    assert_eq!(
-        text,
-        "(TranscriptObservation designer 42 \"ready for prompt\")"
-    );
+    assert_eq!(text, "(designer 42 \"ready for prompt\")");
 }
 
 #[test]
@@ -375,7 +372,10 @@ fn message_delivery_request_round_trips_through_nota_text() {
     let recovered = HarnessRequest::decode(&mut decoder).expect("decode request");
 
     assert_eq!(recovered, request);
-    assert_eq!(text, "(MessageDelivery designer operator \"via nota\" 42)");
+    assert_eq!(
+        text,
+        "(MessageDelivery (designer operator \"via nota\" 42))"
+    );
 }
 
 #[test]
@@ -393,7 +393,7 @@ fn delivery_failed_event_round_trips_through_nota_text() {
     let recovered = HarnessEvent::decode(&mut decoder).expect("decode event");
 
     assert_eq!(recovered, event);
-    assert_eq!(text, "(DeliveryFailed designer 42 TransportRejected)");
+    assert_eq!(text, "(DeliveryFailed (designer 42 TransportRejected))");
 }
 
 #[test]
@@ -413,7 +413,7 @@ fn harness_unimplemented_event_round_trips_through_nota_text() {
     assert_eq!(recovered, event);
     assert_eq!(
         text,
-        "(HarnessRequestUnimplemented designer MessageDelivery NotBuiltYet)"
+        "(HarnessRequestUnimplemented (designer MessageDelivery NotBuiltYet))"
     );
 }
 
@@ -487,7 +487,9 @@ fn harness_daemon_configuration_round_trips_through_nota_text() {
     };
 
     let mut encoder = Encoder::new();
-    configuration.encode(&mut encoder).expect("encode configuration");
+    configuration
+        .encode(&mut encoder)
+        .expect("encode configuration");
     let text = encoder.into_string();
     let mut decoder = Decoder::new(&text);
     let recovered = HarnessDaemonConfiguration::decode(&mut decoder).expect("decode configuration");

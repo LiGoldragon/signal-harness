@@ -143,14 +143,13 @@ bump:
 
 ---
 
-## NOTA codec quirk
+## NOTA codec shape
 
-The `signal_channel!` macro emits a request variant's NOTA head as
-the **payload's record head**, not the Rust variant name. For
-example, `HarnessRequest::HarnessTranscriptRetraction(HarnessTranscriptToken { .. })`
-encodes as `(HarnessTranscriptToken (...))`, not
-`(HarnessTranscriptRetraction ...)`. Canonical examples and
-round-trip tests use the payload heads.
+The current `signal_channel!` macro emits the request/reply/event
+variant head and wraps the payload's positional fields. For example,
+`HarnessRequest::HarnessTranscriptRetraction(HarnessTranscriptToken { .. })`
+encodes as `(HarnessTranscriptRetraction (...))`. Canonical examples
+and round-trip tests pin that shape.
 
 ---
 

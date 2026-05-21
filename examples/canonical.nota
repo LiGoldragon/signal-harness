@@ -1,10 +1,8 @@
 ;; Canonical NOTA examples for signal-persona-harness.
 ;;
 ;; One example per request variant, reply variant, and stream event
-;; variant. The text-form head is the payload's record-head, not the
-;; HarnessRequest / HarnessEvent / HarnessStreamEvent variant name —
-;; see ARCHITECTURE.md §9 "NOTA codec quirk on signal_channel!
-;; payload heads."
+;; variant. Request/reply/event enum wrappers encode with the declared
+;; variant head and the payload's positional field tuple.
 ;;
 ;; Round-trip witness: tests/canonical_examples.rs parses each record
 ;; and asserts the re-encoded text equals the canonical form.
@@ -12,56 +10,56 @@
 ;; ─── Requests ─────────────────────────────────────────────────────
 
 ;; HarnessRequest::MessageDelivery
-(MessageDelivery designer operator hello-from-operator 1024)
+(MessageDelivery (designer operator hello-from-operator 1024))
 
 ;; HarnessRequest::InteractionPrompt
-(InteractionPrompt designer interaction-7 "Approve write?" [yes no])
+(InteractionPrompt (designer interaction-7 "Approve write?" [yes no]))
 
 ;; HarnessRequest::DeliveryCancellation
-(DeliveryCancellation designer 1024)
+(DeliveryCancellation (designer 1024))
 
 ;; HarnessRequest::HarnessStatusQuery
-(HarnessStatusQuery designer)
+(HarnessStatusQuery (designer))
 
 ;; HarnessRequest::SubscribeHarnessTranscript
-(SubscribeHarnessTranscript designer)
+(SubscribeHarnessTranscript (designer))
 
-;; HarnessRequest::HarnessTranscriptRetraction — payload head is the token type
-(HarnessTranscriptToken designer)
+;; HarnessRequest::HarnessTranscriptRetraction
+(HarnessTranscriptRetraction (designer))
 
 ;; ─── Replies ──────────────────────────────────────────────────────
 
 ;; HarnessEvent::DeliveryCompleted
-(DeliveryCompleted designer 1024)
+(DeliveryCompleted (designer 1024))
 
 ;; HarnessEvent::DeliveryFailed
-(DeliveryFailed designer 1024 HumanInputIntervened)
+(DeliveryFailed (designer 1024 HumanInputIntervened))
 
 ;; HarnessEvent::InteractionResolved
-(InteractionResolved designer interaction-7 yes)
+(InteractionResolved (designer interaction-7 yes))
 
 ;; HarnessEvent::HarnessRequestUnimplemented
-(HarnessRequestUnimplemented designer SubscribeHarnessTranscript NotBuiltYet)
+(HarnessRequestUnimplemented (designer SubscribeHarnessTranscript NotBuiltYet))
 
 ;; HarnessEvent::HarnessStatus
-(HarnessStatus designer Running Ready)
+(HarnessStatus (designer Running Ready))
 
 ;; HarnessEvent::HarnessStarted
-(HarnessStarted designer)
+(HarnessStarted (designer))
 
 ;; HarnessEvent::HarnessStopped
-(HarnessStopped designer)
+(HarnessStopped (designer))
 
 ;; HarnessEvent::HarnessCrashed
-(HarnessCrashed designer "out of memory")
+(HarnessCrashed (designer "out of memory"))
 
 ;; HarnessEvent::HarnessTranscriptSnapshot
-(HarnessTranscriptSnapshot designer 0)
+(HarnessTranscriptSnapshot (designer 0))
 
 ;; HarnessEvent::HarnessSubscriptionRetracted — Path A final ack
-(HarnessSubscriptionRetracted (HarnessTranscriptToken designer))
+(HarnessSubscriptionRetracted ((designer)))
 
 ;; ─── Stream events on HarnessTranscriptStream ─────────────────────
 
 ;; HarnessStreamEvent::TranscriptObservation
-(TranscriptObservation designer 1 hello)
+(TranscriptObservation (designer 1 hello))
