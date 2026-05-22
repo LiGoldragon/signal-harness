@@ -54,7 +54,7 @@ fn canonical_request_examples_round_trip() {
                 prompt: "Approve write?".to_string(),
                 options: vec!["yes".to_string(), "no".to_string()],
             }),
-            "(InteractionPrompt (designer interaction-7 \"Approve write?\" [yes no]))",
+            "(InteractionPrompt (designer interaction-7 [Approve write?] [yes no]))",
         ),
         (
             HarnessRequest::DeliveryCancellation(DeliveryCancellation {
@@ -157,7 +157,7 @@ fn canonical_reply_examples_round_trip() {
                 harness: designer(),
                 detail: "out of memory".to_string(),
             }),
-            "(HarnessCrashed (designer \"out of memory\"))",
+            "(HarnessCrashed (designer [out of memory]))",
         ),
         (
             HarnessEvent::HarnessTranscriptSnapshot(HarnessTranscriptSnapshot {

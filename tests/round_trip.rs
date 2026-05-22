@@ -353,7 +353,7 @@ fn transcript_observation_event_round_trips_through_nota_text() {
     let recovered = TranscriptObservation::decode(&mut decoder).expect("decode observation");
 
     assert_eq!(recovered, observation);
-    assert_eq!(text, "(designer 42 \"ready for prompt\")");
+    assert_eq!(text, "(designer 42 [ready for prompt])");
 }
 
 #[test]
@@ -372,10 +372,7 @@ fn message_delivery_request_round_trips_through_nota_text() {
     let recovered = HarnessRequest::decode(&mut decoder).expect("decode request");
 
     assert_eq!(recovered, request);
-    assert_eq!(
-        text,
-        "(MessageDelivery (designer operator \"via nota\" 42))"
-    );
+    assert_eq!(text, "(MessageDelivery (designer operator [via nota] 42))");
 }
 
 #[test]

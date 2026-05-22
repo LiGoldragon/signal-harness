@@ -13,7 +13,7 @@
 (MessageDelivery (designer operator hello-from-operator 1024))
 
 ;; HarnessRequest::InteractionPrompt
-(InteractionPrompt (designer interaction-7 "Approve write?" [yes no]))
+(InteractionPrompt (designer interaction-7 [Approve write?] [yes no]))
 
 ;; HarnessRequest::DeliveryCancellation
 (DeliveryCancellation (designer 1024))
@@ -51,7 +51,7 @@
 (HarnessStopped (designer))
 
 ;; HarnessEvent::HarnessCrashed
-(HarnessCrashed (designer "out of memory"))
+(HarnessCrashed (designer [out of memory]))
 
 ;; HarnessEvent::HarnessTranscriptSnapshot
 (HarnessTranscriptSnapshot (designer 0))
