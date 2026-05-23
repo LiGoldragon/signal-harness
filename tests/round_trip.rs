@@ -469,8 +469,8 @@ impl DriftScan {
 fn harness_daemon_configuration_round_trips_through_nota_text() {
     use nota_codec::{Decoder, Encoder, NotaDecode, NotaEncode};
     use signal_persona::{SocketMode, WirePath};
-    use signal_persona_auth::{OwnerIdentity, UnixUserId};
     use signal_persona_harness::{HarnessDaemonConfiguration, HarnessKind, HarnessName};
+    use signal_persona_origin::{OwnerIdentity, UnixUserId};
 
     let configuration = HarnessDaemonConfiguration {
         harness_socket_path: WirePath::new("/run/persona/X/harness.sock"),
@@ -498,8 +498,8 @@ fn harness_daemon_configuration_round_trips_through_nota_text() {
 fn harness_daemon_configuration_round_trips_through_rkyv() {
     use nota_config::ConfigurationRecord;
     use signal_persona::{SocketMode, WirePath};
-    use signal_persona_auth::{OwnerIdentity, UnixUserId};
     use signal_persona_harness::{HarnessDaemonConfiguration, HarnessKind, HarnessName};
+    use signal_persona_origin::{OwnerIdentity, UnixUserId};
 
     let configuration = HarnessDaemonConfiguration {
         harness_socket_path: WirePath::new("/run/persona/X/harness.sock"),

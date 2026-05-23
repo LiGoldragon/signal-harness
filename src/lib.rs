@@ -532,7 +532,7 @@ pub struct HarnessDaemonConfiguration {
     /// Optional terminal endpoint the daemon delegates to.
     pub terminal_socket_path: Option<signal_persona::WirePath>,
     /// The engine owner identity passed to the harness daemon.
-    pub owner_identity: signal_persona_auth::OwnerIdentity,
+    pub owner_identity: signal_persona_origin::OwnerIdentity,
 }
 
 nota_config::impl_rkyv_configuration!(HarnessDaemonConfiguration);
