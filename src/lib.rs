@@ -1,4 +1,4 @@
-//! Signal contract — `persona-router` ↔ `persona-harness`.
+//! Signal contract — `persona-router` ↔ `harness`.
 //!
 //! Read this file as the public interface of the
 //! delivery channel between the routing actor and the
@@ -489,7 +489,7 @@ impl From<TranscriptObservation> for HarnessStreamEvent {
 
 // ─── Daemon configuration ──────────────────────────────────
 //
-// Typed startup configuration for `persona-harness-daemon`. The
+// Typed startup configuration for `harness-daemon`. The
 // persona manager writes one of these (NOTA or rkyv) to a state-dir
 // path and passes that path as argv. The daemon decodes through
 // `nota_config::ConfigurationSource::from_argv()?.decode()?` and
@@ -508,7 +508,7 @@ pub enum HarnessKind {
     Fixture,
 }
 
-/// Startup configuration for `persona-harness-daemon`.
+/// Startup configuration for `harness-daemon`.
 ///
 /// Replaces the previous `--socket`, `--harness`, `--kind`,
 /// `--terminal-socket`, `PERSONA_HARNESS_TERMINAL_SOCKET`,

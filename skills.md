@@ -1,7 +1,7 @@
-# skills — signal-persona-harness
+# skills — signal-harness
 
 *Per-repo agent guide for the delivery and transcript-observation
-contract between `persona-router` and `persona-harness`.*
+contract between `persona-router` and `harness`.*
 
 ---
 
@@ -19,13 +19,13 @@ Before changing code in this repo, read:
 - `~/primary/skills/nix-discipline.md`
 - this repo's `ARCHITECTURE.md`
 - the consumers' `ARCHITECTURE.md` files
-  (`persona-router/`, `persona-harness/`).
+  (`persona-router/`, `harness/`).
 
 ---
 
 ## What this repo is for
 
-`signal-persona-harness` carries the delivery channel between the
+`signal-harness` carries the delivery channel between the
 router (request side) and one or more harness instances (reply / event
 side). The router asks for delivery, interaction, cancellation,
 status, and transcript observation; the harness pushes acks,
@@ -125,7 +125,7 @@ bump:
 
 1. Add `Fixture` to `HarnessKind`.
 2. Add round-trip witness for the new variant.
-3. Update `persona-harness` to surface fixture harnesses as
+3. Update `harness` to surface fixture harnesses as
    `HarnessKind::Fixture`, not as `Codex` or `Claude`.
 4. Update consumers' kind-dispatching code.
 

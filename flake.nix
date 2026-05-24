@@ -1,5 +1,5 @@
 {
-  description = "signal-persona-harness — Signal contract for persona-router ↔ persona-harness";
+  description = "signal-harness — Signal contract for persona-router ↔ harness";
 
   inputs = {
     nixpkgs.url = "github:NixOS/nixpkgs/nixpkgs-unstable";
@@ -57,7 +57,7 @@
           });
         };
         devShells.default = pkgs.mkShell {
-          name = "signal-persona-harness";
+          name = "signal-harness";
           packages = [ pkgs.jujutsu pkgs.pkg-config toolchain ];
         };
       });

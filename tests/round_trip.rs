@@ -1,12 +1,12 @@
 //! Architectural-truth round-trip tests for the
-//! `signal-persona-harness` channel.
+//! `signal-harness` channel.
 
 use nota_codec::{Decoder, Encoder, NotaDecode, NotaEncode};
 use signal_core::{
     ExchangeIdentifier, ExchangeLane, LaneSequence, NonEmpty, Reply, RequestPayload, SessionEpoch,
     SignalVerb, SubReply,
 };
-use signal_persona_harness::{
+use signal_harness::{
     DeliveryCancellation, DeliveryCompleted, DeliveryFailed, DeliveryFailureReason, HarnessCrashed,
     HarnessEvent, HarnessFrame, HarnessFrameBody, HarnessHealth, HarnessName, HarnessOperationKind,
     HarnessReadiness, HarnessRequest, HarnessRequestUnimplemented, HarnessStarted, HarnessStatus,
@@ -468,8 +468,8 @@ impl DriftScan {
 #[test]
 fn harness_daemon_configuration_round_trips_through_nota_text() {
     use nota_codec::{Decoder, Encoder, NotaDecode, NotaEncode};
+    use signal_harness::{HarnessDaemonConfiguration, HarnessKind, HarnessName};
     use signal_persona::{SocketMode, WirePath};
-    use signal_persona_harness::{HarnessDaemonConfiguration, HarnessKind, HarnessName};
     use signal_persona_origin::{OwnerIdentity, UnixUserId};
 
     let configuration = HarnessDaemonConfiguration {
@@ -497,8 +497,8 @@ fn harness_daemon_configuration_round_trips_through_nota_text() {
 #[test]
 fn harness_daemon_configuration_round_trips_through_rkyv() {
     use nota_config::ConfigurationRecord;
+    use signal_harness::{HarnessDaemonConfiguration, HarnessKind, HarnessName};
     use signal_persona::{SocketMode, WirePath};
-    use signal_persona_harness::{HarnessDaemonConfiguration, HarnessKind, HarnessName};
     use signal_persona_origin::{OwnerIdentity, UnixUserId};
 
     let configuration = HarnessDaemonConfiguration {

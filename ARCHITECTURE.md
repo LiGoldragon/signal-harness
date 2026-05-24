@@ -1,11 +1,11 @@
-# signal-persona-harness — architecture
+# signal-harness — architecture
 
-*The Signal contract between `persona-router` and `persona-harness` —
+*The Signal contract between `persona-router` and `harness` —
 bidirectional delivery, interaction, and observation channel.*
 
 ## 0 · TL;DR
 
-`signal-persona-harness` carries the delivery channel between the
+`signal-harness` carries the delivery channel between the
 router and one or more harness instances. The router asks for
 delivery, interaction, cancellation, status, and transcript
 observation; the harness pushes acks, interaction resolutions,
@@ -42,7 +42,7 @@ transcript stream alongside the standardized observability, it can
 keep one — but the observer-hook surface uses `Tap`/`Untap` without
 override.
 
-**Layer 2 — Component Commands (persona-harness daemon).** The
+**Layer 2 — Component Commands (harness daemon).** The
 harness owns its typed Command enum (e.g.
 `HarnessCommand::QueueMessageDelivery`,
 `HarnessCommand::RecordInteractionResolution`,
@@ -88,7 +88,7 @@ shape.
 | Side | Component |
 |---|---|
 | Request side | `persona-router` (sends `MessageDelivery`, `InteractionPrompt`, `DeliveryCancellation`, `HarnessStatusQuery`, `SubscribeHarnessTranscript`, `HarnessTranscriptRetraction`). |
-| Reply / event side | `persona-harness` (emits `Delivery*` acks, interaction resolutions, skeleton honesty, status, lifecycle events, transcript snapshot, retraction ack, and `TranscriptObservation` events on the open stream). |
+| Reply / event side | `harness` (emits `Delivery*` acks, interaction resolutions, skeleton honesty, status, lifecycle events, transcript snapshot, retraction ack, and `TranscriptObservation` events on the open stream). |
 
 Bidirectional steady-state: router sends one request; harness emits
 one or more events. Lifecycle events (`HarnessStarted` /
@@ -102,7 +102,7 @@ full lifecycle:
 ```mermaid
 sequenceDiagram
     participant Router as persona-router
-    participant Harness as persona-harness
+    participant Harness as harness
 
     Router->>Harness: SubscribeHarnessTranscript(harness)
     Harness-->>Router: HarnessTranscriptSnapshot{harness, current_sequence}
@@ -251,10 +251,10 @@ encoded into the request.
 | Skeleton honesty uses `HarnessUnimplementedReason`, not free text. | Source review + round-trip witness. |
 | Prompt cleanliness and input gates stay below this contract in `signal-persona-terminal`. | Source scan: no prompt or gate vocabulary defined here. |
 | Transcript observation is pushed, not polled. | The harness's internal transcript event count is not the observation surface; `TranscriptObservation` on `HarnessTranscriptStream` is the only sanctioned way to read transcript progress. |
-| Subscription open returns a typed `HarnessTranscriptSnapshot` carrying the per-stream token and the current sequence pointer. | Round-trip witness on the snapshot reply; integration witness in `persona-harness` proves the snapshot is the first event a subscriber receives. |
+| Subscription open returns a typed `HarnessTranscriptSnapshot` carrying the per-stream token and the current sequence pointer. | Round-trip witness on the snapshot reply; integration witness in `harness` proves the snapshot is the first event a subscriber receives. |
 | Subscription deltas push as typed `TranscriptObservation` events; consumers do not re-ask for current state. | Source scan: no Match-shaped polling variant exists for transcript state. |
 | Subscription close uses the canonical lifecycle: a request-side `Retract HarnessTranscriptRetraction` carrying the token, plus a reply-side `HarnessSubscriptionRetracted` ack echoing the token. | The `signal_channel!` declaration names `Retract HarnessTranscriptRetraction(HarnessTranscriptToken)` and a `stream HarnessTranscriptStream { close HarnessTranscriptRetraction; … }` block. The kernel grammar in `signal-frame/macros/src/validate.rs` rejects a `stream` block whose `close` is not a request-side `Retract` variant. `harness_transcript_retraction_round_trips` and `harness_subscription_retracted_reply_round_trips` are the wire witnesses. |
-| `TranscriptObservation` carries a monotonic `HarnessTranscriptSequence` so the subscriber can detect gaps and re-anchor after reconnection. | Round-trip witness on the sequence field; the persona-harness integration witness asserts strictly-increasing sequence across multiple deltas. |
+| `TranscriptObservation` carries a monotonic `HarnessTranscriptSequence` so the subscriber can detect gaps and re-anchor after reconnection. | Round-trip witness on the sequence field; the harness integration witness asserts strictly-increasing sequence across multiple deltas. |
 | `HarnessKind` is closed: `Codex`, `Claude`, `Pi`, `Fixture` — no `Other` variant. | Exhaustive match witness (test fires when a new variant lands; `Fixture` is the next bump). |
 | Wire enums contain no `Unknown` variant. | Source scan + per-enum exhaustive-match round-trip witnesses. |
 | Any record name containing the word `Unknown` represents a positive "entity not in our state" rejection, not a polling-shape escape hatch. | This crate has no such records. |
@@ -277,7 +277,7 @@ and round-trip tests carry the variant heads.
 
 `signal_frame::Frame` carries the protocol version. Schema-level
 changes are breaking; coordinate `persona-router` and
-`persona-harness` on the upgrade.
+`harness` on the upgrade.
 
 This crate depends on `signal-frame` via a named-branch reference, not
 a raw revision pin. The destination is a stable `signal-frame` API
@@ -286,7 +286,7 @@ branch/bookmark once that lane is declared.
 ## 11 · Non-ownership
 
 - No router daemon — that is `persona-router`.
-- No harness daemon — that is `persona-harness`.
+- No harness daemon — that is `harness`.
 - No PTY adapter or terminal transport — that is `persona-terminal`,
   below the `signal-persona-terminal` contract.
 - No terminal prompt cleanliness or input-gate enforcement. Those

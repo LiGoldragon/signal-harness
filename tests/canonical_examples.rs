@@ -5,7 +5,7 @@
 //! and asserting the re-encoded text equals the canonical form.
 
 use nota_codec::{Decoder, Encoder, NotaDecode, NotaEncode};
-use signal_persona_harness::{
+use signal_harness::{
     DeliveryCancellation, DeliveryCompleted, DeliveryFailed, DeliveryFailureReason, HarnessCrashed,
     HarnessEvent, HarnessHealth, HarnessName, HarnessOperationKind, HarnessReadiness,
     HarnessRequest, HarnessRequestUnimplemented, HarnessStarted, HarnessStatus, HarnessStatusQuery,

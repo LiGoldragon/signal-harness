@@ -1,7 +1,7 @@
-# signal-persona-harness
+# signal-harness
 
 The Signal contract between **`persona-router`** and
-**`persona-harness`** — bidirectional. The router sends
+**`harness`** — bidirectional. The router sends
 delivery requests; the harness pushes lifecycle + delivery
 events back.
 
@@ -15,7 +15,7 @@ Read `src/lib.rs` for the public interface — two enums
 use signal_core::{
     ExchangeIdentifier, ExchangeLane, LaneSequence, RequestPayload, SessionEpoch,
 };
-use signal_persona_harness::{
+use signal_harness::{
     HarnessFrame, HarnessFrameBody, HarnessName, HarnessRequest,
     MessageBody, MessageDelivery, MessageSender, MessageSlot,
 };

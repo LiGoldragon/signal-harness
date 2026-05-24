@@ -1,15 +1,15 @@
 [package]
-name         = "signal-persona-harness"
+name         = "signal-harness"
 version      = "0.1.0"
 edition      = "2024"
 rust-version = "1.85"
 license      = "MIT OR Apache-2.0"
-repository   = "https://github.com/LiGoldragon/signal-persona-harness"
-description  = "Signal contract — persona-router ↔ persona-harness channel for delivery + harness observations."
+repository   = "https://github.com/LiGoldragon/signal-harness"
+description  = "Signal contract — persona-router ↔ harness channel for delivery + harness observations."
 publish      = false
 
 [lib]
-name = "signal_persona_harness"
+name = "signal_harness"
 path = "src/lib.rs"
 
 [dependencies]

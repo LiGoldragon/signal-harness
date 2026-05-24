@@ -1,4 +1,4 @@
-;; Canonical NOTA examples for signal-persona-harness.
+;; Canonical NOTA examples for signal-harness.
 ;;
 ;; One example per request variant, reply variant, and stream event
 ;; variant. Request/reply/event enum wrappers encode with the declared
