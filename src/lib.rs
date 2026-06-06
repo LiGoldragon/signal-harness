@@ -508,6 +508,43 @@ pub enum HarnessKind {
     Fixture,
 }
 
+/// Command shape the Pi RPC/JSONL adapter uses when delivering a message.
+#[derive(Archive, RkyvSerialize, RkyvDeserialize, NotaEnum, Debug, Clone, Copy, PartialEq, Eq)]
+pub enum PiRpcDeliveryMode {
+    Prompt,
+    Steer,
+    FollowUp,
+}
+
+/// Optional model selector passed to the Pi RPC/JSONL adapter.
+#[derive(
+    Archive, RkyvSerialize, RkyvDeserialize, NotaTransparent, Debug, Clone, PartialEq, Eq, Hash,
+)]
+pub struct PiRpcModelPattern(String);
+
+impl PiRpcModelPattern {
+    pub fn new(value: impl Into<String>) -> Self {
+        Self(value.into())
+    }
+
+    pub fn as_str(&self) -> &str {
+        &self.0
+    }
+}
+
+/// Typed boundary for the external Pi RPC/JSONL adapter process.
+#[derive(Archive, RkyvSerialize, RkyvDeserialize, NotaRecord, Debug, Clone, PartialEq, Eq)]
+pub struct PiRpcJsonlAdapterConfiguration {
+    /// Executable path for the adapter command.
+    pub command_path: signal_persona::WirePath,
+    /// Directory where the adapter stores Pi session state.
+    pub session_directory_path: signal_persona::WirePath,
+    /// Optional model selector understood by the adapter.
+    pub model_pattern: Option<PiRpcModelPattern>,
+    /// Delivery mode used when sending a message into Pi.
+    pub delivery_mode: PiRpcDeliveryMode,
+}
+
 /// Startup configuration for `harness-daemon`.
 ///
 /// Replaces the previous `--socket`, `--harness`, `--kind`,
@@ -533,6 +570,8 @@ pub struct HarnessDaemonConfiguration {
     pub terminal_socket_path: Option<signal_persona::WirePath>,
     /// The engine owner identity passed to the harness daemon.
     pub owner_identity: signal_persona_origin::OwnerIdentity,
+    /// Optional Pi RPC/JSONL adapter boundary for `HarnessKind::Pi`.
+    pub pi_rpc_adapter: Option<PiRpcJsonlAdapterConfiguration>,
 }
 
 nota_config::impl_rkyv_configuration!(HarnessDaemonConfiguration);

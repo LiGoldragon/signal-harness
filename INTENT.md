@@ -81,6 +81,11 @@ shape is in progress; the target above is the intent.
   types.
 - Every operation, reply, and event variant round-trips through both
   rkyv frames and NOTA text.
+- `HarnessDaemonConfiguration` is the single typed startup contract
+  for `harness-daemon`; optional adapter-specific startup data, such
+  as the Pi RPC/JSONL adapter command, session directory, model
+  selector, and delivery mode, lives inside this record rather than in
+  argv flags or environment variables.
 
 ## Non-ownership
 

@@ -134,6 +134,10 @@ so the subscriber can detect gaps and re-anchor after reconnection.
 Records local to this contract:
 
 - `HarnessName` (the typed name for one harness instance).
+- `HarnessDaemonConfiguration`, `HarnessKind`,
+  `PiRpcJsonlAdapterConfiguration`, `PiRpcModelPattern`, and
+  `PiRpcDeliveryMode` (the typed daemon startup record and optional
+  Pi RPC/JSONL adapter boundary).
 - `MessageSender`, `MessageBody`, `MessageSlot`.
 - `MessageDelivery`, `InteractionPrompt`, `DeliveryCancellation`,
   `HarnessStatusQuery`.
@@ -150,6 +154,15 @@ Records local to this contract:
 The `MessageBody` on `MessageDelivery` is provisional. The
 destination is a typed Nexus record written in NOTA syntax, not a new
 text format.
+
+`HarnessDaemonConfiguration` is the single startup record accepted by
+`harness-daemon` as inline NOTA, a `.nota` path, or a signal-encoded
+`.rkyv` path. It carries harness socket path/mode, supervision socket
+path/mode, harness name, closed `HarnessKind`, optional terminal
+socket path, owner identity, and optional Pi RPC/JSONL adapter
+configuration. The Pi adapter record carries command path, session
+directory path, optional model pattern, and closed delivery mode
+(`Prompt`, `Steer`, `FollowUp`).
 
 ## 4 · Harness kinds
 
@@ -214,6 +227,21 @@ HarnessRequest                          HarnessEvent
 
 HarnessStreamEvent (on HarnessTranscriptStream)
 └─ TranscriptObservation
+
+HarnessDaemonConfiguration
+├─ harness_socket_path / harness_socket_mode
+├─ supervision_socket_path / supervision_socket_mode
+├─ harness_name
+├─ harness_kind
+├─ terminal_socket_path
+├─ owner_identity
+└─ pi_rpc_adapter: Option<PiRpcJsonlAdapterConfiguration>
+
+PiRpcJsonlAdapterConfiguration
+├─ command_path
+├─ session_directory_path
+├─ model_pattern
+└─ delivery_mode: PiRpcDeliveryMode
 ```
 
 Closed enums; typed `DeliveryFailureReason` (three variants:

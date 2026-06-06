@@ -13,7 +13,8 @@ use signal_harness::{
     HarnessStatusQuery, HarnessStopped, HarnessSubscriptionRetracted, HarnessTranscriptSequence,
     HarnessTranscriptSnapshot, HarnessTranscriptToken, HarnessUnimplementedReason,
     InteractionPrompt, InteractionResolved, MessageBody, MessageDelivery, MessageSender,
-    MessageSlot, SubscribeHarnessTranscript, TranscriptObservation,
+    MessageSlot, PiRpcDeliveryMode, PiRpcJsonlAdapterConfiguration, PiRpcModelPattern,
+    SubscribeHarnessTranscript, TranscriptObservation,
 };
 
 fn harness() -> HarnessName {
@@ -478,9 +479,15 @@ fn harness_daemon_configuration_round_trips_through_nota_text() {
         supervision_socket_path: WirePath::new("/run/persona/X/harness-supervision.sock"),
         supervision_socket_mode: SocketMode::new(0o600),
         harness_name: HarnessName::new("responder"),
-        harness_kind: HarnessKind::Fixture,
+        harness_kind: HarnessKind::Pi,
         terminal_socket_path: Some(WirePath::new("/run/persona/X/terminal.sock")),
         owner_identity: OwnerIdentity::UnixUser(UnixUserId::new(1000)),
+        pi_rpc_adapter: Some(PiRpcJsonlAdapterConfiguration {
+            command_path: WirePath::new("/run/current-system/sw/bin/pi-rpc"),
+            session_directory_path: WirePath::new("/var/lib/persona/pi"),
+            model_pattern: Some(PiRpcModelPattern::new("pi-*")),
+            delivery_mode: PiRpcDeliveryMode::FollowUp,
+        }),
     };
 
     let mut encoder = Encoder::new();
@@ -510,9 +517,46 @@ fn harness_daemon_configuration_round_trips_through_rkyv() {
         harness_kind: HarnessKind::Codex,
         terminal_socket_path: None,
         owner_identity: OwnerIdentity::UnixUser(UnixUserId::new(1000)),
+        pi_rpc_adapter: None,
     };
 
     let bytes = rkyv::to_bytes::<rkyv::rancor::Error>(&configuration).expect("archive");
     let recovered = HarnessDaemonConfiguration::from_rkyv_bytes(&bytes).expect("decode rkyv");
+    assert_eq!(recovered, configuration);
+}
+
+#[test]
+fn pi_rpc_jsonl_adapter_configuration_round_trips_through_nota_text() {
+    let configuration = PiRpcJsonlAdapterConfiguration {
+        command_path: signal_persona::WirePath::new("/run/current-system/sw/bin/pi-rpc"),
+        session_directory_path: signal_persona::WirePath::new("/var/lib/persona/pi"),
+        model_pattern: Some(PiRpcModelPattern::new("pi-*")),
+        delivery_mode: PiRpcDeliveryMode::Prompt,
+    };
+
+    let mut encoder = Encoder::new();
+    configuration
+        .encode(&mut encoder)
+        .expect("encode Pi RPC adapter configuration");
+    let text = encoder.into_string();
+    let mut decoder = Decoder::new(&text);
+    let recovered =
+        PiRpcJsonlAdapterConfiguration::decode(&mut decoder).expect("decode Pi RPC adapter");
+
+    assert_eq!(recovered, configuration);
+}
+
+#[test]
+fn pi_rpc_jsonl_adapter_configuration_round_trips_through_rkyv() {
+    let configuration = PiRpcJsonlAdapterConfiguration {
+        command_path: signal_persona::WirePath::new("/run/current-system/sw/bin/pi-rpc"),
+        session_directory_path: signal_persona::WirePath::new("/var/lib/persona/pi"),
+        model_pattern: None,
+        delivery_mode: PiRpcDeliveryMode::Steer,
+    };
+
+    let bytes = rkyv::to_bytes::<rkyv::rancor::Error>(&configuration).expect("archive");
+    let recovered = rkyv::from_bytes::<PiRpcJsonlAdapterConfiguration, rkyv::rancor::Error>(&bytes)
+        .expect("decode rkyv");
     assert_eq!(recovered, configuration);
 }
