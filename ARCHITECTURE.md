@@ -155,10 +155,11 @@ The `MessageBody` on `MessageDelivery` is provisional. The
 destination is a typed Nexus record written in NOTA syntax, not a new
 text format.
 
-`HarnessDaemonConfiguration` is the single startup record accepted by
-`harness-daemon` as inline NOTA, a `.nota` path, or a signal-encoded
-`.rkyv` path. It carries harness socket path/mode, supervision socket
-path/mode, owner identity, and a `harnesses` list. Each
+`HarnessDaemonConfiguration` is the single typed startup record for
+`harness-daemon`. The record round-trips through NOTA for authoring and
+tooling, but the live daemon receives it only as a signal-encoded/rkyv file
+path. It carries harness socket path/mode, supervision socket path/mode, owner
+identity, and a `harnesses` list. Each
 `HarnessInstanceConfiguration` names one harness instance, its closed
 `HarnessKind`, optional terminal socket path, and optional Pi RPC/JSONL
 adapter configuration. The Pi adapter record carries command path,

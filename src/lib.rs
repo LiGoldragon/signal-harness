@@ -492,12 +492,10 @@ impl From<TranscriptObservation> for HarnessStreamEvent {
 
 // ─── Daemon configuration ──────────────────────────────────
 //
-// Typed startup configuration for `harness-daemon`. The
-// persona manager writes one of these (NOTA or rkyv) to a state-dir
-// path and passes that path as argv. The daemon decodes through
-// `nota_config::ConfigurationSource::from_argv()?.decode()?` and
-// runs with the resulting record. No environment variables on the
-// production launch path.
+// Typed startup configuration for `harness-daemon`. Deploy/bootstrap tooling
+// may author or validate it through the NOTA projection, but the live daemon
+// accepts only the rkyv/signal-encoded file path on argv and never decodes
+// NOTA startup text.
 
 /// The supervised harness runtime variant. Closed enum — every
 /// production harness ships with one of these kinds.

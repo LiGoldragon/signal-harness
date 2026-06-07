@@ -82,8 +82,11 @@ shape is in progress; the target above is the intent.
 - Every operation, reply, and event variant round-trips through both
   rkyv frames and NOTA text.
 - `HarnessDaemonConfiguration` is the single typed startup contract
-  for one `harness-daemon` component process. It carries daemon socket
-  and supervision fields plus a `harnesses` list; each
+  for one `harness-daemon` component process. The contract still exposes
+  NOTA round trips for authoring and tooling, but a live daemon consumes
+  this record only as a signal-encoded/rkyv startup file; inline NOTA and
+  `.nota` files are CLI/deploy-tool inputs, not daemon inputs. It carries
+  daemon socket and supervision fields plus a `harnesses` list; each
   `HarnessInstanceConfiguration` carries the instance name, closed
   `HarnessKind`, optional terminal endpoint, and optional adapter-specific
   startup data such as the Pi RPC/JSONL adapter command, session
