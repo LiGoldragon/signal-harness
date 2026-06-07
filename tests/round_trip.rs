@@ -1,7 +1,8 @@
 //! Architectural-truth round-trip tests for the
 //! `signal-harness` channel.
 
-use nota_codec::{Decoder, Encoder, NotaDecode, NotaEncode};
+use nota_next::{NotaDecode, NotaEncode, NotaSource};
+use signal_engine_management::{SocketMode, WirePath};
 use signal_frame::{
     ExchangeIdentifier, ExchangeLane, LaneSequence, NonEmpty, Reply, RequestPayload, SessionEpoch,
     SignalOperationHeads, SubReply,
@@ -61,6 +62,16 @@ fn round_trip_event(event: HarnessEvent) -> HarnessEvent {
         },
         other => panic!("expected reply operation, got {other:?}"),
     }
+}
+
+fn round_trip_nota<Value>(value: Value, expected: &str)
+where
+    Value: NotaEncode + NotaDecode + PartialEq + std::fmt::Debug,
+{
+    let text = value.to_nota();
+    assert_eq!(text, expected);
+    let recovered = NotaSource::new(&text).parse::<Value>().expect("decode");
+    assert_eq!(recovered, value);
 }
 
 #[test]
@@ -181,16 +192,7 @@ fn harness_request_variants_declare_contract_local_operation_heads() {
 
 #[test]
 fn harness_operation_kind_round_trips_through_nota_text() {
-    let mut encoder = Encoder::new();
-    HarnessOperationKind::MessageDelivery
-        .encode(&mut encoder)
-        .expect("encode operation kind");
-    let text = encoder.into_string();
-    let mut decoder = Decoder::new(&text);
-    let recovered = HarnessOperationKind::decode(&mut decoder).expect("decode operation kind");
-
-    assert_eq!(recovered, HarnessOperationKind::MessageDelivery);
-    assert_eq!(text, "MessageDelivery");
+    round_trip_nota(HarnessOperationKind::MessageDelivery, "MessageDelivery");
 }
 
 #[test]
@@ -297,16 +299,7 @@ fn transcript_observation_event_round_trips_through_nota_text() {
         line: "ready for prompt".into(),
     };
 
-    let mut encoder = Encoder::new();
-    observation
-        .encode(&mut encoder)
-        .expect("encode observation");
-    let text = encoder.into_string();
-    let mut decoder = Decoder::new(&text);
-    let recovered = TranscriptObservation::decode(&mut decoder).expect("decode observation");
-
-    assert_eq!(recovered, observation);
-    assert_eq!(text, "(designer 42 [ready for prompt])");
+    round_trip_nota(observation, "([designer] 42 [ready for prompt])");
 }
 
 #[test]
@@ -318,14 +311,10 @@ fn message_delivery_request_round_trips_through_nota_text() {
         message_slot: MessageSlot::new(42),
     });
 
-    let mut encoder = Encoder::new();
-    request.encode(&mut encoder).expect("encode request");
-    let text = encoder.into_string();
-    let mut decoder = Decoder::new(&text);
-    let recovered = HarnessRequest::decode(&mut decoder).expect("decode request");
-
-    assert_eq!(recovered, request);
-    assert_eq!(text, "(MessageDelivery (designer operator [via nota] 42))");
+    round_trip_nota(
+        request,
+        "(MessageDelivery ([designer] [operator] [via nota] 42))",
+    );
 }
 
 #[test]
@@ -336,14 +325,7 @@ fn delivery_failed_event_round_trips_through_nota_text() {
         reason: DeliveryFailureReason::TransportRejected,
     });
 
-    let mut encoder = Encoder::new();
-    event.encode(&mut encoder).expect("encode event");
-    let text = encoder.into_string();
-    let mut decoder = Decoder::new(&text);
-    let recovered = HarnessEvent::decode(&mut decoder).expect("decode event");
-
-    assert_eq!(recovered, event);
-    assert_eq!(text, "(DeliveryFailed (designer 42 TransportRejected))");
+    round_trip_nota(event, "(DeliveryFailed ([designer] 42 TransportRejected))");
 }
 
 #[test]
@@ -354,16 +336,9 @@ fn harness_unimplemented_event_round_trips_through_nota_text() {
         reason: HarnessUnimplementedReason::NotBuiltYet,
     });
 
-    let mut encoder = Encoder::new();
-    event.encode(&mut encoder).expect("encode event");
-    let text = encoder.into_string();
-    let mut decoder = Decoder::new(&text);
-    let recovered = HarnessEvent::decode(&mut decoder).expect("decode event");
-
-    assert_eq!(recovered, event);
-    assert_eq!(
-        text,
-        "(HarnessRequestUnimplemented (designer MessageDelivery NotBuiltYet))"
+    round_trip_nota(
+        event,
+        "(HarnessRequestUnimplemented ([designer] MessageDelivery NotBuiltYet))",
     );
 }
 
@@ -420,17 +395,15 @@ impl DriftScan {
 
 #[test]
 fn harness_daemon_configuration_round_trips_through_nota_text() {
-    use nota_codec::{Decoder, Encoder, NotaDecode, NotaEncode};
     use signal_harness::{HarnessDaemonConfiguration, HarnessInstanceConfiguration, HarnessKind};
-    use signal_persona::{SocketMode, WirePath};
-    use signal_persona_origin::{OwnerIdentity, UnixUserId};
+    use signal_persona_origin::{OwnerIdentity, UnixUserIdentifier};
 
     let configuration = HarnessDaemonConfiguration {
         harness_socket_path: WirePath::new("/run/persona/X/harness.sock"),
         harness_socket_mode: SocketMode::new(0o600),
         supervision_socket_path: WirePath::new("/run/persona/X/harness-supervision.sock"),
         supervision_socket_mode: SocketMode::new(0o600),
-        owner_identity: OwnerIdentity::UnixUser(UnixUserId::new(1000)),
+        owner_identity: OwnerIdentity::UnixUser(UnixUserIdentifier::new(1000)),
         harnesses: vec![
             HarnessInstanceConfiguration {
                 harness_name: harness(),
@@ -452,30 +425,25 @@ fn harness_daemon_configuration_round_trips_through_nota_text() {
         ],
     };
 
-    let mut encoder = Encoder::new();
-    configuration
-        .encode(&mut encoder)
-        .expect("encode configuration");
-    let text = encoder.into_string();
-    let mut decoder = Decoder::new(&text);
-    let recovered = HarnessDaemonConfiguration::decode(&mut decoder).expect("decode configuration");
+    let text = configuration.to_nota();
+    let recovered = NotaSource::new(&text)
+        .parse::<HarnessDaemonConfiguration>()
+        .expect("decode configuration");
 
     assert_eq!(recovered, configuration);
 }
 
 #[test]
 fn harness_daemon_configuration_round_trips_through_rkyv() {
-    use nota_config::ConfigurationRecord;
     use signal_harness::{HarnessDaemonConfiguration, HarnessInstanceConfiguration, HarnessKind};
-    use signal_persona::{SocketMode, WirePath};
-    use signal_persona_origin::{OwnerIdentity, UnixUserId};
+    use signal_persona_origin::{OwnerIdentity, UnixUserIdentifier};
 
     let configuration = HarnessDaemonConfiguration {
         harness_socket_path: WirePath::new("/run/persona/X/harness.sock"),
         harness_socket_mode: SocketMode::new(0o600),
         supervision_socket_path: WirePath::new("/run/persona/X/harness-supervision.sock"),
         supervision_socket_mode: SocketMode::new(0o600),
-        owner_identity: OwnerIdentity::UnixUser(UnixUserId::new(1000)),
+        owner_identity: OwnerIdentity::UnixUser(UnixUserIdentifier::new(1000)),
         harnesses: vec![HarnessInstanceConfiguration {
             harness_name: harness(),
             harness_kind: HarnessKind::Codex,
@@ -484,7 +452,7 @@ fn harness_daemon_configuration_round_trips_through_rkyv() {
         }],
     };
 
-    let bytes = rkyv::to_bytes::<rkyv::rancor::Error>(&configuration).expect("archive");
+    let bytes = configuration.to_rkyv_bytes().expect("archive");
     let recovered = HarnessDaemonConfiguration::from_rkyv_bytes(&bytes).expect("decode rkyv");
     assert_eq!(recovered, configuration);
 }
@@ -492,29 +460,24 @@ fn harness_daemon_configuration_round_trips_through_rkyv() {
 #[test]
 fn pi_rpc_jsonl_adapter_configuration_round_trips_through_nota_text() {
     let configuration = PiRpcJsonlAdapterConfiguration {
-        command_path: signal_persona::WirePath::new("/run/current-system/sw/bin/pi-rpc"),
-        session_directory_path: signal_persona::WirePath::new("/var/lib/persona/pi"),
+        command_path: WirePath::new("/run/current-system/sw/bin/pi-rpc"),
+        session_directory_path: WirePath::new("/var/lib/persona/pi"),
         model_pattern: Some(PiRpcModelPattern::new("pi-*")),
         delivery_mode: PiRpcDeliveryMode::Prompt,
     };
 
-    let mut encoder = Encoder::new();
-    configuration
-        .encode(&mut encoder)
-        .expect("encode Pi RPC adapter configuration");
-    let text = encoder.into_string();
-    let mut decoder = Decoder::new(&text);
-    let recovered =
-        PiRpcJsonlAdapterConfiguration::decode(&mut decoder).expect("decode Pi RPC adapter");
-
+    let text = configuration.to_nota();
+    let recovered = NotaSource::new(&text)
+        .parse::<PiRpcJsonlAdapterConfiguration>()
+        .expect("decode Pi RPC adapter");
     assert_eq!(recovered, configuration);
 }
 
 #[test]
 fn pi_rpc_jsonl_adapter_configuration_round_trips_through_rkyv() {
     let configuration = PiRpcJsonlAdapterConfiguration {
-        command_path: signal_persona::WirePath::new("/run/current-system/sw/bin/pi-rpc"),
-        session_directory_path: signal_persona::WirePath::new("/var/lib/persona/pi"),
+        command_path: WirePath::new("/run/current-system/sw/bin/pi-rpc"),
+        session_directory_path: WirePath::new("/var/lib/persona/pi"),
         model_pattern: None,
         delivery_mode: PiRpcDeliveryMode::Steer,
     };

@@ -1,9 +1,7 @@
 # skills — signal-harness
 
 *Per-repo agent guide for the delivery and transcript-observation
-contract between `persona-router` and `harness`.*
-
----
+contract between `router` and `harness`.*
 
 ## Checkpoint — read before editing
 
@@ -19,9 +17,7 @@ Before changing code in this repo, read:
 - `~/primary/skills/nix-discipline.md`
 - this repo's `ARCHITECTURE.md`
 - the consumers' `ARCHITECTURE.md` files
-  (`persona-router/`, `harness/`).
-
----
+  (`router/`, `harness/`).
 
 ## What this repo is for
 
@@ -34,12 +30,10 @@ transcript-observation events.
 
 The transcript-observation subscription follows the canonical
 lifecycle in `~/primary/skills/subscription-lifecycle.md`: open with
-a typed `Subscribe`, push typed `TranscriptObservation` events,
-close with a typed request-side `Retract` carrying the per-stream
-token, end with a typed reply-side `HarnessSubscriptionRetracted`
-ack echoing the token.
-
----
+a typed `WatchHarnessTranscript`, push typed `TranscriptObservation`
+events, close with a typed request-side `UnwatchHarnessTranscript`
+carrying the per-stream token, end with a typed reply-side
+`HarnessSubscriptionRetracted` ack echoing the token.
 
 ## What this repo owns
 
@@ -68,16 +62,14 @@ ack echoing the token.
 - The harness actor or its PTY adapter.
 - Transport (UDS path, reconnect, timeouts).
 - Terminal prompt cleanliness, input gates, and write-injection
-  safety (owned by `signal-persona-terminal`, `persona-terminal`,
+  safety (owned by `signal-terminal`, `terminal`,
   and `terminal-cell`).
-
----
 
 ## Load-bearing invariants
 
 - **Subscription close uses both sides.** The kernel grammar in
   `signal-frame/macros/src/validate.rs` requires the `stream` block
-  to name a request-side `Retract` variant; the reply-side
+  to name a request-side close operation; the reply-side
   `HarnessSubscriptionRetracted` ack is the final event consumers
   bind to. Both are present in `src/lib.rs`. Do not remove either.
 - **Wire enums are closed.** No `Unknown` variant on any wire enum.
@@ -86,10 +78,10 @@ ack echoing the token.
   production kind. `DeliveryFailureReason` has four closed causes,
   including `HarnessUnavailable` for requests addressed to an
   instance this daemon does not serve.
-- **Every request variant declares a Signal root verb.** The
+- **Every request variant declares a contract-local operation head.** The
   `signal_channel!` declaration is the source of truth; the macro
-  generates `HarnessRequest::signal_verb()` and round-trip tests
-  assert every variant.
+  generates `SignalOperationHeads` and round-trip tests assert every
+  variant.
 - **Skeleton honesty uses typed reasons.** A request that reaches
   a skeleton harness daemon and is not built yet returns
   `HarnessRequestUnimplemented` carrying typed
@@ -110,8 +102,6 @@ ack echoing the token.
 - **Pin upstream contracts via a named API reference.** Cargo deps
   declare `git = "..."` with a named branch/bookmark, never raw
   `rev = "..."`.
-
----
 
 ## Editing patterns
 
@@ -139,23 +129,19 @@ bump:
 2. Add the typed subscribe payload, token, snapshot, and event
    records.
 3. Add the new `stream` block in `signal_channel!`, with the
-   subscribe request, the request-side retract variant, the
+   subscribe request, the request-side close operation, the
    reply-side ack, and the typed event variant. The kernel grammar
-   enforces the close-is-Retract shape.
+   enforces the close-operation shape.
 4. Witness the full subscribe → event → retract → ack → end
    lifecycle.
-
----
 
 ## NOTA codec shape
 
 The current `signal_channel!` macro emits the request/reply/event
 variant head and wraps the payload's positional fields. For example,
-`HarnessRequest::HarnessTranscriptRetraction(HarnessTranscriptToken { .. })`
-encodes as `(HarnessTranscriptRetraction (...))`. Canonical examples
+`HarnessRequest::UnwatchHarnessTranscript(HarnessTranscriptToken { .. })`
+encodes as `(UnwatchHarnessTranscript (...))`. Canonical examples
 and round-trip tests pin that shape.
-
----
 
 ## See also
 
@@ -163,7 +149,7 @@ and round-trip tests pin that shape.
 - this workspace's `skills/subscription-lifecycle.md`.
 - this workspace's `skills/push-not-pull.md`.
 - this workspace's `skills/architectural-truth-tests.md`.
-- `signal-persona-system`'s `skills.md`,
-  `signal-persona-terminal`'s `skills.md`, and `signal-criome`'s
+- `signal-system`'s `skills.md`,
+  `signal-terminal`'s `skills.md`, and `signal-criome`'s
   `skills.md` — sibling contracts using the same Path A subscription
   discipline.

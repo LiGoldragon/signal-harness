@@ -1,4 +1,4 @@
-//! Signal contract — `persona-router` ↔ `harness`.
+//! Signal contract — `router` ↔ `harness`.
 //!
 //! Read this file as the public interface of the
 //! delivery channel between the routing actor and the
@@ -22,8 +22,9 @@
 //! boundaries; `~/primary/reports/designer/72-harmonized-implementation-plan.md`
 //! §6 for the contract-creation discipline.
 
-use nota_codec::{NotaEnum, NotaRecord, NotaTransparent};
+use nota_next::{NotaDecode, NotaEncode};
 use rkyv::{Archive, Deserialize as RkyvDeserialize, Serialize as RkyvSerialize};
+use signal_engine_management::{SocketMode, WirePath};
 use signal_frame::signal_channel;
 
 // ─── Harness identity ─────────────────────────────────────
@@ -32,7 +33,16 @@ use signal_frame::signal_channel;
 /// harnesses on one machine each have their own
 /// `HarnessName`; the router routes by name.
 #[derive(
-    Archive, RkyvSerialize, RkyvDeserialize, NotaTransparent, Debug, Clone, PartialEq, Eq, Hash,
+    Archive,
+    RkyvSerialize,
+    RkyvDeserialize,
+    NotaEncode,
+    NotaDecode,
+    Debug,
+    Clone,
+    PartialEq,
+    Eq,
+    Hash,
 )]
 pub struct HarnessName(String);
 
@@ -47,7 +57,16 @@ impl HarnessName {
 }
 
 #[derive(
-    Archive, RkyvSerialize, RkyvDeserialize, NotaTransparent, Debug, Clone, PartialEq, Eq, Hash,
+    Archive,
+    RkyvSerialize,
+    RkyvDeserialize,
+    NotaEncode,
+    NotaDecode,
+    Debug,
+    Clone,
+    PartialEq,
+    Eq,
+    Hash,
 )]
 pub struct MessageSender(String);
 
@@ -62,7 +81,16 @@ impl MessageSender {
 }
 
 #[derive(
-    Archive, RkyvSerialize, RkyvDeserialize, NotaTransparent, Debug, Clone, PartialEq, Eq, Hash,
+    Archive,
+    RkyvSerialize,
+    RkyvDeserialize,
+    NotaEncode,
+    NotaDecode,
+    Debug,
+    Clone,
+    PartialEq,
+    Eq,
+    Hash,
 )]
 pub struct MessageBody(String);
 
@@ -80,7 +108,8 @@ impl MessageBody {
     Archive,
     RkyvSerialize,
     RkyvDeserialize,
-    NotaTransparent,
+    NotaEncode,
+    NotaDecode,
     Debug,
     Clone,
     Copy,
@@ -106,7 +135,9 @@ impl MessageSlot {
 /// This request does not certify prompt cleanliness. The
 /// harness / terminal adapter must acquire the terminal input
 /// gate before programmatic injection.
-#[derive(Archive, RkyvSerialize, RkyvDeserialize, NotaRecord, Debug, Clone, PartialEq, Eq)]
+#[derive(
+    Archive, RkyvSerialize, RkyvDeserialize, NotaEncode, NotaDecode, Debug, Clone, PartialEq, Eq,
+)]
 pub struct MessageDelivery {
     pub harness: HarnessName,
     pub sender: MessageSender,
@@ -122,7 +153,9 @@ pub struct MessageDelivery {
 /// and any place the system needs human confirmation. The
 /// harness shows the prompt; the human's response comes
 /// back via `InteractionResolved` event.
-#[derive(Archive, RkyvSerialize, RkyvDeserialize, NotaRecord, Debug, Clone, PartialEq, Eq)]
+#[derive(
+    Archive, RkyvSerialize, RkyvDeserialize, NotaEncode, NotaDecode, Debug, Clone, PartialEq, Eq,
+)]
 pub struct InteractionPrompt {
     pub harness: HarnessName,
     pub interaction_id: String,
@@ -133,7 +166,9 @@ pub struct InteractionPrompt {
 /// Cancel a pending delivery (e.g. the recipient went
 /// offline before delivery completed, or the router is
 /// shutting down).
-#[derive(Archive, RkyvSerialize, RkyvDeserialize, NotaRecord, Debug, Clone, PartialEq, Eq)]
+#[derive(
+    Archive, RkyvSerialize, RkyvDeserialize, NotaEncode, NotaDecode, Debug, Clone, PartialEq, Eq,
+)]
 pub struct DeliveryCancellation {
     pub harness: HarnessName,
     pub message_slot: MessageSlot,
@@ -144,7 +179,9 @@ pub struct DeliveryCancellation {
 /// This is intentionally small. Detailed lifecycle and transcript history are
 /// harness-owned state, but a supervised engine needs one cheap typed probe
 /// before it treats the daemon as started.
-#[derive(Archive, RkyvSerialize, RkyvDeserialize, NotaRecord, Debug, Clone, PartialEq, Eq)]
+#[derive(
+    Archive, RkyvSerialize, RkyvDeserialize, NotaEncode, NotaDecode, Debug, Clone, PartialEq, Eq,
+)]
 pub struct HarnessStatusQuery {
     pub harness: HarnessName,
 }
@@ -154,21 +191,27 @@ pub struct HarnessStatusQuery {
 /// The harness successfully delivered the message — the
 /// bytes hit the input surface. The router can mark the
 /// message as delivered in its store.
-#[derive(Archive, RkyvSerialize, RkyvDeserialize, NotaRecord, Debug, Clone, PartialEq, Eq)]
+#[derive(
+    Archive, RkyvSerialize, RkyvDeserialize, NotaEncode, NotaDecode, Debug, Clone, PartialEq, Eq,
+)]
 pub struct DeliveryCompleted {
     pub harness: HarnessName,
     pub message_slot: MessageSlot,
 }
 
 /// Delivery failed — typed reason carried.
-#[derive(Archive, RkyvSerialize, RkyvDeserialize, NotaRecord, Debug, Clone, PartialEq, Eq)]
+#[derive(
+    Archive, RkyvSerialize, RkyvDeserialize, NotaEncode, NotaDecode, Debug, Clone, PartialEq, Eq,
+)]
 pub struct DeliveryFailed {
     pub harness: HarnessName,
     pub message_slot: MessageSlot,
     pub reason: DeliveryFailureReason,
 }
 
-#[derive(Archive, RkyvSerialize, RkyvDeserialize, NotaEnum, Debug, Clone, PartialEq, Eq)]
+#[derive(
+    Archive, RkyvSerialize, RkyvDeserialize, NotaEncode, NotaDecode, Debug, Clone, PartialEq, Eq,
+)]
 pub enum DeliveryFailureReason {
     /// The harness's transport (PTY, terminal) couldn't
     /// accept the bytes.
@@ -187,7 +230,9 @@ pub enum DeliveryFailureReason {
 
 /// Human resolved a previously-surfaced interaction — they
 /// picked one of the options.
-#[derive(Archive, RkyvSerialize, RkyvDeserialize, NotaRecord, Debug, Clone, PartialEq, Eq)]
+#[derive(
+    Archive, RkyvSerialize, RkyvDeserialize, NotaEncode, NotaDecode, Debug, Clone, PartialEq, Eq,
+)]
 pub struct InteractionResolved {
     pub harness: HarnessName,
     pub interaction_id: String,
@@ -196,35 +241,72 @@ pub struct InteractionResolved {
 
 /// A valid request reached a harness daemon, but the daemon's current runtime
 /// does not implement the operation yet.
-#[derive(Archive, RkyvSerialize, RkyvDeserialize, NotaRecord, Debug, Clone, PartialEq, Eq)]
+#[derive(
+    Archive, RkyvSerialize, RkyvDeserialize, NotaEncode, NotaDecode, Debug, Clone, PartialEq, Eq,
+)]
 pub struct HarnessRequestUnimplemented {
     pub harness: HarnessName,
     pub operation: HarnessOperationKind,
     pub reason: HarnessUnimplementedReason,
 }
 
-#[derive(Archive, RkyvSerialize, RkyvDeserialize, NotaEnum, Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(
+    Archive,
+    RkyvSerialize,
+    RkyvDeserialize,
+    NotaEncode,
+    NotaDecode,
+    Debug,
+    Clone,
+    Copy,
+    PartialEq,
+    Eq,
+)]
 pub enum HarnessUnimplementedReason {
     NotBuiltYet,
     DependencyTrackNotLanded,
 }
 
 /// Minimal health surface for the daemon skeleton and supervisor witness.
-#[derive(Archive, RkyvSerialize, RkyvDeserialize, NotaRecord, Debug, Clone, PartialEq, Eq)]
+#[derive(
+    Archive, RkyvSerialize, RkyvDeserialize, NotaEncode, NotaDecode, Debug, Clone, PartialEq, Eq,
+)]
 pub struct HarnessStatus {
     pub harness: HarnessName,
     pub health: HarnessHealth,
     pub readiness: HarnessReadiness,
 }
 
-#[derive(Archive, RkyvSerialize, RkyvDeserialize, NotaEnum, Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(
+    Archive,
+    RkyvSerialize,
+    RkyvDeserialize,
+    NotaEncode,
+    NotaDecode,
+    Debug,
+    Clone,
+    Copy,
+    PartialEq,
+    Eq,
+)]
 pub enum HarnessHealth {
     Running,
     Degraded,
     Stopped,
 }
 
-#[derive(Archive, RkyvSerialize, RkyvDeserialize, NotaEnum, Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(
+    Archive,
+    RkyvSerialize,
+    RkyvDeserialize,
+    NotaEncode,
+    NotaDecode,
+    Debug,
+    Clone,
+    Copy,
+    PartialEq,
+    Eq,
+)]
 pub enum HarnessReadiness {
     Ready,
     Starting,
@@ -234,21 +316,27 @@ pub enum HarnessReadiness {
 // ─── Lifecycle observations (harness → router) ────────────
 
 /// Harness started; ready to receive deliveries.
-#[derive(Archive, RkyvSerialize, RkyvDeserialize, NotaRecord, Debug, Clone, PartialEq, Eq)]
+#[derive(
+    Archive, RkyvSerialize, RkyvDeserialize, NotaEncode, NotaDecode, Debug, Clone, PartialEq, Eq,
+)]
 pub struct HarnessStarted {
     pub harness: HarnessName,
 }
 
 /// Harness shut down cleanly. The router stops sending
 /// deliveries to this harness.
-#[derive(Archive, RkyvSerialize, RkyvDeserialize, NotaRecord, Debug, Clone, PartialEq, Eq)]
+#[derive(
+    Archive, RkyvSerialize, RkyvDeserialize, NotaEncode, NotaDecode, Debug, Clone, PartialEq, Eq,
+)]
 pub struct HarnessStopped {
     pub harness: HarnessName,
 }
 
 /// Harness crashed / died unexpectedly. The router needs
 /// to retry or escalate.
-#[derive(Archive, RkyvSerialize, RkyvDeserialize, NotaRecord, Debug, Clone, PartialEq, Eq)]
+#[derive(
+    Archive, RkyvSerialize, RkyvDeserialize, NotaEncode, NotaDecode, Debug, Clone, PartialEq, Eq,
+)]
 pub struct HarnessCrashed {
     pub harness: HarnessName,
     pub detail: String,
@@ -266,7 +354,8 @@ pub struct HarnessCrashed {
     Archive,
     RkyvSerialize,
     RkyvDeserialize,
-    NotaTransparent,
+    NotaEncode,
+    NotaDecode,
     Debug,
     Clone,
     Copy,
@@ -288,10 +377,12 @@ impl HarnessTranscriptSequence {
 
 /// Per-subscription identity for the harness transcript-observation
 /// stream. Matches the structural shape of `<Channel>SubscriptionToken`
-/// newtypes per signal-persona-terminal's `TerminalWorkerLifecycleToken`.
+/// newtypes per signal-terminal's `TerminalWorkerLifecycleToken`.
 /// One observer per harness; the token's identity is the harness it
 /// observes.
-#[derive(Archive, RkyvSerialize, RkyvDeserialize, NotaRecord, Debug, Clone, PartialEq, Eq)]
+#[derive(
+    Archive, RkyvSerialize, RkyvDeserialize, NotaEncode, NotaDecode, Debug, Clone, PartialEq, Eq,
+)]
 pub struct HarnessTranscriptToken {
     pub harness: HarnessName,
 }
@@ -300,7 +391,9 @@ pub struct HarnessTranscriptToken {
 /// a `HarnessTranscriptSnapshot` carrying the current sequence pointer;
 /// subsequent `TranscriptObservation` events arrive on the same
 /// connection as the stream pushes them.
-#[derive(Archive, RkyvSerialize, RkyvDeserialize, NotaRecord, Debug, Clone, PartialEq, Eq)]
+#[derive(
+    Archive, RkyvSerialize, RkyvDeserialize, NotaEncode, NotaDecode, Debug, Clone, PartialEq, Eq,
+)]
 pub struct WatchHarnessTranscript {
     pub harness: HarnessName,
 }
@@ -309,7 +402,9 @@ pub struct WatchHarnessTranscript {
 /// Carries the current sequence pointer so the subscriber knows the
 /// starting position; the next `TranscriptObservation` carries sequence
 /// `current_sequence + 1`.
-#[derive(Archive, RkyvSerialize, RkyvDeserialize, NotaRecord, Debug, Clone, PartialEq, Eq)]
+#[derive(
+    Archive, RkyvSerialize, RkyvDeserialize, NotaEncode, NotaDecode, Debug, Clone, PartialEq, Eq,
+)]
 pub struct HarnessTranscriptSnapshot {
     pub harness: HarnessName,
     pub current_sequence: HarnessTranscriptSequence,
@@ -319,7 +414,9 @@ pub struct HarnessTranscriptSnapshot {
 /// been closed. Returned in reply to `UnwatchHarnessTranscript`.
 /// Carries the retracted token so callers can match the ack to the
 /// request they sent.
-#[derive(Archive, RkyvSerialize, RkyvDeserialize, NotaRecord, Debug, Clone, PartialEq, Eq)]
+#[derive(
+    Archive, RkyvSerialize, RkyvDeserialize, NotaEncode, NotaDecode, Debug, Clone, PartialEq, Eq,
+)]
 pub struct HarnessSubscriptionRetracted {
     pub token: HarnessTranscriptToken,
 }
@@ -328,7 +425,9 @@ pub struct HarnessSubscriptionRetracted {
 /// Carries the sequence pointer so the subscriber can detect gaps and
 /// order events causally. Bytes are typed as `String` for the prototype;
 /// the eventual shape carries typed Nexus records, not raw text.
-#[derive(Archive, RkyvSerialize, RkyvDeserialize, NotaRecord, Debug, Clone, PartialEq, Eq)]
+#[derive(
+    Archive, RkyvSerialize, RkyvDeserialize, NotaEncode, NotaDecode, Debug, Clone, PartialEq, Eq,
+)]
 pub struct TranscriptObservation {
     pub harness: HarnessName,
     pub sequence: HarnessTranscriptSequence,
@@ -431,7 +530,17 @@ impl From<TranscriptObservation> for HarnessStreamEvent {
 /// The supervised harness runtime variant. Closed enum — every
 /// production harness ships with one of these kinds.
 #[derive(
-    Archive, RkyvSerialize, RkyvDeserialize, NotaEnum, Debug, Clone, Copy, PartialEq, Eq, Hash,
+    Archive,
+    RkyvSerialize,
+    RkyvDeserialize,
+    NotaEncode,
+    NotaDecode,
+    Debug,
+    Clone,
+    Copy,
+    PartialEq,
+    Eq,
+    Hash,
 )]
 pub enum HarnessKind {
     Codex,
@@ -441,7 +550,18 @@ pub enum HarnessKind {
 }
 
 /// Command shape the Pi RPC/JSONL adapter uses when delivering a message.
-#[derive(Archive, RkyvSerialize, RkyvDeserialize, NotaEnum, Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(
+    Archive,
+    RkyvSerialize,
+    RkyvDeserialize,
+    NotaEncode,
+    NotaDecode,
+    Debug,
+    Clone,
+    Copy,
+    PartialEq,
+    Eq,
+)]
 pub enum PiRpcDeliveryMode {
     Prompt,
     Steer,
@@ -450,7 +570,16 @@ pub enum PiRpcDeliveryMode {
 
 /// Optional model selector passed to the Pi RPC/JSONL adapter.
 #[derive(
-    Archive, RkyvSerialize, RkyvDeserialize, NotaTransparent, Debug, Clone, PartialEq, Eq, Hash,
+    Archive,
+    RkyvSerialize,
+    RkyvDeserialize,
+    NotaEncode,
+    NotaDecode,
+    Debug,
+    Clone,
+    PartialEq,
+    Eq,
+    Hash,
 )]
 pub struct PiRpcModelPattern(String);
 
@@ -465,12 +594,14 @@ impl PiRpcModelPattern {
 }
 
 /// Typed boundary for the external Pi RPC/JSONL adapter process.
-#[derive(Archive, RkyvSerialize, RkyvDeserialize, NotaRecord, Debug, Clone, PartialEq, Eq)]
+#[derive(
+    Archive, RkyvSerialize, RkyvDeserialize, NotaEncode, NotaDecode, Debug, Clone, PartialEq, Eq,
+)]
 pub struct PiRpcJsonlAdapterConfiguration {
     /// Executable path for the adapter command.
-    pub command_path: signal_persona::WirePath,
+    pub command_path: WirePath,
     /// Directory where the adapter stores Pi session state.
-    pub session_directory_path: signal_persona::WirePath,
+    pub session_directory_path: WirePath,
     /// Optional model selector understood by the adapter.
     pub model_pattern: Option<PiRpcModelPattern>,
     /// Delivery mode used when sending a message into Pi.
@@ -479,14 +610,16 @@ pub struct PiRpcJsonlAdapterConfiguration {
 
 /// Startup configuration for one harness instance owned by
 /// `harness-daemon`.
-#[derive(Archive, RkyvSerialize, RkyvDeserialize, NotaRecord, Debug, Clone, PartialEq, Eq)]
+#[derive(
+    Archive, RkyvSerialize, RkyvDeserialize, NotaEncode, NotaDecode, Debug, Clone, PartialEq, Eq,
+)]
 pub struct HarnessInstanceConfiguration {
     /// The harness instance name this daemon serves.
     pub harness_name: HarnessName,
     /// The supervised harness runtime variant.
     pub harness_kind: HarnessKind,
     /// Optional terminal endpoint the daemon delegates to for this instance.
-    pub terminal_socket_path: Option<signal_persona::WirePath>,
+    pub terminal_socket_path: Option<WirePath>,
     /// Optional Pi RPC/JSONL adapter boundary for `HarnessKind::Pi`.
     pub pi_rpc_adapter: Option<PiRpcJsonlAdapterConfiguration>,
 }
@@ -498,20 +631,42 @@ pub struct HarnessInstanceConfiguration {
 /// `PERSONA_SOCKET_MODE`, `PERSONA_SUPERVISION_SOCKET_PATH`, and
 /// `PERSONA_SUPERVISION_SOCKET_MODE` argv/environment-variable
 /// surface.
-#[derive(Archive, RkyvSerialize, RkyvDeserialize, NotaRecord, Debug, Clone, PartialEq, Eq)]
+#[derive(
+    Archive, RkyvSerialize, RkyvDeserialize, NotaEncode, NotaDecode, Debug, Clone, PartialEq, Eq,
+)]
 pub struct HarnessDaemonConfiguration {
     /// Where the daemon binds its harness Unix socket.
-    pub harness_socket_path: signal_persona::WirePath,
+    pub harness_socket_path: WirePath,
     /// chmod applied to the harness socket after bind.
-    pub harness_socket_mode: signal_persona::SocketMode,
+    pub harness_socket_mode: SocketMode,
     /// Where the daemon binds its supervision Unix socket.
-    pub supervision_socket_path: signal_persona::WirePath,
+    pub supervision_socket_path: WirePath,
     /// chmod applied to the supervision socket after bind.
-    pub supervision_socket_mode: signal_persona::SocketMode,
+    pub supervision_socket_mode: SocketMode,
     /// The engine owner identity passed to the harness daemon.
     pub owner_identity: signal_persona_origin::OwnerIdentity,
     /// The harness instances owned by this component daemon.
     pub harnesses: Vec<HarnessInstanceConfiguration>,
 }
 
-nota_config::impl_rkyv_configuration!(HarnessDaemonConfiguration);
+impl HarnessDaemonConfiguration {
+    pub fn from_rkyv_bytes(bytes: &[u8]) -> Result<Self, HarnessDaemonConfigurationArchiveError> {
+        rkyv::from_bytes::<Self, rkyv::rancor::Error>(bytes)
+            .map_err(|_| HarnessDaemonConfigurationArchiveError::Decode)
+    }
+
+    pub fn to_rkyv_bytes(&self) -> Result<Vec<u8>, HarnessDaemonConfigurationArchiveError> {
+        rkyv::to_bytes::<rkyv::rancor::Error>(self)
+            .map(|bytes| bytes.to_vec())
+            .map_err(|_| HarnessDaemonConfigurationArchiveError::Encode)
+    }
+}
+
+#[derive(Debug, thiserror::Error)]
+pub enum HarnessDaemonConfigurationArchiveError {
+    #[error("failed to encode harness daemon configuration archive")]
+    Encode,
+
+    #[error("failed to decode harness daemon configuration archive")]
+    Decode,
+}

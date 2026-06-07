@@ -1,6 +1,6 @@
 # INTENT — signal-harness
 
-*The Signal contract between `persona-router` and `harness` —
+*The Signal contract between `router` and `harness` —
 bidirectional delivery, interaction, and observation. Companion to
 `ARCHITECTURE.md` and `Cargo.toml`. Maintenance:
 `primary/skills/repo-intent.md`.*
@@ -14,7 +14,7 @@ contract. Workspace-shape intent stays in the primary workspace
 ## Why this repo exists
 
 `signal-harness` is the **router-to-harness wire contract** — the
-delivery channel between `persona-router` and one or more harness
+delivery channel between `router` and one or more harness
 instances. The router asks for delivery, interaction, cancellation,
 status, and transcript observation; the harness pushes acknowledgements,
 interaction resolutions, status, lifecycle events, and
@@ -26,7 +26,7 @@ live in `router`.
 
 | Side | Role |
 |---|---|
-| Request side | `persona-router` sends delivery, interaction-prompt, cancellation, status-query, and transcript-subscription requests. |
+| Request side | `router` sends delivery, interaction-prompt, cancellation, status-query, and transcript-subscription requests. |
 | Reply / event side | `harness` emits delivery acks, interaction resolutions, skeleton honesty, status, lifecycle events, transcript snapshot, retraction ack, and `TranscriptObservation` events on the open stream. |
 
 Bidirectional steady state: the router sends one request; the harness

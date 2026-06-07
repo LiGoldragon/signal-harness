@@ -1,6 +1,6 @@
 # signal-harness — architecture
 
-*The Signal contract between `persona-router` and `harness` —
+*The Signal contract between `router` and `harness` —
 bidirectional delivery, interaction, and observation channel.*
 
 ## 0 · TL;DR
@@ -75,7 +75,7 @@ has the declared request-side close operation.
 
 | Side | Component |
 |---|---|
-| Request side | `persona-router` (sends `MessageDelivery`, `InteractionPrompt`, `DeliveryCancellation`, `HarnessStatusQuery`, `WatchHarnessTranscript`, `UnwatchHarnessTranscript`). |
+| Request side | `router` (sends `MessageDelivery`, `InteractionPrompt`, `DeliveryCancellation`, `HarnessStatusQuery`, `WatchHarnessTranscript`, `UnwatchHarnessTranscript`). |
 | Reply / event side | `harness` (emits `Delivery*` acks, interaction resolutions, skeleton honesty, status, lifecycle events, transcript snapshot, retraction ack, and `TranscriptObservation` events on the open stream). |
 
 Bidirectional steady-state: router sends one request; harness emits
@@ -89,7 +89,7 @@ full lifecycle:
 
 ```mermaid
 sequenceDiagram
-    participant Router as persona-router
+    participant Router as router
     participant Harness as harness
 
     Router->>Harness: WatchHarnessTranscript(harness)
@@ -188,7 +188,7 @@ The prototype-one resolution chain:
 MessageRecipient (role name, e.g. "designer")
   → HarnessName  (same role-named harness from harness registry)
   → TerminalName (same role-named terminal session, per
-                  signal-persona-terminal's TerminalName namespace)
+                  signal-terminal's TerminalName namespace)
   → terminal-cell session (the cell bound to the role-named terminal)
 ```
 
@@ -273,7 +273,7 @@ encoded into the request.
 | A valid request that reaches a skeleton harness daemon but is not implemented yet returns `HarnessRequestUnimplemented`. | `harness_request_unimplemented_round_trips_*`. |
 | `HarnessRequestUnimplemented.operation` is a closed `HarnessOperationKind`, not a string. | Source review + round-trip witness. |
 | Skeleton honesty uses `HarnessUnimplementedReason`, not free text. | Source review + round-trip witness. |
-| Prompt cleanliness and input gates stay below this contract in `signal-persona-terminal`. | Source scan: no prompt or gate vocabulary defined here. |
+| Prompt cleanliness and input gates stay below this contract in `signal-terminal`. | Source scan: no prompt or gate vocabulary defined here. |
 | Transcript observation is pushed, not polled. | The harness's internal transcript event count is not the observation surface; `TranscriptObservation` on `HarnessTranscriptStream` is the only sanctioned way to read transcript progress. |
 | Subscription open returns a typed `HarnessTranscriptSnapshot` carrying the per-stream token and the current sequence pointer. | Round-trip witness on the snapshot reply; integration witness in `harness` proves the snapshot is the first event a subscriber receives. |
 | Subscription deltas push as typed `TranscriptObservation` events; consumers do not re-ask for current state. | Source scan: no Match-shaped polling variant exists for transcript state. |
@@ -300,7 +300,7 @@ and round-trip tests carry the variant heads.
 ## 10 · Versioning
 
 `signal_frame::Frame` carries the protocol version. Schema-level
-changes are breaking; coordinate `persona-router` and
+changes are breaking; coordinate `router` and
 `harness` on the upgrade.
 
 This crate depends on `signal-frame` via a named-branch reference, not
@@ -309,12 +309,12 @@ branch/bookmark once that lane is declared.
 
 ## 11 · Non-ownership
 
-- No router daemon — that is `persona-router`.
+- No router daemon — that is `router`.
 - No harness daemon — that is `harness`.
-- No PTY adapter or terminal transport — that is `persona-terminal`,
-  below the `signal-persona-terminal` contract.
+- No PTY adapter or terminal transport — that is `terminal`,
+  below the `signal-terminal` contract.
 - No terminal prompt cleanliness or input-gate enforcement. Those
-  are `signal-persona-terminal`, `persona-terminal`, and
+  are `signal-terminal`, `terminal`, and
   `terminal-cell` concerns.
 - No transport (UDS path, reconnect, timeouts).
 
@@ -339,11 +339,11 @@ tests/
 - `~/primary/skills/component-triad.md` §"Verbs come in three layers".
 - `signal-frame/macros/src/validate.rs` — the macro and stream-block
   grammar that enforces the request-side retract variant.
-- `signal-persona-message/ARCHITECTURE.md` — upstream channel
+- `signal-message/ARCHITECTURE.md` — upstream channel
   producing the messages this channel delivers.
-- `signal-persona-terminal/ARCHITECTURE.md` — terminal contract for
+- `signal-terminal/ARCHITECTURE.md` — terminal contract for
   harness/terminal PTY coordination; downstream from this channel
   and a sibling using the same subscription discipline.
-- `signal-persona-system/ARCHITECTURE.md` and
+- `signal-system/ARCHITECTURE.md` and
   `signal-criome/ARCHITECTURE.md` — sibling contracts using the same
   subscription discipline.

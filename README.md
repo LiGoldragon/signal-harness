@@ -1,6 +1,6 @@
 # signal-harness
 
-The Signal contract between **`persona-router`** and
+The Signal contract between **`router`** and
 **`harness`** — bidirectional. The router sends
 delivery requests; the harness pushes lifecycle + delivery
 events back.
@@ -12,7 +12,7 @@ Read `src/lib.rs` for the public interface — two enums
 ## Quick reference
 
 ```rust
-use signal_core::{
+use signal_frame::{
     ExchangeIdentifier, ExchangeLane, LaneSequence, RequestPayload, SessionEpoch,
 };
 use signal_harness::{
@@ -42,14 +42,15 @@ let bytes = frame.encode_length_prefixed()?;
 The harness pushes `HarnessEvent::DeliveryCompleted` (or
 `DeliveryFailed`) back over the same channel.
 
-Delivery and interaction prompts use `Assert`; delivery cancellation uses
-`Retract`; status reads use `Match`.
+The public wire carries contract-local operation heads. The daemon
+projects those operations to internal work and observation classes below
+the contract boundary.
 
 ## See also
 
 - `ARCHITECTURE.md` — channel role + boundaries
 - `~/primary/skills/contract-repo.md` — contract-repo discipline
-- `signal-persona-message` — upstream channel that drives
+- `signal-message` — upstream channel that drives
   these deliveries
-- `signal-persona-terminal` — terminal control channel carrying
+- `signal-terminal` — terminal control channel carrying
   prompt patterns, input gates, and write-injection acknowledgements
