@@ -56,6 +56,9 @@ ack echoing the token.
 - `HarnessTranscriptToken`, `HarnessTranscriptSequence`,
   `HarnessSubscriptionRetracted` — transcript-stream identity and
   ack.
+- `HarnessDaemonConfiguration` and `HarnessInstanceConfiguration`
+  — one component daemon startup record carrying a list of internal
+  harness instances.
 - The `Frame` type alias.
 - Wire-form round-trip tests.
 
@@ -80,8 +83,9 @@ ack echoing the token.
 - **Wire enums are closed.** No `Unknown` variant on any wire enum.
   `HarnessKind` is closed: `Codex`, `Claude`, `Pi`, `Fixture` — no
   `Other`. A fixture harness types as `Fixture`, not as a
-  production kind. `DeliveryFailureReason` has three closed
-  causes.
+  production kind. `DeliveryFailureReason` has four closed causes,
+  including `HarnessUnavailable` for requests addressed to an
+  instance this daemon does not serve.
 - **Every request variant declares a Signal root verb.** The
   `signal_channel!` declaration is the source of truth; the macro
   generates `HarnessRequest::signal_verb()` and round-trip tests

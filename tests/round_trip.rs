@@ -257,6 +257,7 @@ fn delivery_failed_round_trips_for_each_reason() {
         DeliveryFailureReason::TransportRejected,
         DeliveryFailureReason::HumanInputIntervened,
         DeliveryFailureReason::HarnessStoppedBeforeDelivery,
+        DeliveryFailureReason::HarnessUnavailable,
     ] {
         let event = HarnessEvent::DeliveryFailed(DeliveryFailed {
             harness: harness(),
@@ -469,7 +470,7 @@ impl DriftScan {
 #[test]
 fn harness_daemon_configuration_round_trips_through_nota_text() {
     use nota_codec::{Decoder, Encoder, NotaDecode, NotaEncode};
-    use signal_harness::{HarnessDaemonConfiguration, HarnessKind, HarnessName};
+    use signal_harness::{HarnessDaemonConfiguration, HarnessInstanceConfiguration, HarnessKind};
     use signal_persona::{SocketMode, WirePath};
     use signal_persona_origin::{OwnerIdentity, UnixUserId};
 
@@ -478,16 +479,26 @@ fn harness_daemon_configuration_round_trips_through_nota_text() {
         harness_socket_mode: SocketMode::new(0o600),
         supervision_socket_path: WirePath::new("/run/persona/X/harness-supervision.sock"),
         supervision_socket_mode: SocketMode::new(0o600),
-        harness_name: HarnessName::new("responder"),
-        harness_kind: HarnessKind::Pi,
-        terminal_socket_path: Some(WirePath::new("/run/persona/X/terminal.sock")),
         owner_identity: OwnerIdentity::UnixUser(UnixUserId::new(1000)),
-        pi_rpc_adapter: Some(PiRpcJsonlAdapterConfiguration {
-            command_path: WirePath::new("/run/current-system/sw/bin/pi-rpc"),
-            session_directory_path: WirePath::new("/var/lib/persona/pi"),
-            model_pattern: Some(PiRpcModelPattern::new("pi-*")),
-            delivery_mode: PiRpcDeliveryMode::FollowUp,
-        }),
+        harnesses: vec![
+            HarnessInstanceConfiguration {
+                harness_name: harness(),
+                harness_kind: HarnessKind::Pi,
+                terminal_socket_path: Some(WirePath::new("/run/persona/X/terminal.sock")),
+                pi_rpc_adapter: Some(PiRpcJsonlAdapterConfiguration {
+                    command_path: WirePath::new("/run/current-system/sw/bin/pi-rpc"),
+                    session_directory_path: WirePath::new("/var/lib/persona/pi"),
+                    model_pattern: Some(PiRpcModelPattern::new("pi-*")),
+                    delivery_mode: PiRpcDeliveryMode::FollowUp,
+                }),
+            },
+            HarnessInstanceConfiguration {
+                harness_name: HarnessName::new("observer"),
+                harness_kind: HarnessKind::Codex,
+                terminal_socket_path: None,
+                pi_rpc_adapter: None,
+            },
+        ],
     };
 
     let mut encoder = Encoder::new();
@@ -504,7 +515,7 @@ fn harness_daemon_configuration_round_trips_through_nota_text() {
 #[test]
 fn harness_daemon_configuration_round_trips_through_rkyv() {
     use nota_config::ConfigurationRecord;
-    use signal_harness::{HarnessDaemonConfiguration, HarnessKind, HarnessName};
+    use signal_harness::{HarnessDaemonConfiguration, HarnessInstanceConfiguration, HarnessKind};
     use signal_persona::{SocketMode, WirePath};
     use signal_persona_origin::{OwnerIdentity, UnixUserId};
 
@@ -513,11 +524,13 @@ fn harness_daemon_configuration_round_trips_through_rkyv() {
         harness_socket_mode: SocketMode::new(0o600),
         supervision_socket_path: WirePath::new("/run/persona/X/harness-supervision.sock"),
         supervision_socket_mode: SocketMode::new(0o600),
-        harness_name: HarnessName::new("responder"),
-        harness_kind: HarnessKind::Codex,
-        terminal_socket_path: None,
         owner_identity: OwnerIdentity::UnixUser(UnixUserId::new(1000)),
-        pi_rpc_adapter: None,
+        harnesses: vec![HarnessInstanceConfiguration {
+            harness_name: harness(),
+            harness_kind: HarnessKind::Codex,
+            terminal_socket_path: None,
+            pi_rpc_adapter: None,
+        }],
     };
 
     let bytes = rkyv::to_bytes::<rkyv::rancor::Error>(&configuration).expect("archive");

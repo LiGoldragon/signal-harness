@@ -192,6 +192,9 @@ pub enum DeliveryFailureReason {
     /// The harness was tearing down when the delivery
     /// arrived.
     HarnessStoppedBeforeDelivery,
+    /// The daemon that received the request does not serve
+    /// the named harness instance.
+    HarnessUnavailable,
 }
 
 /// Human resolved a previously-surfaced interaction — they
@@ -545,6 +548,20 @@ pub struct PiRpcJsonlAdapterConfiguration {
     pub delivery_mode: PiRpcDeliveryMode,
 }
 
+/// Startup configuration for one harness instance owned by
+/// `harness-daemon`.
+#[derive(Archive, RkyvSerialize, RkyvDeserialize, NotaRecord, Debug, Clone, PartialEq, Eq)]
+pub struct HarnessInstanceConfiguration {
+    /// The harness instance name this daemon serves.
+    pub harness_name: HarnessName,
+    /// The supervised harness runtime variant.
+    pub harness_kind: HarnessKind,
+    /// Optional terminal endpoint the daemon delegates to for this instance.
+    pub terminal_socket_path: Option<signal_persona::WirePath>,
+    /// Optional Pi RPC/JSONL adapter boundary for `HarnessKind::Pi`.
+    pub pi_rpc_adapter: Option<PiRpcJsonlAdapterConfiguration>,
+}
+
 /// Startup configuration for `harness-daemon`.
 ///
 /// Replaces the previous `--socket`, `--harness`, `--kind`,
@@ -562,16 +579,10 @@ pub struct HarnessDaemonConfiguration {
     pub supervision_socket_path: signal_persona::WirePath,
     /// chmod applied to the supervision socket after bind.
     pub supervision_socket_mode: signal_persona::SocketMode,
-    /// The harness name the daemon serves.
-    pub harness_name: HarnessName,
-    /// The supervised harness runtime variant.
-    pub harness_kind: HarnessKind,
-    /// Optional terminal endpoint the daemon delegates to.
-    pub terminal_socket_path: Option<signal_persona::WirePath>,
     /// The engine owner identity passed to the harness daemon.
     pub owner_identity: signal_persona_origin::OwnerIdentity,
-    /// Optional Pi RPC/JSONL adapter boundary for `HarnessKind::Pi`.
-    pub pi_rpc_adapter: Option<PiRpcJsonlAdapterConfiguration>,
+    /// The harness instances owned by this component daemon.
+    pub harnesses: Vec<HarnessInstanceConfiguration>,
 }
 
 nota_config::impl_rkyv_configuration!(HarnessDaemonConfiguration);

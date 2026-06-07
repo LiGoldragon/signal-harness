@@ -82,10 +82,14 @@ shape is in progress; the target above is the intent.
 - Every operation, reply, and event variant round-trips through both
   rkyv frames and NOTA text.
 - `HarnessDaemonConfiguration` is the single typed startup contract
-  for `harness-daemon`; optional adapter-specific startup data, such
-  as the Pi RPC/JSONL adapter command, session directory, model
-  selector, and delivery mode, lives inside this record rather than in
-  argv flags or environment variables.
+  for one `harness-daemon` component process. It carries daemon socket
+  and supervision fields plus a `harnesses` list; each
+  `HarnessInstanceConfiguration` carries the instance name, closed
+  `HarnessKind`, optional terminal endpoint, and optional adapter-specific
+  startup data such as the Pi RPC/JSONL adapter command, session
+  directory, model selector, and delivery mode. Per-harness boundaries
+  are internal records/actors/adapters, not separate daemon processes
+  unless deployment later requires process isolation.
 
 ## Non-ownership
 

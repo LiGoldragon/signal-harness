@@ -134,9 +134,9 @@ so the subscriber can detect gaps and re-anchor after reconnection.
 Records local to this contract:
 
 - `HarnessName` (the typed name for one harness instance).
-- `HarnessDaemonConfiguration`, `HarnessKind`,
-  `PiRpcJsonlAdapterConfiguration`, `PiRpcModelPattern`, and
-  `PiRpcDeliveryMode` (the typed daemon startup record and optional
+- `HarnessDaemonConfiguration`, `HarnessInstanceConfiguration`,
+  `HarnessKind`, `PiRpcJsonlAdapterConfiguration`, `PiRpcModelPattern`,
+  and `PiRpcDeliveryMode` (the typed daemon startup records and optional
   Pi RPC/JSONL adapter boundary).
 - `MessageSender`, `MessageBody`, `MessageSlot`.
 - `MessageDelivery`, `InteractionPrompt`, `DeliveryCancellation`,
@@ -158,10 +158,11 @@ text format.
 `HarnessDaemonConfiguration` is the single startup record accepted by
 `harness-daemon` as inline NOTA, a `.nota` path, or a signal-encoded
 `.rkyv` path. It carries harness socket path/mode, supervision socket
-path/mode, harness name, closed `HarnessKind`, optional terminal
-socket path, owner identity, and optional Pi RPC/JSONL adapter
-configuration. The Pi adapter record carries command path, session
-directory path, optional model pattern, and closed delivery mode
+path/mode, owner identity, and a `harnesses` list. Each
+`HarnessInstanceConfiguration` names one harness instance, its closed
+`HarnessKind`, optional terminal socket path, and optional Pi RPC/JSONL
+adapter configuration. The Pi adapter record carries command path,
+session directory path, optional model pattern, and closed delivery mode
 (`Prompt`, `Steer`, `FollowUp`).
 
 ## 4 · Harness kinds
@@ -202,11 +203,13 @@ MessageRecipient (role name, e.g. "designer")
   → terminal-cell session (the cell bound to the role-named terminal)
 ```
 
-One harness per role for prototype one. The harness registry maps
-`MessageRecipient` → `HarnessName` by string equality at the
-role-name level. The `HarnessName` and `TerminalName` namespaces
-align: a harness named `"designer"` writes into the terminal session
-named `"designer"`. Future cases (multiple harnesses per role,
+For the message-passing prototype, one `harness-daemon` component
+process may own multiple role-named harness instances. The harness
+registry maps `MessageRecipient` → `HarnessName` by string equality at
+the role-name level; the daemon then dispatches by `HarnessName` to the
+matching internal actor/adapter. The `HarnessName` and `TerminalName`
+namespaces align: a harness named `"designer"` writes into the terminal
+session named `"designer"`. Future cases (multiple harnesses per role,
 harness pools, separate identity/transport namespaces) get a richer
 resolution when they surface.
 
@@ -231,10 +234,13 @@ HarnessStreamEvent (on HarnessTranscriptStream)
 HarnessDaemonConfiguration
 ├─ harness_socket_path / harness_socket_mode
 ├─ supervision_socket_path / supervision_socket_mode
+├─ owner_identity
+└─ harnesses: Vec<HarnessInstanceConfiguration>
+
+HarnessInstanceConfiguration
 ├─ harness_name
 ├─ harness_kind
 ├─ terminal_socket_path
-├─ owner_identity
 └─ pi_rpc_adapter: Option<PiRpcJsonlAdapterConfiguration>
 
 PiRpcJsonlAdapterConfiguration
@@ -244,10 +250,11 @@ PiRpcJsonlAdapterConfiguration
 └─ delivery_mode: PiRpcDeliveryMode
 ```
 
-Closed enums; typed `DeliveryFailureReason` (three variants:
+Closed enums; typed `DeliveryFailureReason` (four variants:
 `TransportRejected`, `HumanInputIntervened`,
-`HarnessStoppedBeforeDelivery`). `HarnessOperationKind` is the closed
-request discriminator used by skeleton honesty events.
+`HarnessStoppedBeforeDelivery`, `HarnessUnavailable`).
+`HarnessOperationKind` is the closed request discriminator used by
+skeleton honesty events.
 
 ## 7 · Sema-class projections (Layer 3)
 
