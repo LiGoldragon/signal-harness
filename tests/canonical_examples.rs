@@ -12,7 +12,7 @@ use signal_harness::{
     HarnessStopped, HarnessStreamEvent, HarnessSubscriptionRetracted, HarnessTranscriptSequence,
     HarnessTranscriptSnapshot, HarnessTranscriptToken, HarnessUnimplementedReason,
     InteractionPrompt, InteractionResolved, MessageBody, MessageDelivery, MessageSender,
-    MessageSlot, SubscribeHarnessTranscript, TranscriptObservation,
+    MessageSlot, TranscriptObservation, WatchHarnessTranscript,
 };
 
 const CANONICAL: &str = include_str!("../examples/canonical.nota");
@@ -70,14 +70,14 @@ fn canonical_request_examples_round_trip() {
             "(HarnessStatusQuery (designer))",
         ),
         (
-            HarnessRequest::SubscribeHarnessTranscript(SubscribeHarnessTranscript {
+            HarnessRequest::WatchHarnessTranscript(WatchHarnessTranscript {
                 harness: designer(),
             }),
-            "(SubscribeHarnessTranscript (designer))",
+            "(WatchHarnessTranscript (designer))",
         ),
         (
-            HarnessRequest::HarnessTranscriptRetraction(token()),
-            "(HarnessTranscriptRetraction (designer))",
+            HarnessRequest::UnwatchHarnessTranscript(token()),
+            "(UnwatchHarnessTranscript (designer))",
         ),
     ];
 
@@ -127,10 +127,10 @@ fn canonical_reply_examples_round_trip() {
         (
             HarnessEvent::HarnessRequestUnimplemented(HarnessRequestUnimplemented {
                 harness: designer(),
-                operation: HarnessOperationKind::SubscribeHarnessTranscript,
+                operation: HarnessOperationKind::WatchHarnessTranscript,
                 reason: HarnessUnimplementedReason::NotBuiltYet,
             }),
-            "(HarnessRequestUnimplemented (designer SubscribeHarnessTranscript NotBuiltYet))",
+            "(HarnessRequestUnimplemented (designer WatchHarnessTranscript NotBuiltYet))",
         ),
         (
             HarnessEvent::HarnessStatus(HarnessStatus {

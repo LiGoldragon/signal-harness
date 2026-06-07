@@ -24,7 +24,7 @@
 
 use nota_codec::{NotaEnum, NotaRecord, NotaTransparent};
 use rkyv::{Archive, Deserialize as RkyvDeserialize, Serialize as RkyvSerialize};
-use signal_core::signal_channel;
+use signal_frame::signal_channel;
 
 // ─── Harness identity ─────────────────────────────────────
 
@@ -147,18 +147,6 @@ pub struct DeliveryCancellation {
 #[derive(Archive, RkyvSerialize, RkyvDeserialize, NotaRecord, Debug, Clone, PartialEq, Eq)]
 pub struct HarnessStatusQuery {
     pub harness: HarnessName,
-}
-
-#[derive(
-    Archive, RkyvSerialize, RkyvDeserialize, NotaEnum, Debug, Clone, Copy, PartialEq, Eq, Hash,
-)]
-pub enum HarnessOperationKind {
-    MessageDelivery,
-    InteractionPrompt,
-    DeliveryCancellation,
-    HarnessStatusQuery,
-    SubscribeHarnessTranscript,
-    HarnessTranscriptRetraction,
 }
 
 // ─── Delivery acknowledgements (harness → router) ─────────
@@ -308,12 +296,12 @@ pub struct HarnessTranscriptToken {
     pub harness: HarnessName,
 }
 
-/// Subscribe to the harness's transcript-observation stream. The reply is
+/// Watch the harness's transcript-observation stream. The reply is
 /// a `HarnessTranscriptSnapshot` carrying the current sequence pointer;
 /// subsequent `TranscriptObservation` events arrive on the same
 /// connection as the stream pushes them.
 #[derive(Archive, RkyvSerialize, RkyvDeserialize, NotaRecord, Debug, Clone, PartialEq, Eq)]
-pub struct SubscribeHarnessTranscript {
+pub struct WatchHarnessTranscript {
     pub harness: HarnessName,
 }
 
@@ -328,7 +316,7 @@ pub struct HarnessTranscriptSnapshot {
 }
 
 /// Typed acknowledgement that a transcript-observation subscription has
-/// been retracted. Returned in reply to `HarnessTranscriptRetraction`.
+/// been closed. Returned in reply to `UnwatchHarnessTranscript`.
 /// Carries the retracted token so callers can match the ack to the
 /// request they sent.
 #[derive(Archive, RkyvSerialize, RkyvDeserialize, NotaRecord, Debug, Clone, PartialEq, Eq)]
@@ -351,107 +339,50 @@ pub struct TranscriptObservation {
 
 signal_channel! {
     channel Harness {
-        request HarnessRequest {
-            Assert MessageDelivery(MessageDelivery),
-            Assert InteractionPrompt(InteractionPrompt),
-            Retract DeliveryCancellation(DeliveryCancellation),
-            Match HarnessStatusQuery(HarnessStatusQuery),
-            Subscribe SubscribeHarnessTranscript(SubscribeHarnessTranscript) opens HarnessTranscriptStream,
-            Retract HarnessTranscriptRetraction(HarnessTranscriptToken),
-        }
-        reply HarnessEvent {
-            DeliveryCompleted(DeliveryCompleted),
-            DeliveryFailed(DeliveryFailed),
-            InteractionResolved(InteractionResolved),
-            HarnessRequestUnimplemented(HarnessRequestUnimplemented),
-            HarnessStatus(HarnessStatus),
-            HarnessStarted(HarnessStarted),
-            HarnessStopped(HarnessStopped),
-            HarnessCrashed(HarnessCrashed),
-            HarnessTranscriptSnapshot(HarnessTranscriptSnapshot),
-            HarnessSubscriptionRetracted(HarnessSubscriptionRetracted),
-        }
-        event HarnessStreamEvent {
-            TranscriptObservation(TranscriptObservation) belongs HarnessTranscriptStream,
-        }
-        stream HarnessTranscriptStream {
-            token HarnessTranscriptToken;
-            opened HarnessTranscriptSnapshot;
-            event TranscriptObservation;
-            close HarnessTranscriptRetraction;
-        }
+        operation MessageDelivery(MessageDelivery),
+        operation InteractionPrompt(InteractionPrompt),
+        operation DeliveryCancellation(DeliveryCancellation),
+        operation HarnessStatusQuery(HarnessStatusQuery),
+        operation WatchHarnessTranscript(WatchHarnessTranscript) opens HarnessTranscriptStream,
+        operation UnwatchHarnessTranscript(HarnessTranscriptToken),
+    }
+    reply HarnessEvent {
+        DeliveryCompleted(DeliveryCompleted),
+        DeliveryFailed(DeliveryFailed),
+        InteractionResolved(InteractionResolved),
+        HarnessRequestUnimplemented(HarnessRequestUnimplemented),
+        HarnessStatus(HarnessStatus),
+        HarnessStarted(HarnessStarted),
+        HarnessStopped(HarnessStopped),
+        HarnessCrashed(HarnessCrashed),
+        HarnessTranscriptSnapshot(HarnessTranscriptSnapshot),
+        HarnessSubscriptionRetracted(HarnessSubscriptionRetracted),
+    }
+    event HarnessStreamEvent {
+        TranscriptObservation(TranscriptObservation) belongs HarnessTranscriptStream,
+    }
+    stream HarnessTranscriptStream {
+        token HarnessTranscriptToken;
+        opened HarnessTranscriptSnapshot;
+        event TranscriptObservation;
+        close UnwatchHarnessTranscript;
     }
 }
+
+pub type HarnessRequest = Operation;
+pub type HarnessFrame = Frame;
+pub type HarnessFrameBody = FrameBody;
+pub type HarnessReplyEnvelope = ReplyEnvelope;
+pub type HarnessRequestBuilder = RequestBuilder;
+pub type HarnessOperationKind = OperationKind;
+pub type HarnessStreamKind = StreamKind;
 
 impl HarnessRequest {
     pub fn operation_kind(&self) -> HarnessOperationKind {
-        match self {
-            Self::MessageDelivery(_) => HarnessOperationKind::MessageDelivery,
-            Self::InteractionPrompt(_) => HarnessOperationKind::InteractionPrompt,
-            Self::DeliveryCancellation(_) => HarnessOperationKind::DeliveryCancellation,
-            Self::HarnessStatusQuery(_) => HarnessOperationKind::HarnessStatusQuery,
-            Self::SubscribeHarnessTranscript(_) => HarnessOperationKind::SubscribeHarnessTranscript,
-            Self::HarnessTranscriptRetraction(_) => {
-                HarnessOperationKind::HarnessTranscriptRetraction
-            }
-        }
+        self.kind()
     }
 }
 
-// Hand-written From<Payload> for HarnessEvent (the channel's reply
-// enum) per /176 §3.
-impl From<DeliveryCompleted> for HarnessEvent {
-    fn from(p: DeliveryCompleted) -> Self {
-        Self::DeliveryCompleted(p)
-    }
-}
-impl From<DeliveryFailed> for HarnessEvent {
-    fn from(p: DeliveryFailed) -> Self {
-        Self::DeliveryFailed(p)
-    }
-}
-impl From<InteractionResolved> for HarnessEvent {
-    fn from(p: InteractionResolved) -> Self {
-        Self::InteractionResolved(p)
-    }
-}
-impl From<HarnessRequestUnimplemented> for HarnessEvent {
-    fn from(p: HarnessRequestUnimplemented) -> Self {
-        Self::HarnessRequestUnimplemented(p)
-    }
-}
-impl From<HarnessStatus> for HarnessEvent {
-    fn from(p: HarnessStatus) -> Self {
-        Self::HarnessStatus(p)
-    }
-}
-impl From<HarnessStarted> for HarnessEvent {
-    fn from(p: HarnessStarted) -> Self {
-        Self::HarnessStarted(p)
-    }
-}
-impl From<HarnessStopped> for HarnessEvent {
-    fn from(p: HarnessStopped) -> Self {
-        Self::HarnessStopped(p)
-    }
-}
-impl From<HarnessCrashed> for HarnessEvent {
-    fn from(p: HarnessCrashed) -> Self {
-        Self::HarnessCrashed(p)
-    }
-}
-impl From<HarnessTranscriptSnapshot> for HarnessEvent {
-    fn from(p: HarnessTranscriptSnapshot) -> Self {
-        Self::HarnessTranscriptSnapshot(p)
-    }
-}
-impl From<HarnessSubscriptionRetracted> for HarnessEvent {
-    fn from(p: HarnessSubscriptionRetracted) -> Self {
-        Self::HarnessSubscriptionRetracted(p)
-    }
-}
-
-// And the same for HarnessRequest payloads.
 impl From<MessageDelivery> for HarnessRequest {
     fn from(p: MessageDelivery) -> Self {
         Self::MessageDelivery(p)
@@ -472,14 +403,14 @@ impl From<HarnessStatusQuery> for HarnessRequest {
         Self::HarnessStatusQuery(p)
     }
 }
-impl From<SubscribeHarnessTranscript> for HarnessRequest {
-    fn from(p: SubscribeHarnessTranscript) -> Self {
-        Self::SubscribeHarnessTranscript(p)
+impl From<WatchHarnessTranscript> for HarnessRequest {
+    fn from(p: WatchHarnessTranscript) -> Self {
+        Self::WatchHarnessTranscript(p)
     }
 }
 impl From<HarnessTranscriptToken> for HarnessRequest {
     fn from(p: HarnessTranscriptToken) -> Self {
-        Self::HarnessTranscriptRetraction(p)
+        Self::UnwatchHarnessTranscript(p)
     }
 }
 

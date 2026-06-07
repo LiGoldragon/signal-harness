@@ -21,11 +21,11 @@
 ;; HarnessRequest::HarnessStatusQuery
 (HarnessStatusQuery (designer))
 
-;; HarnessRequest::SubscribeHarnessTranscript
-(SubscribeHarnessTranscript (designer))
+;; HarnessRequest::WatchHarnessTranscript
+(WatchHarnessTranscript (designer))
 
-;; HarnessRequest::HarnessTranscriptRetraction
-(HarnessTranscriptRetraction (designer))
+;; HarnessRequest::UnwatchHarnessTranscript
+(UnwatchHarnessTranscript (designer))
 
 ;; ─── Replies ──────────────────────────────────────────────────────
 
@@ -39,7 +39,7 @@
 (InteractionResolved (designer interaction-7 yes))
 
 ;; HarnessEvent::HarnessRequestUnimplemented
-(HarnessRequestUnimplemented (designer SubscribeHarnessTranscript NotBuiltYet))
+(HarnessRequestUnimplemented (designer WatchHarnessTranscript NotBuiltYet))
 
 ;; HarnessEvent::HarnessStatus
 (HarnessStatus (designer Running Ready))

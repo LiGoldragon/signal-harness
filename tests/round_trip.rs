@@ -2,9 +2,9 @@
 //! `signal-harness` channel.
 
 use nota_codec::{Decoder, Encoder, NotaDecode, NotaEncode};
-use signal_core::{
+use signal_frame::{
     ExchangeIdentifier, ExchangeLane, LaneSequence, NonEmpty, Reply, RequestPayload, SessionEpoch,
-    SignalVerb, SubReply,
+    SignalOperationHeads, SubReply,
 };
 use signal_harness::{
     DeliveryCancellation, DeliveryCompleted, DeliveryFailed, DeliveryFailureReason, HarnessCrashed,
@@ -14,7 +14,7 @@ use signal_harness::{
     HarnessTranscriptSnapshot, HarnessTranscriptToken, HarnessUnimplementedReason,
     InteractionPrompt, InteractionResolved, MessageBody, MessageDelivery, MessageSender,
     MessageSlot, PiRpcDeliveryMode, PiRpcJsonlAdapterConfiguration, PiRpcModelPattern,
-    SubscribeHarnessTranscript, TranscriptObservation,
+    TranscriptObservation, WatchHarnessTranscript,
 };
 
 fn harness() -> HarnessName {
@@ -30,7 +30,6 @@ fn synthetic_exchange() -> ExchangeIdentifier {
 }
 
 fn round_trip_request(request: HarnessRequest) -> HarnessRequest {
-    let expected_verb = request.signal_verb();
     let signal_request = request.into_request();
     let frame = HarnessFrame::new(HarnessFrameBody::Request {
         exchange: synthetic_exchange(),
@@ -39,20 +38,13 @@ fn round_trip_request(request: HarnessRequest) -> HarnessRequest {
     let bytes = frame.encode_length_prefixed().expect("encode");
     let decoded = HarnessFrame::decode_length_prefixed(&bytes).expect("decode");
     match decoded.into_body() {
-        HarnessFrameBody::Request { request, .. } => {
-            let head = request.operations().head().clone();
-            assert_eq!(head.verb, expected_verb);
-            head.payload
-        }
+        HarnessFrameBody::Request { request, .. } => request.payloads().head().clone(),
         other => panic!("expected request operation, got {other:?}"),
     }
 }
 
 fn round_trip_event(event: HarnessEvent) -> HarnessEvent {
-    let reply = Reply::completed(NonEmpty::single(SubReply::Ok {
-        verb: SignalVerb::Assert,
-        payload: event,
-    }));
+    let reply = Reply::committed(NonEmpty::single(SubReply::Ok(event)));
     let frame = HarnessFrame::new(HarnessFrameBody::Reply {
         exchange: synthetic_exchange(),
         reply,
@@ -62,7 +54,7 @@ fn round_trip_event(event: HarnessEvent) -> HarnessEvent {
     match decoded.into_body() {
         HarnessFrameBody::Reply { reply, .. } => match reply {
             Reply::Accepted { per_operation, .. } => match per_operation.into_head() {
-                SubReply::Ok { payload, .. } => payload,
+                SubReply::Ok(payload) => payload,
                 other => panic!("expected Ok sub-reply, got {other:?}"),
             },
             Reply::Rejected { reason } => panic!("unexpected rejected reply: {reason:?}"),
@@ -110,18 +102,17 @@ fn harness_status_query_round_trips() {
 }
 
 #[test]
-fn subscribe_harness_transcript_round_trips() {
-    let request = HarnessRequest::SubscribeHarnessTranscript(SubscribeHarnessTranscript {
-        harness: harness(),
-    });
+fn watch_harness_transcript_round_trips() {
+    let request =
+        HarnessRequest::WatchHarnessTranscript(WatchHarnessTranscript { harness: harness() });
 
     assert_eq!(round_trip_request(request.clone()), request);
 }
 
 #[test]
-fn harness_transcript_retraction_round_trips() {
+fn unwatch_harness_transcript_round_trips() {
     let request =
-        HarnessRequest::HarnessTranscriptRetraction(HarnessTranscriptToken { harness: harness() });
+        HarnessRequest::UnwatchHarnessTranscript(HarnessTranscriptToken { harness: harness() });
 
     assert_eq!(round_trip_request(request.clone()), request);
 }
@@ -159,16 +150,12 @@ fn harness_request_exposes_contract_owned_operation_kind() {
             HarnessOperationKind::HarnessStatusQuery,
         ),
         (
-            HarnessRequest::SubscribeHarnessTranscript(SubscribeHarnessTranscript {
-                harness: harness(),
-            }),
-            HarnessOperationKind::SubscribeHarnessTranscript,
+            HarnessRequest::WatchHarnessTranscript(WatchHarnessTranscript { harness: harness() }),
+            HarnessOperationKind::WatchHarnessTranscript,
         ),
         (
-            HarnessRequest::HarnessTranscriptRetraction(HarnessTranscriptToken {
-                harness: harness(),
-            }),
-            HarnessOperationKind::HarnessTranscriptRetraction,
+            HarnessRequest::UnwatchHarnessTranscript(HarnessTranscriptToken { harness: harness() }),
+            HarnessOperationKind::UnwatchHarnessTranscript,
         ),
     ];
 
@@ -178,54 +165,18 @@ fn harness_request_exposes_contract_owned_operation_kind() {
 }
 
 #[test]
-fn harness_request_variants_declare_expected_signal_root_verbs() {
-    let cases = [
-        (
-            HarnessRequest::MessageDelivery(MessageDelivery {
-                harness: harness(),
-                sender: MessageSender::new("operator"),
-                body: MessageBody::new("verb witness"),
-                message_slot: MessageSlot::new(1),
-            }),
-            SignalVerb::Assert,
-        ),
-        (
-            HarnessRequest::InteractionPrompt(InteractionPrompt {
-                harness: harness(),
-                interaction_id: "i-verb".into(),
-                prompt: "Approve?".into(),
-                options: vec!["yes".into(), "no".into()],
-            }),
-            SignalVerb::Assert,
-        ),
-        (
-            HarnessRequest::DeliveryCancellation(DeliveryCancellation {
-                harness: harness(),
-                message_slot: MessageSlot::new(1),
-            }),
-            SignalVerb::Retract,
-        ),
-        (
-            HarnessRequest::HarnessStatusQuery(HarnessStatusQuery { harness: harness() }),
-            SignalVerb::Match,
-        ),
-        (
-            HarnessRequest::SubscribeHarnessTranscript(SubscribeHarnessTranscript {
-                harness: harness(),
-            }),
-            SignalVerb::Subscribe,
-        ),
-        (
-            HarnessRequest::HarnessTranscriptRetraction(HarnessTranscriptToken {
-                harness: harness(),
-            }),
-            SignalVerb::Retract,
-        ),
-    ];
-
-    for (request, verb) in cases {
-        assert_eq!(request.signal_verb(), verb);
-    }
+fn harness_request_variants_declare_contract_local_operation_heads() {
+    assert_eq!(
+        <HarnessRequest as SignalOperationHeads>::HEADS,
+        &[
+            "MessageDelivery",
+            "InteractionPrompt",
+            "DeliveryCancellation",
+            "HarnessStatusQuery",
+            "WatchHarnessTranscript",
+            "UnwatchHarnessTranscript",
+        ]
+    );
 }
 
 #[test]

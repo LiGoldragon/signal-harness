@@ -32,22 +32,23 @@ live in `router`.
 Bidirectional steady state: the router sends one request; the harness
 emits one or more events. Lifecycle events (`HarnessStarted` /
 `HarnessStopped` / `HarnessCrashed`) flow without paired requests.
-Transcript observation is push-based: the router subscribes once per
+Transcript observation is push-based: the router watches once per
 harness, the harness emits a snapshot then `TranscriptObservation`
 deltas, and the subscription closes via the canonical
-Retract-closes-the-stream lifecycle.
+watch/unwatch stream lifecycle.
 
 ## Wire vocabulary discipline — three-layer direction
 
 Per `primary/skills/contract-repo.md` §"Public contracts use
 contract-local operation verbs" and `primary/skills/component-triad.md`
-§"Verbs come in three layers", the intended shape is:
+§"Verbs come in three layers", the implemented shape is:
 
-- **Layer 1 (this crate):** contract-local operation roots in verb form.
-  The `SignalVerb` wrappers retire; candidate domain verbs are `Deliver`
-  (carries a `Message`), `Prompt`, `Cancel`, `Query` (carries a
-  `Status`). Redundant `Harness*` prefixes drop where the crate
-  namespace already supplies the context.
+- **Layer 1 (this crate):** contract-local operation roots over
+  `signal-frame`. `MessageDelivery`, `InteractionPrompt`,
+  `DeliveryCancellation`, `HarnessStatusQuery`,
+  `WatchHarnessTranscript`, and `UnwatchHarnessTranscript` are the wire
+  heads. No public operation carries `SignalVerb`, `Assert`, `Match`,
+  `Subscribe`, or `Retract` as a root classification.
 - **Layer 2 (daemon):** the harness's own typed Command enum, lowered
   from contract operations inside the daemon — never in this contract
   crate.
@@ -59,15 +60,17 @@ standardized: the macro-injected `Tap(ObserverFilter)` /
 `Untap(...)` observer-hook surface (operation / effect events) is
 mandatory and is what `persona-introspect` subscribes to uniformly
 across every Persona daemon. A domain-specific transcript stream may
-sit alongside that standardized observability. The migration to this
-shape is in progress; the target above is the intent.
+sit alongside that standardized observability; this crate currently has
+the domain transcript stream and the observer-hook surface remains the
+next contract addition.
 
 ## Channels are closed, boundaries are named
 
 - Wire enums are closed. No `Unknown` escape hatch.
-- Subscription close is request-side Retract carrying the per-stream
+- Subscription close is request-side `UnwatchHarnessTranscript`
+  carrying the per-stream
   token; the harness echoes the token and ends the stream after the
-  final ack — the kernel grammar enforces close-is-Retract.
+  final ack — the kernel grammar enforces the declared close operation.
 - A skeleton honesty reply (`RequestUnimplemented`) answers a valid
   request the daemon does not yet implement — never panic or silent drop.
 
@@ -75,8 +78,8 @@ shape is in progress; the target above is the intent.
 
 - This crate carries only typed wire vocabulary, NOTA codecs, and
   round-trip witnesses. No actors, sockets, tokio, or storage.
-- The frame-layer dependency moves from `signal-core` to `signal-frame`
-  as the migration lands.
+- The frame-layer dependency is `signal-frame`; `signal-core` is not a
+  contract dependency.
 - Contract types derive NOTA in this crate; clients do not carry shadow
   types.
 - Every operation, reply, and event variant round-trips through both
