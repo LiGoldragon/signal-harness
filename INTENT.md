@@ -76,8 +76,9 @@ next contract addition.
 
 ## Constraints
 
-- This crate carries only typed wire vocabulary, NOTA codecs, and
-  round-trip witnesses. No actors, sockets, tokio, or storage.
+- This crate carries only typed wire vocabulary, explicit NOTA text
+  codecs for CLI/tooling projection, and round-trip witnesses. No actors,
+  sockets, tokio, or storage.
 - The frame-layer dependency is `signal-frame`; `signal-core` is not a
   contract dependency.
 - Contract types derive NOTA in this crate; clients do not carry shadow

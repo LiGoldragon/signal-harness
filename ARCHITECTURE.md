@@ -50,7 +50,10 @@ activity by class. The harness does not import payload-bearing Sema
 variants.
 
 **Frame layer.** The dependency is `signal-frame`; this contract no
-longer depends on `signal-core`.
+longer depends on `signal-core`. Because this contract still owns NOTA
+round-trip witnesses, it explicitly enables `signal-frame/nota-text`
+through its own default `nota-text` feature instead of relying on text
+codecs in the frame kernel's default build.
 
 References:
 - `primary/reports/designer/246-v4-bundled-fix-deep-design-with-examples.md`
