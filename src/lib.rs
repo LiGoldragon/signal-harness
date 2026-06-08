@@ -24,8 +24,8 @@
 
 use nota_next::{NotaDecode, NotaEncode};
 use rkyv::{Archive, Deserialize as RkyvDeserialize, Serialize as RkyvSerialize};
-use signal_engine_management::{SocketMode, WirePath};
 use signal_frame::signal_channel;
+use signal_persona::{SocketMode, WirePath};
 
 // ─── Harness identity ─────────────────────────────────────
 
@@ -644,7 +644,7 @@ pub struct HarnessDaemonConfiguration {
     /// chmod applied to the supervision socket after bind.
     pub supervision_socket_mode: SocketMode,
     /// The engine owner identity passed to the harness daemon.
-    pub owner_identity: signal_persona_origin::OwnerIdentity,
+    pub owner_identity: signal_persona::origin::OwnerIdentity,
     /// The harness instances owned by this component daemon.
     pub harnesses: Vec<HarnessInstanceConfiguration>,
 }

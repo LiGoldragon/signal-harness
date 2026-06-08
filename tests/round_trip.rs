@@ -2,7 +2,6 @@
 //! `signal-harness` channel.
 
 use nota_next::{NotaDecode, NotaEncode, NotaSource};
-use signal_engine_management::{SocketMode, WirePath};
 use signal_frame::{
     ExchangeIdentifier, ExchangeLane, LaneSequence, NonEmpty, Reply, RequestPayload, SessionEpoch,
     SignalOperationHeads, SubReply,
@@ -17,6 +16,7 @@ use signal_harness::{
     MessageSlot, PiRpcDeliveryMode, PiRpcJsonlAdapterConfiguration, PiRpcModelPattern,
     TranscriptObservation, WatchHarnessTranscript,
 };
+use signal_persona::{SocketMode, WirePath};
 
 fn harness() -> HarnessName {
     HarnessName::new("designer")
@@ -396,7 +396,7 @@ impl DriftScan {
 #[test]
 fn harness_daemon_configuration_round_trips_through_nota_text() {
     use signal_harness::{HarnessDaemonConfiguration, HarnessInstanceConfiguration, HarnessKind};
-    use signal_persona_origin::{OwnerIdentity, UnixUserIdentifier};
+    use signal_persona::origin::{OwnerIdentity, UnixUserIdentifier};
 
     let configuration = HarnessDaemonConfiguration {
         harness_socket_path: WirePath::new("/run/persona/X/harness.sock"),
@@ -436,7 +436,7 @@ fn harness_daemon_configuration_round_trips_through_nota_text() {
 #[test]
 fn harness_daemon_configuration_round_trips_through_rkyv() {
     use signal_harness::{HarnessDaemonConfiguration, HarnessInstanceConfiguration, HarnessKind};
-    use signal_persona_origin::{OwnerIdentity, UnixUserIdentifier};
+    use signal_persona::origin::{OwnerIdentity, UnixUserIdentifier};
 
     let configuration = HarnessDaemonConfiguration {
         harness_socket_path: WirePath::new("/run/persona/X/harness.sock"),
