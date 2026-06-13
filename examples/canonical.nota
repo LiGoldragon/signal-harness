@@ -7,59 +7,59 @@
 ;; Round-trip witness: tests/canonical_examples.rs parses each record
 ;; and asserts the re-encoded text equals the canonical form.
 
-;; ─── Requests ─────────────────────────────────────────────────────
+;; Requests
 
 ;; HarnessRequest::MessageDelivery
-(MessageDelivery ([designer] [operator] [hello-from-operator] 1024))
+(MessageDelivery (designer operator hello-from-operator 1024))
 
 ;; HarnessRequest::InteractionPrompt
-(InteractionPrompt ([designer] [interaction-7] [Approve write?] [[yes] [no]]))
+(InteractionPrompt (designer interaction-7 [Approve write?] [yes no]))
 
 ;; HarnessRequest::DeliveryCancellation
-(DeliveryCancellation ([designer] 1024))
+(DeliveryCancellation (designer 1024))
 
 ;; HarnessRequest::HarnessStatusQuery
-(HarnessStatusQuery ([designer]))
+(HarnessStatusQuery (designer))
 
 ;; HarnessRequest::WatchHarnessTranscript
-(WatchHarnessTranscript ([designer]))
+(WatchHarnessTranscript (designer))
 
 ;; HarnessRequest::UnwatchHarnessTranscript
-(UnwatchHarnessTranscript ([designer]))
+(UnwatchHarnessTranscript (designer))
 
-;; ─── Replies ──────────────────────────────────────────────────────
+;; Replies
 
 ;; HarnessEvent::DeliveryCompleted
-(DeliveryCompleted ([designer] 1024))
+(DeliveryCompleted (designer 1024))
 
 ;; HarnessEvent::DeliveryFailed
-(DeliveryFailed ([designer] 1024 HumanInputIntervened))
+(DeliveryFailed (designer 1024 HumanInputIntervened))
 
 ;; HarnessEvent::InteractionResolved
-(InteractionResolved ([designer] [interaction-7] [yes]))
+(InteractionResolved (designer interaction-7 yes))
 
 ;; HarnessEvent::HarnessRequestUnimplemented
-(HarnessRequestUnimplemented ([designer] WatchHarnessTranscript NotBuiltYet))
+(HarnessRequestUnimplemented (designer WatchHarnessTranscript NotBuiltYet))
 
 ;; HarnessEvent::HarnessStatus
-(HarnessStatus ([designer] Running Ready))
+(HarnessStatus (designer Running Ready))
 
 ;; HarnessEvent::HarnessStarted
-(HarnessStarted ([designer]))
+(HarnessStarted (designer))
 
 ;; HarnessEvent::HarnessStopped
-(HarnessStopped ([designer]))
+(HarnessStopped (designer))
 
 ;; HarnessEvent::HarnessCrashed
-(HarnessCrashed ([designer] [out of memory]))
+(HarnessCrashed (designer [out of memory]))
 
 ;; HarnessEvent::HarnessTranscriptSnapshot
-(HarnessTranscriptSnapshot ([designer] 0))
+(HarnessTranscriptSnapshot (designer 0))
 
-;; HarnessEvent::HarnessSubscriptionRetracted — Path A final ack
-(HarnessSubscriptionRetracted (([designer])))
+;; HarnessEvent::HarnessSubscriptionRetracted - Path A final ack
+(HarnessSubscriptionRetracted ((designer)))
 
-;; ─── Stream events on HarnessTranscriptStream ─────────────────────
+;; Stream events on HarnessTranscriptStream
 
 ;; HarnessStreamEvent::TranscriptObservation
-(TranscriptObservation ([designer] 1 [hello]))
+(TranscriptObservation (designer 1 hello))

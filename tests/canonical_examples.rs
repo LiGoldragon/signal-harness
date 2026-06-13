@@ -45,7 +45,7 @@ fn canonical_request_examples_round_trip() {
                 body: body(),
                 message_slot: MessageSlot::new(1024),
             }),
-            "(MessageDelivery ([designer] [operator] [hello-from-operator] 1024))",
+            "(MessageDelivery (designer operator hello-from-operator 1024))",
         ),
         (
             HarnessRequest::InteractionPrompt(InteractionPrompt {
@@ -54,30 +54,30 @@ fn canonical_request_examples_round_trip() {
                 prompt: "Approve write?".to_string(),
                 options: vec!["yes".to_string(), "no".to_string()],
             }),
-            "(InteractionPrompt ([designer] [interaction-7] [Approve write?] [[yes] [no]]))",
+            "(InteractionPrompt (designer interaction-7 [Approve write?] [yes no]))",
         ),
         (
             HarnessRequest::DeliveryCancellation(DeliveryCancellation {
                 harness: designer(),
                 message_slot: MessageSlot::new(1024),
             }),
-            "(DeliveryCancellation ([designer] 1024))",
+            "(DeliveryCancellation (designer 1024))",
         ),
         (
             HarnessRequest::HarnessStatusQuery(HarnessStatusQuery {
                 harness: designer(),
             }),
-            "(HarnessStatusQuery ([designer]))",
+            "(HarnessStatusQuery (designer))",
         ),
         (
             HarnessRequest::WatchHarnessTranscript(WatchHarnessTranscript {
                 harness: designer(),
             }),
-            "(WatchHarnessTranscript ([designer]))",
+            "(WatchHarnessTranscript (designer))",
         ),
         (
             HarnessRequest::UnwatchHarnessTranscript(token()),
-            "(UnwatchHarnessTranscript ([designer]))",
+            "(UnwatchHarnessTranscript (designer))",
         ),
     ];
 
@@ -105,7 +105,7 @@ fn canonical_reply_examples_round_trip() {
                 harness: designer(),
                 message_slot: MessageSlot::new(1024),
             }),
-            "(DeliveryCompleted ([designer] 1024))",
+            "(DeliveryCompleted (designer 1024))",
         ),
         (
             HarnessEvent::DeliveryFailed(DeliveryFailed {
@@ -113,7 +113,7 @@ fn canonical_reply_examples_round_trip() {
                 message_slot: MessageSlot::new(1024),
                 reason: DeliveryFailureReason::HumanInputIntervened,
             }),
-            "(DeliveryFailed ([designer] 1024 HumanInputIntervened))",
+            "(DeliveryFailed (designer 1024 HumanInputIntervened))",
         ),
         (
             HarnessEvent::InteractionResolved(InteractionResolved {
@@ -121,7 +121,7 @@ fn canonical_reply_examples_round_trip() {
                 interaction_id: "interaction-7".to_string(),
                 chosen: "yes".to_string(),
             }),
-            "(InteractionResolved ([designer] [interaction-7] [yes]))",
+            "(InteractionResolved (designer interaction-7 yes))",
         ),
         (
             HarnessEvent::HarnessRequestUnimplemented(HarnessRequestUnimplemented {
@@ -129,7 +129,7 @@ fn canonical_reply_examples_round_trip() {
                 operation: HarnessOperationKind::WatchHarnessTranscript,
                 reason: HarnessUnimplementedReason::NotBuiltYet,
             }),
-            "(HarnessRequestUnimplemented ([designer] WatchHarnessTranscript NotBuiltYet))",
+            "(HarnessRequestUnimplemented (designer WatchHarnessTranscript NotBuiltYet))",
         ),
         (
             HarnessEvent::HarnessStatus(HarnessStatus {
@@ -137,39 +137,39 @@ fn canonical_reply_examples_round_trip() {
                 health: HarnessHealth::Running,
                 readiness: HarnessReadiness::Ready,
             }),
-            "(HarnessStatus ([designer] Running Ready))",
+            "(HarnessStatus (designer Running Ready))",
         ),
         (
             HarnessEvent::HarnessStarted(HarnessStarted {
                 harness: designer(),
             }),
-            "(HarnessStarted ([designer]))",
+            "(HarnessStarted (designer))",
         ),
         (
             HarnessEvent::HarnessStopped(HarnessStopped {
                 harness: designer(),
             }),
-            "(HarnessStopped ([designer]))",
+            "(HarnessStopped (designer))",
         ),
         (
             HarnessEvent::HarnessCrashed(HarnessCrashed {
                 harness: designer(),
                 detail: "out of memory".to_string(),
             }),
-            "(HarnessCrashed ([designer] [out of memory]))",
+            "(HarnessCrashed (designer [out of memory]))",
         ),
         (
             HarnessEvent::HarnessTranscriptSnapshot(HarnessTranscriptSnapshot {
                 harness: designer(),
                 current_sequence: HarnessTranscriptSequence::new(0),
             }),
-            "(HarnessTranscriptSnapshot ([designer] 0))",
+            "(HarnessTranscriptSnapshot (designer 0))",
         ),
         (
             HarnessEvent::HarnessSubscriptionRetracted(HarnessSubscriptionRetracted {
                 token: token(),
             }),
-            "(HarnessSubscriptionRetracted (([designer])))",
+            "(HarnessSubscriptionRetracted ((designer)))",
         ),
     ];
 
@@ -197,7 +197,7 @@ fn canonical_stream_event_examples_round_trip() {
             sequence: HarnessTranscriptSequence::new(1),
             line: "hello".to_string(),
         }),
-        "(TranscriptObservation ([designer] 1 [hello]))",
+        "(TranscriptObservation (designer 1 hello))",
     )];
 
     for (value, canonical_text) in expected {

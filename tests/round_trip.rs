@@ -299,7 +299,7 @@ fn transcript_observation_event_round_trips_through_nota_text() {
         line: "ready for prompt".into(),
     };
 
-    round_trip_nota(observation, "([designer] 42 [ready for prompt])");
+    round_trip_nota(observation, "(designer 42 [ready for prompt])");
 }
 
 #[test]
@@ -313,7 +313,7 @@ fn message_delivery_request_round_trips_through_nota_text() {
 
     round_trip_nota(
         request,
-        "(MessageDelivery ([designer] [operator] [via nota] 42))",
+        "(MessageDelivery (designer operator [via nota] 42))",
     );
 }
 
@@ -325,7 +325,7 @@ fn delivery_failed_event_round_trips_through_nota_text() {
         reason: DeliveryFailureReason::TransportRejected,
     });
 
-    round_trip_nota(event, "(DeliveryFailed ([designer] 42 TransportRejected))");
+    round_trip_nota(event, "(DeliveryFailed (designer 42 TransportRejected))");
 }
 
 #[test]
@@ -338,7 +338,7 @@ fn harness_unimplemented_event_round_trips_through_nota_text() {
 
     round_trip_nota(
         event,
-        "(HarnessRequestUnimplemented ([designer] MessageDelivery NotBuiltYet))",
+        "(HarnessRequestUnimplemented (designer MessageDelivery NotBuiltYet))",
     );
 }
 
