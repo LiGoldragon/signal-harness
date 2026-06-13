@@ -1,6 +1,7 @@
 //! Architectural-truth round-trip tests for the
 //! `signal-harness` channel.
 
+#[cfg(feature = "nota-text")]
 use nota_next::{NotaDecode, NotaEncode, NotaSource};
 use signal_frame::{
     ExchangeIdentifier, ExchangeLane, LaneSequence, NonEmpty, Reply, RequestPayload, SessionEpoch,
@@ -13,9 +14,10 @@ use signal_harness::{
     HarnessStatusQuery, HarnessStopped, HarnessSubscriptionRetracted, HarnessTranscriptSequence,
     HarnessTranscriptSnapshot, HarnessTranscriptToken, HarnessUnimplementedReason,
     InteractionPrompt, InteractionResolved, MessageBody, MessageDelivery, MessageSender,
-    MessageSlot, PiRpcDeliveryMode, PiRpcJsonlAdapterConfiguration, PiRpcModelPattern,
-    TranscriptObservation, WatchHarnessTranscript,
+    MessageSlot, PiRpcDeliveryMode, PiRpcJsonlAdapterConfiguration, WatchHarnessTranscript,
 };
+#[cfg(feature = "nota-text")]
+use signal_harness::{PiRpcModelPattern, TranscriptObservation};
 use signal_persona::{SocketMode, WirePath};
 
 fn harness() -> HarnessName {
@@ -64,6 +66,7 @@ fn round_trip_event(event: HarnessEvent) -> HarnessEvent {
     }
 }
 
+#[cfg(feature = "nota-text")]
 fn round_trip_nota<Value>(value: Value, expected: &str)
 where
     Value: NotaEncode + NotaDecode + PartialEq + std::fmt::Debug,
@@ -190,6 +193,7 @@ fn harness_request_variants_declare_contract_local_operation_heads() {
     );
 }
 
+#[cfg(feature = "nota-text")]
 #[test]
 fn harness_operation_kind_round_trips_through_nota_text() {
     round_trip_nota(HarnessOperationKind::MessageDelivery, "MessageDelivery");
@@ -291,6 +295,7 @@ fn harness_subscription_retracted_round_trips() {
     assert_eq!(round_trip_event(event.clone()), event);
 }
 
+#[cfg(feature = "nota-text")]
 #[test]
 fn transcript_observation_event_round_trips_through_nota_text() {
     let observation = TranscriptObservation {
@@ -302,6 +307,7 @@ fn transcript_observation_event_round_trips_through_nota_text() {
     round_trip_nota(observation, "(designer 42 [ready for prompt])");
 }
 
+#[cfg(feature = "nota-text")]
 #[test]
 fn message_delivery_request_round_trips_through_nota_text() {
     let request = HarnessRequest::MessageDelivery(MessageDelivery {
@@ -317,6 +323,7 @@ fn message_delivery_request_round_trips_through_nota_text() {
     );
 }
 
+#[cfg(feature = "nota-text")]
 #[test]
 fn delivery_failed_event_round_trips_through_nota_text() {
     let event = HarnessEvent::DeliveryFailed(DeliveryFailed {
@@ -328,6 +335,7 @@ fn delivery_failed_event_round_trips_through_nota_text() {
     round_trip_nota(event, "(DeliveryFailed (designer 42 TransportRejected))");
 }
 
+#[cfg(feature = "nota-text")]
 #[test]
 fn harness_unimplemented_event_round_trips_through_nota_text() {
     let event = HarnessEvent::HarnessRequestUnimplemented(HarnessRequestUnimplemented {
@@ -393,6 +401,7 @@ impl DriftScan {
     }
 }
 
+#[cfg(feature = "nota-text")]
 #[test]
 fn harness_daemon_configuration_round_trips_through_nota_text() {
     use signal_harness::{HarnessDaemonConfiguration, HarnessInstanceConfiguration, HarnessKind};
@@ -457,6 +466,7 @@ fn harness_daemon_configuration_round_trips_through_rkyv() {
     assert_eq!(recovered, configuration);
 }
 
+#[cfg(feature = "nota-text")]
 #[test]
 fn pi_rpc_jsonl_adapter_configuration_round_trips_through_nota_text() {
     let configuration = PiRpcJsonlAdapterConfiguration {

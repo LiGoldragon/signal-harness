@@ -4,6 +4,8 @@
 //! as a `HarnessRequest`, `HarnessEvent`, or `HarnessStreamEvent`
 //! and asserting the re-encoded text equals the canonical form.
 
+#![cfg(feature = "nota-text")]
+
 use nota_next::{NotaEncode, NotaSource};
 use signal_harness::{
     DeliveryCancellation, DeliveryCompleted, DeliveryFailed, DeliveryFailureReason, HarnessCrashed,

@@ -241,9 +241,8 @@ pub struct InteractionResolved {
 
 /// A valid request reached a harness daemon, but the daemon's current runtime
 /// does not implement the operation yet.
-#[derive(
-    Archive, RkyvSerialize, RkyvDeserialize, NotaEncode, NotaDecode, Debug, Clone, PartialEq, Eq,
-)]
+#[derive(Archive, RkyvSerialize, RkyvDeserialize, Debug, Clone, PartialEq, Eq)]
+#[cfg_attr(feature = "nota-text", derive(NotaEncode, NotaDecode))]
 pub struct HarnessRequestUnimplemented {
     pub harness: HarnessName,
     pub operation: HarnessOperationKind,
