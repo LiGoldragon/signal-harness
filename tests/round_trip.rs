@@ -14,11 +14,14 @@ use signal_harness::{
     HarnessStatusQuery, HarnessStopped, HarnessSubscriptionRetracted, HarnessTranscriptSequence,
     HarnessTranscriptSnapshot, HarnessTranscriptToken, HarnessUnimplementedReason,
     InteractionPrompt, InteractionResolved, MessageBody, MessageDelivery, MessageSender,
-    MessageSlot, PiRpcDeliveryMode, PiRpcJsonlAdapterConfiguration, WatchHarnessTranscript,
+    MessageSlot, PiRpcCommandPath, PiRpcDeliveryMode, PiRpcJsonlAdapterConfiguration,
+    PiRpcSessionDirectoryPath, TerminalSocketPath, WatchHarnessTranscript,
 };
 #[cfg(feature = "nota-text")]
 use signal_harness::{PiRpcModelPattern, TranscriptObservation};
-use signal_persona::{SocketMode, WirePath};
+use signal_persona::{
+    DomainSocketMode, DomainSocketPath, EngineManagementSocketMode, EngineManagementSocketPath,
+};
 
 fn harness() -> HarnessName {
     HarnessName::new("designer")
@@ -405,22 +408,24 @@ impl DriftScan {
 #[test]
 fn harness_daemon_configuration_round_trips_through_nota_text() {
     use signal_harness::{HarnessDaemonConfiguration, HarnessInstanceConfiguration, HarnessKind};
-    use signal_persona::origin::{OwnerIdentity, UnixUserIdentifier};
+    use signal_persona::{OwnerIdentity, UnixUserIdentifier};
 
     let configuration = HarnessDaemonConfiguration {
-        harness_socket_path: WirePath::new("/run/persona/X/harness.sock"),
-        harness_socket_mode: SocketMode::new(0o600),
-        supervision_socket_path: WirePath::new("/run/persona/X/harness-supervision.sock"),
-        supervision_socket_mode: SocketMode::new(0o600),
+        domain_socket_path: DomainSocketPath::new("/run/persona/X/harness.sock"),
+        domain_socket_mode: DomainSocketMode::new(0o600),
+        engine_management_socket_path: EngineManagementSocketPath::new(
+            "/run/persona/X/harness-supervision.sock",
+        ),
+        engine_management_socket_mode: EngineManagementSocketMode::new(0o600),
         owner_identity: OwnerIdentity::UnixUser(UnixUserIdentifier::new(1000)),
         harnesses: vec![
             HarnessInstanceConfiguration {
                 harness_name: harness(),
                 harness_kind: HarnessKind::Pi,
-                terminal_socket_path: Some(WirePath::new("/run/persona/X/terminal.sock")),
+                terminal_socket_path: Some(TerminalSocketPath::new("/run/persona/X/terminal.sock")),
                 pi_rpc_adapter: Some(PiRpcJsonlAdapterConfiguration {
-                    command_path: WirePath::new("/run/current-system/sw/bin/pi-rpc"),
-                    session_directory_path: WirePath::new("/var/lib/persona/pi"),
+                    command_path: PiRpcCommandPath::new("/run/current-system/sw/bin/pi-rpc"),
+                    session_directory_path: PiRpcSessionDirectoryPath::new("/var/lib/persona/pi"),
                     model_pattern: Some(PiRpcModelPattern::new("pi-*")),
                     delivery_mode: PiRpcDeliveryMode::FollowUp,
                 }),
@@ -445,13 +450,15 @@ fn harness_daemon_configuration_round_trips_through_nota_text() {
 #[test]
 fn harness_daemon_configuration_round_trips_through_rkyv() {
     use signal_harness::{HarnessDaemonConfiguration, HarnessInstanceConfiguration, HarnessKind};
-    use signal_persona::origin::{OwnerIdentity, UnixUserIdentifier};
+    use signal_persona::{OwnerIdentity, UnixUserIdentifier};
 
     let configuration = HarnessDaemonConfiguration {
-        harness_socket_path: WirePath::new("/run/persona/X/harness.sock"),
-        harness_socket_mode: SocketMode::new(0o600),
-        supervision_socket_path: WirePath::new("/run/persona/X/harness-supervision.sock"),
-        supervision_socket_mode: SocketMode::new(0o600),
+        domain_socket_path: DomainSocketPath::new("/run/persona/X/harness.sock"),
+        domain_socket_mode: DomainSocketMode::new(0o600),
+        engine_management_socket_path: EngineManagementSocketPath::new(
+            "/run/persona/X/harness-supervision.sock",
+        ),
+        engine_management_socket_mode: EngineManagementSocketMode::new(0o600),
         owner_identity: OwnerIdentity::UnixUser(UnixUserIdentifier::new(1000)),
         harnesses: vec![HarnessInstanceConfiguration {
             harness_name: harness(),
@@ -470,8 +477,8 @@ fn harness_daemon_configuration_round_trips_through_rkyv() {
 #[test]
 fn pi_rpc_jsonl_adapter_configuration_round_trips_through_nota_text() {
     let configuration = PiRpcJsonlAdapterConfiguration {
-        command_path: WirePath::new("/run/current-system/sw/bin/pi-rpc"),
-        session_directory_path: WirePath::new("/var/lib/persona/pi"),
+        command_path: PiRpcCommandPath::new("/run/current-system/sw/bin/pi-rpc"),
+        session_directory_path: PiRpcSessionDirectoryPath::new("/var/lib/persona/pi"),
         model_pattern: Some(PiRpcModelPattern::new("pi-*")),
         delivery_mode: PiRpcDeliveryMode::Prompt,
     };
@@ -486,8 +493,8 @@ fn pi_rpc_jsonl_adapter_configuration_round_trips_through_nota_text() {
 #[test]
 fn pi_rpc_jsonl_adapter_configuration_round_trips_through_rkyv() {
     let configuration = PiRpcJsonlAdapterConfiguration {
-        command_path: WirePath::new("/run/current-system/sw/bin/pi-rpc"),
-        session_directory_path: WirePath::new("/var/lib/persona/pi"),
+        command_path: PiRpcCommandPath::new("/run/current-system/sw/bin/pi-rpc"),
+        session_directory_path: PiRpcSessionDirectoryPath::new("/var/lib/persona/pi"),
         model_pattern: None,
         delivery_mode: PiRpcDeliveryMode::Steer,
     };

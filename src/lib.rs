@@ -25,7 +25,10 @@
 use nota_next::{NotaDecode, NotaEncode};
 use rkyv::{Archive, Deserialize as RkyvDeserialize, Serialize as RkyvSerialize};
 use signal_frame::signal_channel;
-use signal_persona::{SocketMode, WirePath};
+use signal_persona::{
+    DomainSocketMode, DomainSocketPath, EngineManagementSocketMode, EngineManagementSocketPath,
+    OwnerIdentity,
+};
 
 // ─── Harness identity ─────────────────────────────────────
 
@@ -526,6 +529,81 @@ impl From<TranscriptObservation> for HarnessStreamEvent {
 // accepts only the rkyv/signal-encoded file path on argv and never decodes
 // NOTA startup text.
 
+/// Terminal socket endpoint delegated to a harness instance.
+#[derive(
+    Archive,
+    RkyvSerialize,
+    RkyvDeserialize,
+    NotaEncode,
+    NotaDecode,
+    Debug,
+    Clone,
+    PartialEq,
+    Eq,
+    Hash,
+)]
+pub struct TerminalSocketPath(String);
+
+impl TerminalSocketPath {
+    pub fn new(value: impl Into<String>) -> Self {
+        Self(value.into())
+    }
+
+    pub fn as_str(&self) -> &str {
+        &self.0
+    }
+}
+
+/// Executable path for the external Pi RPC/JSONL adapter.
+#[derive(
+    Archive,
+    RkyvSerialize,
+    RkyvDeserialize,
+    NotaEncode,
+    NotaDecode,
+    Debug,
+    Clone,
+    PartialEq,
+    Eq,
+    Hash,
+)]
+pub struct PiRpcCommandPath(String);
+
+impl PiRpcCommandPath {
+    pub fn new(value: impl Into<String>) -> Self {
+        Self(value.into())
+    }
+
+    pub fn as_str(&self) -> &str {
+        &self.0
+    }
+}
+
+/// Session directory owned by the external Pi RPC/JSONL adapter.
+#[derive(
+    Archive,
+    RkyvSerialize,
+    RkyvDeserialize,
+    NotaEncode,
+    NotaDecode,
+    Debug,
+    Clone,
+    PartialEq,
+    Eq,
+    Hash,
+)]
+pub struct PiRpcSessionDirectoryPath(String);
+
+impl PiRpcSessionDirectoryPath {
+    pub fn new(value: impl Into<String>) -> Self {
+        Self(value.into())
+    }
+
+    pub fn as_str(&self) -> &str {
+        &self.0
+    }
+}
+
 /// The supervised harness runtime variant. Closed enum — every
 /// production harness ships with one of these kinds.
 #[derive(
@@ -598,9 +676,9 @@ impl PiRpcModelPattern {
 )]
 pub struct PiRpcJsonlAdapterConfiguration {
     /// Executable path for the adapter command.
-    pub command_path: WirePath,
+    pub command_path: PiRpcCommandPath,
     /// Directory where the adapter stores Pi session state.
-    pub session_directory_path: WirePath,
+    pub session_directory_path: PiRpcSessionDirectoryPath,
     /// Optional model selector understood by the adapter.
     pub model_pattern: Option<PiRpcModelPattern>,
     /// Delivery mode used when sending a message into Pi.
@@ -618,7 +696,7 @@ pub struct HarnessInstanceConfiguration {
     /// The supervised harness runtime variant.
     pub harness_kind: HarnessKind,
     /// Optional terminal endpoint the daemon delegates to for this instance.
-    pub terminal_socket_path: Option<WirePath>,
+    pub terminal_socket_path: Option<TerminalSocketPath>,
     /// Optional Pi RPC/JSONL adapter boundary for `HarnessKind::Pi`.
     pub pi_rpc_adapter: Option<PiRpcJsonlAdapterConfiguration>,
 }
@@ -635,15 +713,15 @@ pub struct HarnessInstanceConfiguration {
 )]
 pub struct HarnessDaemonConfiguration {
     /// Where the daemon binds its harness Unix socket.
-    pub harness_socket_path: WirePath,
+    pub domain_socket_path: DomainSocketPath,
     /// chmod applied to the harness socket after bind.
-    pub harness_socket_mode: SocketMode,
-    /// Where the daemon binds its supervision Unix socket.
-    pub supervision_socket_path: WirePath,
-    /// chmod applied to the supervision socket after bind.
-    pub supervision_socket_mode: SocketMode,
+    pub domain_socket_mode: DomainSocketMode,
+    /// Where the daemon binds its engine-management Unix socket.
+    pub engine_management_socket_path: EngineManagementSocketPath,
+    /// chmod applied to the engine-management socket after bind.
+    pub engine_management_socket_mode: EngineManagementSocketMode,
     /// The engine owner identity passed to the harness daemon.
-    pub owner_identity: signal_persona::origin::OwnerIdentity,
+    pub owner_identity: OwnerIdentity,
     /// The harness instances owned by this component daemon.
     pub harnesses: Vec<HarnessInstanceConfiguration>,
 }

@@ -224,20 +224,20 @@ HarnessStreamEvent (on HarnessTranscriptStream)
 └─ TranscriptObservation
 
 HarnessDaemonConfiguration
-├─ harness_socket_path / harness_socket_mode
-├─ supervision_socket_path / supervision_socket_mode
+├─ domain_socket_path / domain_socket_mode
+├─ engine_management_socket_path / engine_management_socket_mode
 ├─ owner_identity
 └─ harnesses: Vec<HarnessInstanceConfiguration>
 
 HarnessInstanceConfiguration
 ├─ harness_name
 ├─ harness_kind
-├─ terminal_socket_path
+├─ terminal_socket_path: Option<TerminalSocketPath>
 └─ pi_rpc_adapter: Option<PiRpcJsonlAdapterConfiguration>
 
 PiRpcJsonlAdapterConfiguration
-├─ command_path
-├─ session_directory_path
+├─ command_path: PiRpcCommandPath
+├─ session_directory_path: PiRpcSessionDirectoryPath
 ├─ model_pattern
 └─ delivery_mode: PiRpcDeliveryMode
 ```
