@@ -22,7 +22,7 @@
 //! boundaries; `~/primary/reports/designer/72-harmonized-implementation-plan.md`
 //! §6 for the contract-creation discipline.
 
-use nota_next::{NotaDecode, NotaEncode};
+use nota::{NotaDecode, NotaEncode};
 use rkyv::{Archive, Deserialize as RkyvDeserialize, Serialize as RkyvSerialize};
 use signal_frame::signal_channel;
 use signal_persona::{

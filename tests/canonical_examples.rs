@@ -6,7 +6,7 @@
 
 #![cfg(feature = "nota-text")]
 
-use nota_next::{NotaEncode, NotaSource};
+use nota::{NotaEncode, NotaSource};
 use signal_harness::{
     DeliveryCancellation, DeliveryCompleted, DeliveryFailed, DeliveryFailureReason, HarnessCrashed,
     HarnessEvent, HarnessHealth, HarnessName, HarnessOperationKind, HarnessReadiness,
