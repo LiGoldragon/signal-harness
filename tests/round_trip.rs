@@ -8,14 +8,17 @@ use signal_frame::{
     SignalOperationHeads, SubReply,
 };
 use signal_harness::{
-    DeliveryCancellation, DeliveryCompleted, DeliveryFailed, DeliveryFailureReason, HarnessCrashed,
-    HarnessEvent, HarnessFrame, HarnessFrameBody, HarnessHealth, HarnessName, HarnessOperationKind,
-    HarnessReadiness, HarnessRequest, HarnessRequestUnimplemented, HarnessStarted, HarnessStatus,
-    HarnessStatusQuery, HarnessStopped, HarnessSubscriptionRetracted, HarnessTranscriptSequence,
-    HarnessTranscriptSnapshot, HarnessTranscriptToken, HarnessUnimplementedReason,
-    InteractionPrompt, InteractionResolved, MessageBody, MessageDelivery, MessageSender,
-    MessageSlot, PiRpcCommandPath, PiRpcDeliveryMode, PiRpcJsonlAdapterConfiguration,
-    PiRpcSessionDirectoryPath, TerminalSocketPath, WatchHarnessTranscript,
+    AdapterCompletion, AdapterConfirmationNeeded, AdapterEventSequence, AdapterExitStatus,
+    AdapterExited, AdapterInputAccepted, AdapterOutput, AdapterProgress, AdapterReady,
+    AdapterStallReason, AdapterStalled, DeliveryCancellation, DeliveryCompleted, DeliveryFailed,
+    DeliveryFailureReason, HarnessCrashed, HarnessEvent, HarnessFrame, HarnessFrameBody,
+    HarnessHealth, HarnessName, HarnessOperationKind, HarnessReadiness, HarnessRequest,
+    HarnessRequestUnimplemented, HarnessStarted, HarnessStatus, HarnessStatusQuery, HarnessStopped,
+    HarnessSubscriptionRetracted, HarnessTranscriptSequence, HarnessTranscriptSnapshot,
+    HarnessTranscriptToken, HarnessUnimplementedReason, InteractionPrompt, InteractionResolved,
+    MessageBody, MessageDelivery, MessageSender, MessageSlot, PiRpcCommandPath, PiRpcDeliveryMode,
+    PiRpcJsonlAdapterConfiguration, PiRpcSessionDirectoryPath, TerminalSocketPath,
+    WatchHarnessTranscript,
 };
 #[cfg(feature = "nota-text")]
 use signal_harness::{PiRpcModelPattern, TranscriptObservation};
@@ -282,6 +285,96 @@ fn harness_crashed_carries_typed_detail() {
 }
 
 #[test]
+fn adapter_ready_round_trips() {
+    let event = HarnessEvent::AdapterReady(AdapterReady {
+        harness: harness(),
+        sequence: AdapterEventSequence::new(1),
+    });
+    assert_eq!(round_trip_event(event.clone()), event);
+}
+
+#[test]
+fn adapter_input_accepted_round_trips() {
+    let event = HarnessEvent::AdapterInputAccepted(AdapterInputAccepted {
+        harness: harness(),
+        sequence: AdapterEventSequence::new(2),
+        message_slot: MessageSlot::new(1024),
+    });
+    assert_eq!(round_trip_event(event.clone()), event);
+}
+
+#[test]
+fn adapter_output_round_trips() {
+    let event = HarnessEvent::AdapterOutput(AdapterOutput {
+        harness: harness(),
+        sequence: AdapterEventSequence::new(3),
+        text: "provider output".into(),
+    });
+    assert_eq!(round_trip_event(event.clone()), event);
+}
+
+#[test]
+fn adapter_progress_round_trips() {
+    let event = HarnessEvent::AdapterProgress(AdapterProgress {
+        harness: harness(),
+        sequence: AdapterEventSequence::new(4),
+        status: "working".into(),
+    });
+    assert_eq!(round_trip_event(event.clone()), event);
+}
+
+#[test]
+fn adapter_completion_round_trips_without_closing_session() {
+    let event = HarnessEvent::AdapterCompletion(AdapterCompletion {
+        harness: harness(),
+        sequence: AdapterEventSequence::new(5),
+        message_slot: MessageSlot::new(1024),
+    });
+    assert_eq!(round_trip_event(event.clone()), event);
+}
+
+#[test]
+fn adapter_confirmation_needed_round_trips_as_first_class_event() {
+    let event = HarnessEvent::AdapterConfirmationNeeded(AdapterConfirmationNeeded {
+        harness: harness(),
+        sequence: AdapterEventSequence::new(6),
+        interaction_id: "confirm-1".into(),
+        prompt: "Proceed?".into(),
+        options: vec!["approve".into(), "decline".into()],
+    });
+    assert_eq!(round_trip_event(event.clone()), event);
+}
+
+#[test]
+fn adapter_stalled_round_trips_for_each_reason() {
+    for reason in [
+        AdapterStallReason::NoOutput,
+        AdapterStallReason::ReadinessTimeout,
+        AdapterStallReason::CompletionTimeout,
+        AdapterStallReason::TransportBackpressure,
+    ] {
+        let event = HarnessEvent::AdapterStalled(AdapterStalled {
+            harness: harness(),
+            sequence: AdapterEventSequence::new(7),
+            reason,
+        });
+        assert_eq!(round_trip_event(event.clone()), event);
+    }
+}
+
+#[test]
+fn adapter_exited_round_trips_for_each_status() {
+    for status in [AdapterExitStatus::Success, AdapterExitStatus::Failure] {
+        let event = HarnessEvent::AdapterExited(AdapterExited {
+            harness: harness(),
+            sequence: AdapterEventSequence::new(8),
+            status,
+        });
+        assert_eq!(round_trip_event(event.clone()), event);
+    }
+}
+
+#[test]
 fn harness_transcript_snapshot_round_trips() {
     let event = HarnessEvent::HarnessTranscriptSnapshot(HarnessTranscriptSnapshot {
         harness: harness(),
@@ -336,6 +429,35 @@ fn delivery_failed_event_round_trips_through_nota_text() {
     });
 
     round_trip_nota(event, "(DeliveryFailed (designer 42 TransportRejected))");
+}
+
+#[cfg(feature = "nota-text")]
+#[test]
+fn adapter_confirmation_needed_round_trips_through_nota_text() {
+    let event = HarnessEvent::AdapterConfirmationNeeded(AdapterConfirmationNeeded {
+        harness: harness(),
+        sequence: AdapterEventSequence::new(6),
+        interaction_id: "confirm-1".into(),
+        prompt: "Proceed?".into(),
+        options: vec!["approve".into(), "decline".into()],
+    });
+
+    round_trip_nota(
+        event,
+        "(AdapterConfirmationNeeded (designer 6 confirm-1 Proceed? [approve decline]))",
+    );
+}
+
+#[cfg(feature = "nota-text")]
+#[test]
+fn adapter_completion_round_trips_through_nota_text_without_close() {
+    let event = HarnessEvent::AdapterCompletion(AdapterCompletion {
+        harness: harness(),
+        sequence: AdapterEventSequence::new(5),
+        message_slot: MessageSlot::new(1024),
+    });
+
+    round_trip_nota(event, "(AdapterCompletion (designer 5 1024))");
 }
 
 #[cfg(feature = "nota-text")]

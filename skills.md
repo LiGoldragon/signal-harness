@@ -26,7 +26,7 @@ router (request side) and one or more harness instances (reply / event
 side). The router asks for delivery, interaction, cancellation,
 status, and transcript observation; the harness pushes acks,
 interaction resolutions, status, lifecycle events, and
-transcript-observation events.
+generic adapter events plus transcript-observation events.
 
 The transcript-observation subscription follows the canonical
 lifecycle in `~/primary/skills/subscription-lifecycle.md`: open with
@@ -34,6 +34,14 @@ a typed `WatchHarnessTranscript`, push typed `TranscriptObservation`
 events, close with a typed request-side `UnwatchHarnessTranscript`
 carrying the per-stream token, end with a typed reply-side
 `HarnessSubscriptionRetracted` ack echoing the token.
+
+Generic TUI adapters report provider-neutral events here:
+`AdapterReady`, `AdapterInputAccepted`, `AdapterOutput`,
+`AdapterProgress`, `AdapterCompletion`,
+`AdapterConfirmationNeeded`, `AdapterStalled`, and `AdapterExited`.
+Keep provider-specific detection rules in the concrete adapter. The
+generic contract names the event, not how Claude, Codex, Pi, or any
+other provider renders it.
 
 ## What this repo owns
 
@@ -50,6 +58,9 @@ carrying the per-stream token, end with a typed reply-side
 - `HarnessTranscriptToken`, `HarnessTranscriptSequence`,
   `HarnessSubscriptionRetracted` — transcript-stream identity and
   ack.
+- `AdapterEventSequence` plus the generic adapter event records for
+  ready/input-accepted/output/progress/completion/confirmation-needed/
+  stalled/exited observations.
 - `HarnessDaemonConfiguration` and `HarnessInstanceConfiguration`
   — one component daemon startup record carrying a list of internal
   harness instances.
@@ -91,6 +102,17 @@ carrying the per-stream token, end with a typed reply-side
   internal transcript event count is not the observation surface;
   `TranscriptObservation` on `HarnessTranscriptStream` is the only
   sanctioned way to read transcript progress.
+- **Adapter events are provider-neutral.** No Claude-, Codex-, Pi-, or
+  terminal-cell-specific event variant belongs here. Translate concrete
+  TUI behavior into ready, input accepted, output, progress,
+  completion, confirmation needed, stalled, or exited.
+- **Completion is not close.** `AdapterCompletion` reports one
+  prompt-turn done event. A long-lived TUI session closes only when a
+  runtime exit is observed or an explicit close-if-asked path asks for
+  shutdown.
+- **Confirmation is first-class.** Permission/confirmation prompts are
+  `AdapterConfirmationNeeded` events; policy or operator paths decide
+  how to answer them.
 - **Every transcript event carries a monotonic sequence.**
   `HarnessTranscriptSequence` is the per-event ordering field; the
   subscriber uses it to detect gaps and re-anchor after reconnect.

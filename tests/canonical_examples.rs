@@ -8,13 +8,16 @@
 
 use nota::{NotaEncode, NotaSource};
 use signal_harness::{
-    DeliveryCancellation, DeliveryCompleted, DeliveryFailed, DeliveryFailureReason, HarnessCrashed,
-    HarnessEvent, HarnessHealth, HarnessName, HarnessOperationKind, HarnessReadiness,
-    HarnessRequest, HarnessRequestUnimplemented, HarnessStarted, HarnessStatus, HarnessStatusQuery,
-    HarnessStopped, HarnessStreamEvent, HarnessSubscriptionRetracted, HarnessTranscriptSequence,
-    HarnessTranscriptSnapshot, HarnessTranscriptToken, HarnessUnimplementedReason,
-    InteractionPrompt, InteractionResolved, MessageBody, MessageDelivery, MessageSender,
-    MessageSlot, TranscriptObservation, WatchHarnessTranscript,
+    AdapterCompletion, AdapterConfirmationNeeded, AdapterEventSequence, AdapterExitStatus,
+    AdapterExited, AdapterInputAccepted, AdapterOutput, AdapterProgress, AdapterReady,
+    AdapterStallReason, AdapterStalled, DeliveryCancellation, DeliveryCompleted, DeliveryFailed,
+    DeliveryFailureReason, HarnessCrashed, HarnessEvent, HarnessHealth, HarnessName,
+    HarnessOperationKind, HarnessReadiness, HarnessRequest, HarnessRequestUnimplemented,
+    HarnessStarted, HarnessStatus, HarnessStatusQuery, HarnessStopped, HarnessStreamEvent,
+    HarnessSubscriptionRetracted, HarnessTranscriptSequence, HarnessTranscriptSnapshot,
+    HarnessTranscriptToken, HarnessUnimplementedReason, InteractionPrompt, InteractionResolved,
+    MessageBody, MessageDelivery, MessageSender, MessageSlot, TranscriptObservation,
+    WatchHarnessTranscript,
 };
 
 const CANONICAL: &str = include_str!("../examples/canonical.nota");
@@ -159,6 +162,71 @@ fn canonical_reply_examples_round_trip() {
                 detail: "out of memory".to_string(),
             }),
             "(HarnessCrashed (designer [out of memory]))",
+        ),
+        (
+            HarnessEvent::AdapterReady(AdapterReady {
+                harness: designer(),
+                sequence: AdapterEventSequence::new(1),
+            }),
+            "(AdapterReady (designer 1))",
+        ),
+        (
+            HarnessEvent::AdapterInputAccepted(AdapterInputAccepted {
+                harness: designer(),
+                sequence: AdapterEventSequence::new(2),
+                message_slot: MessageSlot::new(1024),
+            }),
+            "(AdapterInputAccepted (designer 2 1024))",
+        ),
+        (
+            HarnessEvent::AdapterOutput(AdapterOutput {
+                harness: designer(),
+                sequence: AdapterEventSequence::new(3),
+                text: "provider output".to_string(),
+            }),
+            "(AdapterOutput (designer 3 [provider output]))",
+        ),
+        (
+            HarnessEvent::AdapterProgress(AdapterProgress {
+                harness: designer(),
+                sequence: AdapterEventSequence::new(4),
+                status: "working".to_string(),
+            }),
+            "(AdapterProgress (designer 4 working))",
+        ),
+        (
+            HarnessEvent::AdapterCompletion(AdapterCompletion {
+                harness: designer(),
+                sequence: AdapterEventSequence::new(5),
+                message_slot: MessageSlot::new(1024),
+            }),
+            "(AdapterCompletion (designer 5 1024))",
+        ),
+        (
+            HarnessEvent::AdapterConfirmationNeeded(AdapterConfirmationNeeded {
+                harness: designer(),
+                sequence: AdapterEventSequence::new(6),
+                interaction_id: "confirm-1".to_string(),
+                prompt: "Proceed?".to_string(),
+                options: vec!["approve".to_string(), "decline".to_string()],
+            }),
+            "(AdapterConfirmationNeeded (designer 6 confirm-1 Proceed? [approve decline]))",
+        ),
+        (
+            HarnessEvent::AdapterStalled(AdapterStalled {
+                harness: designer(),
+                sequence: AdapterEventSequence::new(7),
+                reason: AdapterStallReason::CompletionTimeout,
+            }),
+            "(AdapterStalled (designer 7 CompletionTimeout))",
+        ),
+        (
+            HarnessEvent::AdapterExited(AdapterExited {
+                harness: designer(),
+                sequence: AdapterEventSequence::new(8),
+                status: AdapterExitStatus::Failure,
+            }),
+            "(AdapterExited (designer 8 Failure))",
         ),
         (
             HarnessEvent::HarnessTranscriptSnapshot(HarnessTranscriptSnapshot {

@@ -53,6 +53,31 @@
 ;; HarnessEvent::HarnessCrashed
 (HarnessCrashed (designer [out of memory]))
 
+;; HarnessEvent::AdapterReady
+(AdapterReady (designer 1))
+
+;; HarnessEvent::AdapterInputAccepted
+(AdapterInputAccepted (designer 2 1024))
+
+;; HarnessEvent::AdapterOutput
+(AdapterOutput (designer 3 [provider output]))
+
+;; HarnessEvent::AdapterProgress
+(AdapterProgress (designer 4 working))
+
+;; HarnessEvent::AdapterCompletion
+;; Prompt-turn completion does not close the harness session.
+(AdapterCompletion (designer 5 1024))
+
+;; HarnessEvent::AdapterConfirmationNeeded
+(AdapterConfirmationNeeded (designer 6 confirm-1 Proceed? [approve decline]))
+
+;; HarnessEvent::AdapterStalled
+(AdapterStalled (designer 7 CompletionTimeout))
+
+;; HarnessEvent::AdapterExited
+(AdapterExited (designer 8 Failure))
+
 ;; HarnessEvent::HarnessTranscriptSnapshot
 (HarnessTranscriptSnapshot (designer 0))
 

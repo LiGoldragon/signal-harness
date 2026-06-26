@@ -18,24 +18,39 @@ delivery channel between `router` and one or more harness
 instances. The router asks for delivery, interaction, cancellation,
 status, and transcript observation; the harness pushes acknowledgements,
 interaction resolutions, status, lifecycle events, and
-transcript-observation events. Runtime actors, sockets, storage, and the
-harness's tables live in `harness`; routing policy and delivery state
-live in `router`.
+generic adapter events, and transcript-observation events. Runtime
+actors, sockets, storage, and the harness's tables live in `harness`;
+routing policy and delivery state live in `router`.
 
 ## The channel shape — bidirectional
 
 | Side | Role |
 |---|---|
 | Request side | `router` sends delivery, interaction-prompt, cancellation, status-query, and transcript-subscription requests. |
-| Reply / event side | `harness` emits delivery acks, interaction resolutions, skeleton honesty, status, lifecycle events, transcript snapshot, retraction ack, and `TranscriptObservation` events on the open stream. |
+| Reply / event side | `harness` emits delivery acks, interaction resolutions, skeleton honesty, status, lifecycle events, generic adapter events, transcript snapshot, retraction ack, and `TranscriptObservation` events on the open stream. |
 
 Bidirectional steady state: the router sends one request; the harness
 emits one or more events. Lifecycle events (`HarnessStarted` /
-`HarnessStopped` / `HarnessCrashed`) flow without paired requests.
+`HarnessStopped` / `HarnessCrashed`) and provider-neutral adapter
+events (`AdapterReady`, `AdapterInputAccepted`, `AdapterOutput`,
+`AdapterProgress`, `AdapterCompletion`,
+`AdapterConfirmationNeeded`, `AdapterStalled`, `AdapterExited`) flow
+without paired requests.
 Transcript observation is push-based: the router watches once per
 harness, the harness emits a snapshot then `TranscriptObservation`
 deltas, and the subscription closes via the canonical
 watch/unwatch stream lifecycle.
+
+The generic adapter vocabulary describes launch/send/observe/ready/done
+event responsibilities without provider-specific terms. Concrete
+adapters own their provider's TUI behavior: how to launch, how to send
+input, how to observe readiness and output, how to detect prompt-turn
+completion, how to surface confirmation prompts, how to classify
+stalls, and how to observe exit. `AdapterCompletion` is a done event for
+one prompt turn, not a session close. Sessions stay open until runtime
+exit or an explicit close-if-asked path later asks an adapter to close.
+Confirmation prompts are first-class events; policy decides whether an
+operator, automation rule, or escalation path answers them.
 
 ## Wire vocabulary discipline — three-layer direction
 

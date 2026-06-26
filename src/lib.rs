@@ -344,6 +344,165 @@ pub struct HarnessCrashed {
     pub detail: String,
 }
 
+// ─── Adapter observations (harness → router) ──────────────
+
+/// Per-adapter observation sequence pointer. Monotonic per harness
+/// adapter session. Transcript observation has its own sequence because
+/// transcript lines and adapter-state events are separate streams.
+#[derive(
+    Archive,
+    RkyvSerialize,
+    RkyvDeserialize,
+    NotaEncode,
+    NotaDecode,
+    Debug,
+    Clone,
+    Copy,
+    PartialEq,
+    Eq,
+    Hash,
+)]
+pub struct AdapterEventSequence(u64);
+
+impl AdapterEventSequence {
+    pub const fn new(value: u64) -> Self {
+        Self(value)
+    }
+
+    pub const fn into_u64(self) -> u64 {
+        self.0
+    }
+}
+
+/// The adapter has observed enough provider/runtime state to accept
+/// routed input. This is distinct from process launch success.
+#[derive(
+    Archive, RkyvSerialize, RkyvDeserialize, NotaEncode, NotaDecode, Debug, Clone, PartialEq, Eq,
+)]
+pub struct AdapterReady {
+    pub harness: HarnessName,
+    pub sequence: AdapterEventSequence,
+}
+
+/// The adapter accepted one routed input into its provider-specific
+/// surface. The input may still produce later output, progress,
+/// confirmation, completion, stalled, or exit events.
+#[derive(
+    Archive, RkyvSerialize, RkyvDeserialize, NotaEncode, NotaDecode, Debug, Clone, PartialEq, Eq,
+)]
+pub struct AdapterInputAccepted {
+    pub harness: HarnessName,
+    pub sequence: AdapterEventSequence,
+    pub message_slot: MessageSlot,
+}
+
+/// Provider-visible output observed by the adapter. Transcript storage
+/// may also publish `TranscriptObservation`; this event reports the
+/// adapter-level interpretation that output happened.
+#[derive(
+    Archive, RkyvSerialize, RkyvDeserialize, NotaEncode, NotaDecode, Debug, Clone, PartialEq, Eq,
+)]
+pub struct AdapterOutput {
+    pub harness: HarnessName,
+    pub sequence: AdapterEventSequence,
+    pub text: String,
+}
+
+/// Provider-neutral progress while a prompt turn is still in flight.
+#[derive(
+    Archive, RkyvSerialize, RkyvDeserialize, NotaEncode, NotaDecode, Debug, Clone, PartialEq, Eq,
+)]
+pub struct AdapterProgress {
+    pub harness: HarnessName,
+    pub sequence: AdapterEventSequence,
+    pub status: String,
+}
+
+/// The adapter observed that one prompt turn completed. This is not a
+/// request to close the harness session; long-lived TUI sessions remain
+/// open until an explicit close path asks for shutdown.
+#[derive(
+    Archive, RkyvSerialize, RkyvDeserialize, NotaEncode, NotaDecode, Debug, Clone, PartialEq, Eq,
+)]
+pub struct AdapterCompletion {
+    pub harness: HarnessName,
+    pub sequence: AdapterEventSequence,
+    pub message_slot: MessageSlot,
+}
+
+/// The adapter observed a provider-neutral confirmation prompt.
+/// Policy decides whether an operator, automation rule, or later
+/// escalation path answers it.
+#[derive(
+    Archive, RkyvSerialize, RkyvDeserialize, NotaEncode, NotaDecode, Debug, Clone, PartialEq, Eq,
+)]
+pub struct AdapterConfirmationNeeded {
+    pub harness: HarnessName,
+    pub sequence: AdapterEventSequence,
+    pub interaction_id: String,
+    pub prompt: String,
+    pub options: Vec<String>,
+}
+
+#[derive(
+    Archive,
+    RkyvSerialize,
+    RkyvDeserialize,
+    NotaEncode,
+    NotaDecode,
+    Debug,
+    Clone,
+    Copy,
+    PartialEq,
+    Eq,
+)]
+pub enum AdapterStallReason {
+    NoOutput,
+    ReadinessTimeout,
+    CompletionTimeout,
+    TransportBackpressure,
+}
+
+/// The adapter did not observe the next expected provider-neutral state
+/// transition within its local policy window.
+#[derive(
+    Archive, RkyvSerialize, RkyvDeserialize, NotaEncode, NotaDecode, Debug, Clone, PartialEq, Eq,
+)]
+pub struct AdapterStalled {
+    pub harness: HarnessName,
+    pub sequence: AdapterEventSequence,
+    pub reason: AdapterStallReason,
+}
+
+#[derive(
+    Archive,
+    RkyvSerialize,
+    RkyvDeserialize,
+    NotaEncode,
+    NotaDecode,
+    Debug,
+    Clone,
+    Copy,
+    PartialEq,
+    Eq,
+)]
+pub enum AdapterExitStatus {
+    Success,
+    Failure,
+}
+
+/// The adapter observed that the provider process or session exited.
+/// Runtime transport failures are still reported through typed delivery
+/// failures when they affect a specific routed input.
+#[derive(
+    Archive, RkyvSerialize, RkyvDeserialize, NotaEncode, NotaDecode, Debug, Clone, PartialEq, Eq,
+)]
+pub struct AdapterExited {
+    pub harness: HarnessName,
+    pub sequence: AdapterEventSequence,
+    pub status: AdapterExitStatus,
+}
+
 // ─── Transcript observation stream (harness → router) ─────
 
 /// Per-observation sequence pointer. Monotonic per harness, starting at
@@ -456,6 +615,14 @@ signal_channel! {
         HarnessStarted(HarnessStarted),
         HarnessStopped(HarnessStopped),
         HarnessCrashed(HarnessCrashed),
+        AdapterReady(AdapterReady),
+        AdapterInputAccepted(AdapterInputAccepted),
+        AdapterOutput(AdapterOutput),
+        AdapterProgress(AdapterProgress),
+        AdapterCompletion(AdapterCompletion),
+        AdapterConfirmationNeeded(AdapterConfirmationNeeded),
+        AdapterStalled(AdapterStalled),
+        AdapterExited(AdapterExited),
         HarnessTranscriptSnapshot(HarnessTranscriptSnapshot),
         HarnessSubscriptionRetracted(HarnessSubscriptionRetracted),
     }
