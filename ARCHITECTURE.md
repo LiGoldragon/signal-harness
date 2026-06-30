@@ -62,9 +62,10 @@ References:
 - `primary/skills/component-triad.md` §"Verbs come in three layers"
 - `primary/skills/contract-repo.md` §"Public contracts use contract-local operation verbs"
 
-Transcript observation is push-based. The router subscribes once per
-harness on the `HarnessTranscriptStream`; the harness emits
-`TranscriptObservation` events as transcript lines become visible.
+Transcript observation is push-based. The router may open multiple
+independent subscriptions for the same harness on the
+`HarnessTranscriptStream`; the harness emits `TranscriptObservation`
+events as transcript lines become visible.
 
 Subscription close follows the canonical five-state lifecycle named
 in `~/primary/skills/subscription-lifecycle.md`: a typed request-side
@@ -101,7 +102,7 @@ sequenceDiagram
     participant Harness as harness
 
     Router->>Harness: WatchHarnessTranscript(harness)
-    Harness-->>Router: HarnessTranscriptSnapshot{harness, current_sequence}
+    Harness-->>Router: HarnessTranscriptSnapshot{token, current_sequence}
     Harness-->>Router: TranscriptObservation{sequence: N+1, line}
     Harness-->>Router: TranscriptObservation{sequence: N+2, line}
     Router->>Harness: UnwatchHarnessTranscript(HarnessTranscriptToken)

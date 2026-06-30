@@ -36,10 +36,10 @@ events (`AdapterReady`, `AdapterInputAccepted`, `AdapterOutput`,
 `AdapterProgress`, `AdapterCompletion`,
 `AdapterConfirmationNeeded`, `AdapterStalled`, `AdapterExited`) flow
 without paired requests.
-Transcript observation is push-based: the router watches once per
-harness, the harness emits a snapshot then `TranscriptObservation`
-deltas, and the subscription closes via the canonical
-watch/unwatch stream lifecycle.
+Transcript observation is push-based: the router may open multiple
+independent watches for the same harness, the harness emits a snapshot
+then `TranscriptObservation` deltas for each open subscription, and each
+subscription closes via the canonical watch/unwatch stream lifecycle.
 
 The generic adapter vocabulary describes launch/send/observe/ready/done
 event responsibilities without provider-specific terms. Concrete

@@ -15,9 +15,9 @@ use signal_harness::{
     HarnessOperationKind, HarnessReadiness, HarnessRequest, HarnessRequestUnimplemented,
     HarnessStarted, HarnessStatus, HarnessStatusQuery, HarnessStopped, HarnessStreamEvent,
     HarnessSubscriptionRetracted, HarnessTranscriptSequence, HarnessTranscriptSnapshot,
-    HarnessTranscriptToken, HarnessUnimplementedReason, InteractionPrompt, InteractionResolved,
-    MessageBody, MessageDelivery, MessageSender, MessageSlot, TranscriptObservation,
-    WatchHarnessTranscript,
+    HarnessTranscriptSubscriptionIdentifier, HarnessTranscriptToken, HarnessUnimplementedReason,
+    InteractionPrompt, InteractionResolved, MessageBody, MessageDelivery, MessageSender,
+    MessageSlot, TranscriptObservation, WatchHarnessTranscript,
 };
 
 const CANONICAL: &str = include_str!("../examples/canonical.nota");
@@ -37,6 +37,7 @@ fn body() -> MessageBody {
 fn token() -> HarnessTranscriptToken {
     HarnessTranscriptToken {
         harness: designer(),
+        subscription: HarnessTranscriptSubscriptionIdentifier::new(1),
     }
 }
 
@@ -82,7 +83,7 @@ fn canonical_request_examples_round_trip() {
         ),
         (
             HarnessRequest::UnwatchHarnessTranscript(token()),
-            "(UnwatchHarnessTranscript (designer))",
+            "(UnwatchHarnessTranscript (designer 1))",
         ),
     ];
 
@@ -230,16 +231,16 @@ fn canonical_reply_examples_round_trip() {
         ),
         (
             HarnessEvent::HarnessTranscriptSnapshot(HarnessTranscriptSnapshot {
-                harness: designer(),
+                token: token(),
                 current_sequence: HarnessTranscriptSequence::new(0),
             }),
-            "(HarnessTranscriptSnapshot (designer 0))",
+            "(HarnessTranscriptSnapshot ((designer 1) 0))",
         ),
         (
             HarnessEvent::HarnessSubscriptionRetracted(HarnessSubscriptionRetracted {
                 token: token(),
             }),
-            "(HarnessSubscriptionRetracted ((designer)))",
+            "(HarnessSubscriptionRetracted ((designer 1)))",
         ),
     ];
 

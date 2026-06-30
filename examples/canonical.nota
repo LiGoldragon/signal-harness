@@ -25,7 +25,7 @@
 (WatchHarnessTranscript (designer))
 
 ;; HarnessRequest::UnwatchHarnessTranscript
-(UnwatchHarnessTranscript (designer))
+(UnwatchHarnessTranscript (designer 1))
 
 ;; Replies
 
@@ -79,10 +79,10 @@
 (AdapterExited (designer 8 Failure))
 
 ;; HarnessEvent::HarnessTranscriptSnapshot
-(HarnessTranscriptSnapshot (designer 0))
+(HarnessTranscriptSnapshot ((designer 1) 0))
 
 ;; HarnessEvent::HarnessSubscriptionRetracted - Path A final ack
-(HarnessSubscriptionRetracted ((designer)))
+(HarnessSubscriptionRetracted ((designer 1)))
 
 ;; Stream events on HarnessTranscriptStream
 

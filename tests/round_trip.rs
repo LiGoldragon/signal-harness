@@ -15,10 +15,10 @@ use signal_harness::{
     HarnessHealth, HarnessName, HarnessOperationKind, HarnessReadiness, HarnessRequest,
     HarnessRequestUnimplemented, HarnessStarted, HarnessStatus, HarnessStatusQuery, HarnessStopped,
     HarnessSubscriptionRetracted, HarnessTranscriptSequence, HarnessTranscriptSnapshot,
-    HarnessTranscriptToken, HarnessUnimplementedReason, InteractionPrompt, InteractionResolved,
-    MessageBody, MessageDelivery, MessageSender, MessageSlot, PiRpcCommandPath, PiRpcDeliveryMode,
-    PiRpcJsonlAdapterConfiguration, PiRpcSessionDirectoryPath, TerminalSocketPath,
-    WatchHarnessTranscript,
+    HarnessTranscriptSubscriptionIdentifier, HarnessTranscriptToken, HarnessUnimplementedReason,
+    InteractionPrompt, InteractionResolved, MessageBody, MessageDelivery, MessageSender,
+    MessageSlot, PiRpcCommandPath, PiRpcDeliveryMode, PiRpcJsonlAdapterConfiguration,
+    PiRpcSessionDirectoryPath, TerminalSocketPath, WatchHarnessTranscript,
 };
 #[cfg(feature = "nota-text")]
 use signal_harness::{PiRpcModelPattern, TranscriptObservation};
@@ -36,6 +36,13 @@ fn synthetic_exchange() -> ExchangeIdentifier {
         ExchangeLane::Connector,
         LaneSequence::first(),
     )
+}
+
+fn transcript_token() -> HarnessTranscriptToken {
+    HarnessTranscriptToken {
+        harness: harness(),
+        subscription: HarnessTranscriptSubscriptionIdentifier::new(1),
+    }
 }
 
 fn round_trip_request(request: HarnessRequest) -> HarnessRequest {
@@ -131,8 +138,7 @@ fn watch_harness_transcript_round_trips() {
 
 #[test]
 fn unwatch_harness_transcript_round_trips() {
-    let request =
-        HarnessRequest::UnwatchHarnessTranscript(HarnessTranscriptToken { harness: harness() });
+    let request = HarnessRequest::UnwatchHarnessTranscript(transcript_token());
 
     assert_eq!(round_trip_request(request.clone()), request);
 }
@@ -174,7 +180,7 @@ fn harness_request_exposes_contract_owned_operation_kind() {
             HarnessOperationKind::WatchHarnessTranscript,
         ),
         (
-            HarnessRequest::UnwatchHarnessTranscript(HarnessTranscriptToken { harness: harness() }),
+            HarnessRequest::UnwatchHarnessTranscript(transcript_token()),
             HarnessOperationKind::UnwatchHarnessTranscript,
         ),
     ];
@@ -377,7 +383,7 @@ fn adapter_exited_round_trips_for_each_status() {
 #[test]
 fn harness_transcript_snapshot_round_trips() {
     let event = HarnessEvent::HarnessTranscriptSnapshot(HarnessTranscriptSnapshot {
-        harness: harness(),
+        token: transcript_token(),
         current_sequence: HarnessTranscriptSequence::new(0),
     });
     assert_eq!(round_trip_event(event.clone()), event);
@@ -386,7 +392,7 @@ fn harness_transcript_snapshot_round_trips() {
 #[test]
 fn harness_subscription_retracted_round_trips() {
     let event = HarnessEvent::HarnessSubscriptionRetracted(HarnessSubscriptionRetracted {
-        token: HarnessTranscriptToken { harness: harness() },
+        token: transcript_token(),
     });
     assert_eq!(round_trip_event(event.clone()), event);
 }

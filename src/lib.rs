@@ -536,22 +536,50 @@ impl HarnessTranscriptSequence {
     }
 }
 
+/// Per-open transcript-observation subscription sequence. This is
+/// daemon-minted and unique among the currently open subscriptions for a
+/// harness daemon process.
+#[derive(
+    Archive,
+    RkyvSerialize,
+    RkyvDeserialize,
+    NotaEncode,
+    NotaDecode,
+    Debug,
+    Clone,
+    Copy,
+    PartialEq,
+    Eq,
+    Hash,
+)]
+pub struct HarnessTranscriptSubscriptionIdentifier(u64);
+
+impl HarnessTranscriptSubscriptionIdentifier {
+    pub const fn new(value: u64) -> Self {
+        Self(value)
+    }
+
+    pub const fn into_u64(self) -> u64 {
+        self.0
+    }
+}
+
 /// Per-subscription identity for the harness transcript-observation
-/// stream. Matches the structural shape of `<Channel>SubscriptionToken`
-/// newtypes per signal-terminal's `TerminalWorkerLifecycleToken`.
-/// One observer per harness; the token's identity is the harness it
-/// observes.
+/// stream. Multiple observers may watch the same harness at the same
+/// time; the token names both the harness and the daemon-minted open
+/// subscription.
 #[derive(
     Archive, RkyvSerialize, RkyvDeserialize, NotaEncode, NotaDecode, Debug, Clone, PartialEq, Eq,
 )]
 pub struct HarnessTranscriptToken {
     pub harness: HarnessName,
+    pub subscription: HarnessTranscriptSubscriptionIdentifier,
 }
 
-/// Watch the harness's transcript-observation stream. The reply is
-/// a `HarnessTranscriptSnapshot` carrying the current sequence pointer;
-/// subsequent `TranscriptObservation` events arrive on the same
-/// connection as the stream pushes them.
+/// Watch the harness's transcript-observation stream. The reply is a
+/// `HarnessTranscriptSnapshot` carrying the daemon-minted subscription
+/// token and current sequence pointer; subsequent `TranscriptObservation`
+/// events arrive on the same connection as the stream pushes them.
 #[derive(
     Archive, RkyvSerialize, RkyvDeserialize, NotaEncode, NotaDecode, Debug, Clone, PartialEq, Eq,
 )]
@@ -560,14 +588,15 @@ pub struct WatchHarnessTranscript {
 }
 
 /// Acknowledgement that a transcript-observation subscription opened.
-/// Carries the current sequence pointer so the subscriber knows the
-/// starting position; the next `TranscriptObservation` carries sequence
+/// Carries the token needed to unwatch this exact open subscription and
+/// the current sequence pointer so the subscriber knows the starting
+/// position; the next `TranscriptObservation` carries sequence
 /// `current_sequence + 1`.
 #[derive(
     Archive, RkyvSerialize, RkyvDeserialize, NotaEncode, NotaDecode, Debug, Clone, PartialEq, Eq,
 )]
 pub struct HarnessTranscriptSnapshot {
-    pub harness: HarnessName,
+    pub token: HarnessTranscriptToken,
     pub current_sequence: HarnessTranscriptSequence,
 }
 
