@@ -160,7 +160,9 @@ its provider. The generic contract carries only the provider-neutral
 events after the adapter observes them. `AdapterCompletion` means one
 prompt turn is done; it does not close the session. A long-lived TUI
 session exits only when the runtime/provider exits or an explicit
-close-if-asked path later asks the adapter to close it.
+close-if-asked path later asks the adapter to close it. Confirmation
+prompts are first-class events; policy decides whether an operator, an
+automation rule, or an escalation path answers them.
 
 The `MessageBody` on `MessageDelivery` is provisional. The
 destination is a typed Nexus record written in NOTA syntax, not a new
