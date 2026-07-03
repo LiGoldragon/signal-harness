@@ -27,7 +27,7 @@ use rkyv::{Archive, Deserialize as RkyvDeserialize, Serialize as RkyvSerialize};
 use signal_frame::signal_channel;
 use signal_persona::{
     DomainSocketMode, DomainSocketPath, EngineManagementSocketMode, EngineManagementSocketPath,
-    OwnerIdentity,
+    OwnerIdentity, TimestampNanos,
 };
 
 // ─── Harness identity ─────────────────────────────────────
@@ -624,6 +624,314 @@ pub struct TranscriptObservation {
     pub line: String,
 }
 
+// ─── Claude session observation (harness → router) ────────
+//
+// The store-and-render-shaped observation the harness pushes for one
+// Claude session turn. It rides the same multi-watch
+// `HarnessTranscriptStream` as `TranscriptObservation` (per the accepted
+// session-flow design §2d): the Mentci view renders it, and orchestrate's
+// session store later consumes the same event. Under the
+// one-session-per-instance addressing model, `HarnessName` is the whole
+// per-session key — orchestrate correlates it to its durable
+// `(lane, session-handle)` record via the hosting-harness binding.
+
+/// The Claude session identifier recovered from the JSONL transcript. It
+/// doubles as the `claude --resume` target; the type is named for its
+/// identity role, resume being one use of it.
+#[derive(
+    Archive,
+    RkyvSerialize,
+    RkyvDeserialize,
+    NotaEncode,
+    NotaDecode,
+    Debug,
+    Clone,
+    PartialEq,
+    Eq,
+    Hash,
+)]
+pub struct ClaudeSessionIdentifier(String);
+
+impl ClaudeSessionIdentifier {
+    pub fn new(value: impl Into<String>) -> Self {
+        Self(value.into())
+    }
+
+    pub fn as_str(&self) -> &str {
+        &self.0
+    }
+}
+
+/// The Claude model literal observed for the session (e.g. a `claude-*`
+/// name or a short alias). Provider-scoped to this Claude observation
+/// contract; the cross-crate model-vocabulary unification is deferred.
+#[derive(
+    Archive,
+    RkyvSerialize,
+    RkyvDeserialize,
+    NotaEncode,
+    NotaDecode,
+    Debug,
+    Clone,
+    PartialEq,
+    Eq,
+    Hash,
+)]
+pub struct ClaudeModel(String);
+
+impl ClaudeModel {
+    pub fn new(value: impl Into<String>) -> Self {
+        Self(value.into())
+    }
+
+    pub fn as_str(&self) -> &str {
+        &self.0
+    }
+}
+
+/// Filesystem path to the session's JSONL transcript file, as the harness
+/// observer discovered it.
+#[derive(
+    Archive,
+    RkyvSerialize,
+    RkyvDeserialize,
+    NotaEncode,
+    NotaDecode,
+    Debug,
+    Clone,
+    PartialEq,
+    Eq,
+    Hash,
+)]
+pub struct TranscriptPath(String);
+
+impl TranscriptPath {
+    pub fn new(value: impl Into<String>) -> Self {
+        Self(value.into())
+    }
+
+    pub fn as_str(&self) -> &str {
+        &self.0
+    }
+}
+
+/// The assistant's response text captured for the observed turn.
+#[derive(
+    Archive, RkyvSerialize, RkyvDeserialize, NotaEncode, NotaDecode, Debug, Clone, PartialEq, Eq,
+)]
+pub struct AssistantResponseText(String);
+
+impl AssistantResponseText {
+    pub fn new(value: impl Into<String>) -> Self {
+        Self(value.into())
+    }
+
+    pub fn as_str(&self) -> &str {
+        &self.0
+    }
+}
+
+/// Accumulated context size in tokens — the staleness signal a later
+/// routing/handover decision reads. This contract only carries the figure;
+/// where the number is sourced is deferred to the harness statusline wiring
+/// and is intentionally not decided here.
+#[derive(
+    Archive,
+    RkyvSerialize,
+    RkyvDeserialize,
+    NotaEncode,
+    NotaDecode,
+    Debug,
+    Clone,
+    Copy,
+    PartialEq,
+    Eq,
+    Hash,
+)]
+pub struct ContextTokens(u64);
+
+impl ContextTokens {
+    pub const fn new(value: u64) -> Self {
+        Self(value)
+    }
+
+    pub const fn into_u64(self) -> u64 {
+        self.0
+    }
+}
+
+/// Count of streamed provider events the harness observed for the turn.
+#[derive(
+    Archive,
+    RkyvSerialize,
+    RkyvDeserialize,
+    NotaEncode,
+    NotaDecode,
+    Debug,
+    Clone,
+    Copy,
+    PartialEq,
+    Eq,
+    Hash,
+)]
+pub struct StreamedEventCount(u64);
+
+impl StreamedEventCount {
+    pub const fn new(value: u64) -> Self {
+        Self(value)
+    }
+
+    pub const fn into_u64(self) -> u64 {
+        self.0
+    }
+}
+
+/// Count of tool calls the harness observed for the turn.
+#[derive(
+    Archive,
+    RkyvSerialize,
+    RkyvDeserialize,
+    NotaEncode,
+    NotaDecode,
+    Debug,
+    Clone,
+    Copy,
+    PartialEq,
+    Eq,
+    Hash,
+)]
+pub struct ToolCallCount(u64);
+
+impl ToolCallCount {
+    pub const fn new(value: u64) -> Self {
+        Self(value)
+    }
+
+    pub const fn into_u64(self) -> u64 {
+        self.0
+    }
+}
+
+/// Count of status transitions the harness observed for the turn.
+#[derive(
+    Archive,
+    RkyvSerialize,
+    RkyvDeserialize,
+    NotaEncode,
+    NotaDecode,
+    Debug,
+    Clone,
+    Copy,
+    PartialEq,
+    Eq,
+    Hash,
+)]
+pub struct StatusTransitionCount(u64);
+
+impl StatusTransitionCount {
+    pub const fn new(value: u64) -> Self {
+        Self(value)
+    }
+
+    pub const fn into_u64(self) -> u64 {
+        self.0
+    }
+}
+
+/// How the observed turn opened its session. A closed typed record, not an
+/// `is_resume` bool: the provenance is a fixed variant set, and `SelfHealed`
+/// records the psyche-locked self-heal path where a resume target was gone
+/// and a fresh session was minted in its place.
+#[derive(
+    Archive,
+    RkyvSerialize,
+    RkyvDeserialize,
+    NotaEncode,
+    NotaDecode,
+    Debug,
+    Clone,
+    Copy,
+    PartialEq,
+    Eq,
+    Hash,
+)]
+pub enum TurnLaunch {
+    Fresh,
+    Resumed,
+    SelfHealed,
+}
+
+/// The Claude session's lifecycle at the moment of observation. Closed
+/// enum; the `Exited` variant carries the process exit status, reusing the
+/// adapter exit-status vocabulary rather than re-inventing it.
+#[derive(
+    Archive,
+    RkyvSerialize,
+    RkyvDeserialize,
+    NotaEncode,
+    NotaDecode,
+    Debug,
+    Clone,
+    Copy,
+    PartialEq,
+    Eq,
+)]
+pub enum ClaudeSessionLifecycle {
+    Ready,
+    Active,
+    Completed,
+    Exited(AdapterExitStatus),
+}
+
+/// A store-and-render-shaped observation of one Claude session turn, pushed
+/// on `HarnessTranscriptStream`. It fuses the render facts the Mentci view
+/// paints (launch provenance, end-of-turn, activity counts, transcript
+/// path, assistant response) with the store-shaped session facts
+/// orchestrate later persists (recovered session id, model, accumulated
+/// context, last activity, lifecycle). `session_identifier`, `model`,
+/// `transcript_path`, `response`, and `accumulated_context` are `Option`
+/// because each is genuinely absent until the harness observes it — before
+/// the first turn, while a turn is still `Active`, or before a context
+/// figure has been reported.
+#[derive(
+    Archive, RkyvSerialize, RkyvDeserialize, Debug, Clone, PartialEq, Eq,
+)]
+#[cfg_attr(feature = "nota-text", derive(NotaEncode, NotaDecode))]
+pub struct ClaudeSessionObservation {
+    /// The harness instance hosting the session — the whole per-session key
+    /// under one-session-per-instance addressing.
+    pub harness: HarnessName,
+    /// The recovered Claude session id; absent until the JSONL observer sees
+    /// it.
+    pub session_identifier: Option<ClaudeSessionIdentifier>,
+    /// The observed model literal; absent until reported.
+    pub model: Option<ClaudeModel>,
+    /// Whether this turn opened fresh, resumed, or self-healed.
+    pub launch: TurnLaunch,
+    /// Whether the turn reached a clean `end_turn` stop. Payload-free
+    /// yes/no: it mirrors the harness observer's own boolean signal.
+    pub reached_end_of_turn: bool,
+    /// Streamed provider events observed for the turn.
+    pub streamed_event_count: StreamedEventCount,
+    /// Tool calls observed for the turn.
+    pub tool_call_count: ToolCallCount,
+    /// Status transitions observed for the turn.
+    pub status_transition_count: StatusTransitionCount,
+    /// Path to the session's JSONL transcript; absent until discovered.
+    pub transcript_path: Option<TranscriptPath>,
+    /// The assistant's response text; absent while the turn is still in
+    /// flight.
+    pub response: Option<AssistantResponseText>,
+    /// The accumulated context size; `Option` because the sourcing is
+    /// deferred and no figure is synthesized to fill a gap.
+    pub accumulated_context: Option<ContextTokens>,
+    /// Infrastructure-minted last-activity timestamp — display/ordering
+    /// only, never a resume gate.
+    pub last_activity: TimestampNanos,
+    /// The session's lifecycle at observation time.
+    pub lifecycle: ClaudeSessionLifecycle,
+}
+
 // ─── Channel declaration ───────────────────────────────────
 
 signal_channel! {
@@ -657,11 +965,13 @@ signal_channel! {
     }
     event HarnessStreamEvent {
         TranscriptObservation(TranscriptObservation) belongs HarnessTranscriptStream,
+        ClaudeSessionObservation(ClaudeSessionObservation) belongs HarnessTranscriptStream,
     }
     stream HarnessTranscriptStream {
         token HarnessTranscriptToken;
         opened HarnessTranscriptSnapshot;
         event TranscriptObservation;
+        event ClaudeSessionObservation;
         close UnwatchHarnessTranscript;
     }
 }
@@ -715,6 +1025,11 @@ impl From<HarnessTranscriptToken> for HarnessRequest {
 impl From<TranscriptObservation> for HarnessStreamEvent {
     fn from(p: TranscriptObservation) -> Self {
         Self::TranscriptObservation(p)
+    }
+}
+impl From<ClaudeSessionObservation> for HarnessStreamEvent {
+    fn from(p: ClaudeSessionObservation) -> Self {
+        Self::ClaudeSessionObservation(p)
     }
 }
 

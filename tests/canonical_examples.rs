@@ -10,15 +10,18 @@ use nota::{NotaEncode, NotaSource};
 use signal_harness::{
     AdapterCompletion, AdapterConfirmationNeeded, AdapterEventSequence, AdapterExitStatus,
     AdapterExited, AdapterInputAccepted, AdapterOutput, AdapterProgress, AdapterReady,
-    AdapterStallReason, AdapterStalled, DeliveryCancellation, DeliveryCompleted, DeliveryFailed,
-    DeliveryFailureReason, HarnessCrashed, HarnessEvent, HarnessHealth, HarnessName,
-    HarnessOperationKind, HarnessReadiness, HarnessRequest, HarnessRequestUnimplemented,
-    HarnessStarted, HarnessStatus, HarnessStatusQuery, HarnessStopped, HarnessStreamEvent,
-    HarnessSubscriptionRetracted, HarnessTranscriptSequence, HarnessTranscriptSnapshot,
-    HarnessTranscriptSubscriptionIdentifier, HarnessTranscriptToken, HarnessUnimplementedReason,
-    InteractionPrompt, InteractionResolved, MessageBody, MessageDelivery, MessageSender,
-    MessageSlot, TranscriptObservation, WatchHarnessTranscript,
+    AdapterStallReason, AdapterStalled, AssistantResponseText, ClaudeModel,
+    ClaudeSessionIdentifier, ClaudeSessionLifecycle, ClaudeSessionObservation, ContextTokens,
+    DeliveryCancellation, DeliveryCompleted, DeliveryFailed, DeliveryFailureReason, HarnessCrashed,
+    HarnessEvent, HarnessHealth, HarnessName, HarnessOperationKind, HarnessReadiness,
+    HarnessRequest, HarnessRequestUnimplemented, HarnessStarted, HarnessStatus, HarnessStatusQuery,
+    HarnessStopped, HarnessStreamEvent, HarnessSubscriptionRetracted, HarnessTranscriptSequence,
+    HarnessTranscriptSnapshot, HarnessTranscriptSubscriptionIdentifier, HarnessTranscriptToken,
+    HarnessUnimplementedReason, InteractionPrompt, InteractionResolved, MessageBody,
+    MessageDelivery, MessageSender, MessageSlot, StatusTransitionCount, StreamedEventCount,
+    ToolCallCount, TranscriptObservation, TranscriptPath, TurnLaunch, WatchHarnessTranscript,
 };
+use signal_persona::TimestampNanos;
 
 const CANONICAL: &str = include_str!("../examples/canonical.nota");
 
@@ -262,14 +265,34 @@ fn canonical_reply_examples_round_trip() {
 
 #[test]
 fn canonical_stream_event_examples_round_trip() {
-    let expected: Vec<(HarnessStreamEvent, &str)> = vec![(
-        HarnessStreamEvent::TranscriptObservation(TranscriptObservation {
-            harness: designer(),
-            sequence: HarnessTranscriptSequence::new(1),
-            line: "hello".to_string(),
-        }),
-        "(TranscriptObservation (designer 1 hello))",
-    )];
+    let expected: Vec<(HarnessStreamEvent, &str)> = vec![
+        (
+            HarnessStreamEvent::TranscriptObservation(TranscriptObservation {
+                harness: designer(),
+                sequence: HarnessTranscriptSequence::new(1),
+                line: "hello".to_string(),
+            }),
+            "(TranscriptObservation (designer 1 hello))",
+        ),
+        (
+            HarnessStreamEvent::ClaudeSessionObservation(ClaudeSessionObservation {
+                harness: designer(),
+                session_identifier: Some(ClaudeSessionIdentifier::new("session-7")),
+                model: Some(ClaudeModel::new("haiku")),
+                launch: TurnLaunch::Resumed,
+                reached_end_of_turn: true,
+                streamed_event_count: StreamedEventCount::new(12),
+                tool_call_count: ToolCallCount::new(3),
+                status_transition_count: StatusTransitionCount::new(4),
+                transcript_path: Some(TranscriptPath::new("transcript-7")),
+                response: Some(AssistantResponseText::new("ACKNOWLEDGED")),
+                accumulated_context: Some(ContextTokens::new(48000)),
+                last_activity: TimestampNanos::new(1700000000),
+                lifecycle: ClaudeSessionLifecycle::Completed,
+            }),
+            "(ClaudeSessionObservation (designer (Some session-7) (Some haiku) Resumed True 12 3 4 (Some transcript-7) (Some ACKNOWLEDGED) (Some 48000) 1700000000 Completed))",
+        ),
+    ];
 
     for (value, canonical_text) in expected {
         let text = value.to_nota();

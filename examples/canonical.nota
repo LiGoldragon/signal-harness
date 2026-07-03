@@ -88,3 +88,10 @@
 
 ;; HarnessStreamEvent::TranscriptObservation
 (TranscriptObservation (designer 1 hello))
+
+;; HarnessStreamEvent::ClaudeSessionObservation
+;; Store-and-render-shaped facts for one Claude session turn. Options carry
+;; the recovered session id, model, transcript path, response, and the
+;; deferred-source accumulated-context figure; the lifecycle Exited arm
+;; carries the adapter exit status.
+(ClaudeSessionObservation (designer (Some session-7) (Some haiku) Resumed True 12 3 4 (Some transcript-7) (Some ACKNOWLEDGED) (Some 48000) 1700000000 Completed))

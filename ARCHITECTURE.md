@@ -67,6 +67,15 @@ independent subscriptions for the same harness on the
 `HarnessTranscriptStream`; the harness emits `TranscriptObservation`
 events as transcript lines become visible.
 
+The same multi-watch stream also carries `ClaudeSessionObservation` —
+a store-and-render-shaped observation of one Claude session turn
+(recovered session id, model, launch provenance, end-of-turn, activity
+counts, transcript path, assistant response, accumulated context, last
+activity, and lifecycle). Under the one-session-per-instance addressing
+model, `HarnessName` is the whole per-session key. This carries the
+contract type only; the daemon-side producer, the streaming subscriber,
+and the accumulated-context source are separate follow-up work.
+
 Subscription close follows the canonical five-state lifecycle named
 in `~/primary/skills/subscription-lifecycle.md`: a typed request-side
 `UnwatchHarnessTranscript` carries the per-stream
@@ -81,7 +90,7 @@ has the declared request-side close operation.
 | Side | Component |
 |---|---|
 | Request side | `router` (sends `MessageDelivery`, `InteractionPrompt`, `DeliveryCancellation`, `HarnessStatusQuery`, `WatchHarnessTranscript`, `UnwatchHarnessTranscript`). |
-| Reply / event side | `harness` (emits `Delivery*` acks, interaction resolutions, skeleton honesty, status, lifecycle events, generic adapter events, transcript snapshot, retraction ack, and `TranscriptObservation` events on the open stream). |
+| Reply / event side | `harness` (emits `Delivery*` acks, interaction resolutions, skeleton honesty, status, lifecycle events, generic adapter events, transcript snapshot, retraction ack, and `TranscriptObservation` / `ClaudeSessionObservation` events on the open stream). |
 
 Bidirectional steady-state: router sends one request; harness emits
 one or more events. Lifecycle events (`HarnessStarted` /

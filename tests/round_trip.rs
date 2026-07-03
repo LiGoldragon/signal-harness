@@ -10,16 +10,20 @@ use signal_frame::{
 use signal_harness::{
     AdapterCompletion, AdapterConfirmationNeeded, AdapterEventSequence, AdapterExitStatus,
     AdapterExited, AdapterInputAccepted, AdapterOutput, AdapterProgress, AdapterReady,
-    AdapterStallReason, AdapterStalled, DeliveryCancellation, DeliveryCompleted, DeliveryFailed,
-    DeliveryFailureReason, HarnessCrashed, HarnessEvent, HarnessFrame, HarnessFrameBody,
-    HarnessHealth, HarnessName, HarnessOperationKind, HarnessReadiness, HarnessRequest,
-    HarnessRequestUnimplemented, HarnessStarted, HarnessStatus, HarnessStatusQuery, HarnessStopped,
-    HarnessSubscriptionRetracted, HarnessTranscriptSequence, HarnessTranscriptSnapshot,
-    HarnessTranscriptSubscriptionIdentifier, HarnessTranscriptToken, HarnessUnimplementedReason,
-    InteractionPrompt, InteractionResolved, MessageBody, MessageDelivery, MessageSender,
-    MessageSlot, PiRpcCommandPath, PiRpcDeliveryMode, PiRpcJsonlAdapterConfiguration,
-    PiRpcSessionDirectoryPath, TerminalSocketPath, WatchHarnessTranscript,
+    AdapterStallReason, AdapterStalled, AssistantResponseText, ClaudeModel,
+    ClaudeSessionIdentifier, ClaudeSessionLifecycle, ClaudeSessionObservation, ContextTokens,
+    DeliveryCancellation, DeliveryCompleted, DeliveryFailed, DeliveryFailureReason, HarnessCrashed,
+    HarnessEvent, HarnessFrame, HarnessFrameBody, HarnessHealth, HarnessName, HarnessOperationKind,
+    HarnessReadiness, HarnessRequest, HarnessRequestUnimplemented, HarnessStarted, HarnessStatus,
+    HarnessStatusQuery, HarnessStopped, HarnessSubscriptionRetracted, HarnessTranscriptSequence,
+    HarnessTranscriptSnapshot, HarnessTranscriptSubscriptionIdentifier, HarnessTranscriptToken,
+    HarnessUnimplementedReason, InteractionPrompt, InteractionResolved, MessageBody,
+    MessageDelivery, MessageSender, MessageSlot, PiRpcCommandPath, PiRpcDeliveryMode,
+    PiRpcJsonlAdapterConfiguration, PiRpcSessionDirectoryPath, StatusTransitionCount,
+    StreamedEventCount, TerminalSocketPath, ToolCallCount, TranscriptPath, TurnLaunch,
+    WatchHarnessTranscript,
 };
+use signal_persona::TimestampNanos;
 #[cfg(feature = "nota-text")]
 use signal_harness::{PiRpcModelPattern, TranscriptObservation};
 use signal_persona::{
@@ -395,6 +399,102 @@ fn harness_subscription_retracted_round_trips() {
         token: transcript_token(),
     });
     assert_eq!(round_trip_event(event.clone()), event);
+}
+
+/// Coverage matrix for the `ClaudeSessionObservation` stream event: a fully
+/// populated completed turn, a minimal pre-first-turn observation with every
+/// `Option` unset, and one sample per remaining `launch` / `lifecycle`
+/// variant so the round-trips exercise the data-carrying `Exited` arm.
+fn claude_session_observations() -> Vec<ClaudeSessionObservation> {
+    vec![
+        ClaudeSessionObservation {
+            harness: harness(),
+            session_identifier: Some(ClaudeSessionIdentifier::new("session-alpha")),
+            model: Some(ClaudeModel::new("haiku")),
+            launch: TurnLaunch::Resumed,
+            reached_end_of_turn: true,
+            streamed_event_count: StreamedEventCount::new(12),
+            tool_call_count: ToolCallCount::new(3),
+            status_transition_count: StatusTransitionCount::new(4),
+            transcript_path: Some(TranscriptPath::new(
+                "/home/li/.claude/projects/encoded-cwd/session-alpha.jsonl",
+            )),
+            response: Some(AssistantResponseText::new(
+                "ACKNOWLEDGED. Multi-word response with punctuation, slashes / and (parens).",
+            )),
+            accumulated_context: Some(ContextTokens::new(48_000)),
+            last_activity: TimestampNanos::new(1_700_000_000_000_000_000),
+            lifecycle: ClaudeSessionLifecycle::Completed,
+        },
+        ClaudeSessionObservation {
+            harness: harness(),
+            session_identifier: None,
+            model: None,
+            launch: TurnLaunch::Fresh,
+            reached_end_of_turn: false,
+            streamed_event_count: StreamedEventCount::new(0),
+            tool_call_count: ToolCallCount::new(0),
+            status_transition_count: StatusTransitionCount::new(0),
+            transcript_path: None,
+            response: None,
+            accumulated_context: None,
+            last_activity: TimestampNanos::new(0),
+            lifecycle: ClaudeSessionLifecycle::Ready,
+        },
+        ClaudeSessionObservation {
+            harness: harness(),
+            session_identifier: Some(ClaudeSessionIdentifier::new("session-beta")),
+            model: Some(ClaudeModel::new("sonnet")),
+            launch: TurnLaunch::SelfHealed,
+            reached_end_of_turn: false,
+            streamed_event_count: StreamedEventCount::new(5),
+            tool_call_count: ToolCallCount::new(1),
+            status_transition_count: StatusTransitionCount::new(2),
+            transcript_path: None,
+            response: None,
+            accumulated_context: Some(ContextTokens::new(205_000)),
+            last_activity: TimestampNanos::new(42),
+            lifecycle: ClaudeSessionLifecycle::Active,
+        },
+        ClaudeSessionObservation {
+            harness: harness(),
+            session_identifier: Some(ClaudeSessionIdentifier::new("session-gamma")),
+            model: Some(ClaudeModel::new("haiku")),
+            launch: TurnLaunch::Resumed,
+            reached_end_of_turn: true,
+            streamed_event_count: StreamedEventCount::new(9),
+            tool_call_count: ToolCallCount::new(0),
+            status_transition_count: StatusTransitionCount::new(1),
+            transcript_path: Some(TranscriptPath::new("session-gamma-jsonl")),
+            response: Some(AssistantResponseText::new("HEALED")),
+            accumulated_context: Some(ContextTokens::new(101_000)),
+            last_activity: TimestampNanos::new(7),
+            lifecycle: ClaudeSessionLifecycle::Exited(AdapterExitStatus::Failure),
+        },
+    ]
+}
+
+#[test]
+fn claude_session_observation_round_trips_through_rkyv() {
+    for observation in claude_session_observations() {
+        let bytes = rkyv::to_bytes::<rkyv::rancor::Error>(&observation).expect("archive");
+        let recovered =
+            rkyv::from_bytes::<ClaudeSessionObservation, rkyv::rancor::Error>(&bytes)
+                .expect("decode rkyv");
+        assert_eq!(recovered, observation);
+    }
+}
+
+#[cfg(feature = "nota-text")]
+#[test]
+fn claude_session_observation_round_trips_through_nota_text() {
+    for observation in claude_session_observations() {
+        let text = observation.to_nota();
+        let recovered = NotaSource::new(&text)
+            .parse::<ClaudeSessionObservation>()
+            .expect("decode ClaudeSessionObservation");
+        assert_eq!(recovered, observation, "nota round-trip for {text}");
+    }
 }
 
 #[cfg(feature = "nota-text")]
