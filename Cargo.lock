@@ -509,7 +509,7 @@ dependencies = [
 [[package]]
 name = "schema-rust"
 version = "0.5.3"
-source = "git+https://github.com/LiGoldragon/schema-rust.git?branch=drop-next#af814e757cd84fb0b3b8cce9c0623f69b6d99b5c"
+source = "git+https://github.com/LiGoldragon/schema-rust.git?branch=drop-next#8a81a408eb250bf6c7d6ccd2c2b9ae9e18dfc290"
 dependencies = [
  "nota",
  "prettyplease",
@@ -593,7 +593,7 @@ dependencies = [
 [[package]]
 name = "signal-persona"
 version = "0.2.0"
-source = "git+https://github.com/LiGoldragon/signal-persona.git?branch=drop-next#97f630a0bad0ca368d9ced267d47e26b1729be15"
+source = "git+https://github.com/LiGoldragon/signal-persona.git?branch=drop-next#01c01c91282c5976fa77e3743b9324bc6294e1af"
 dependencies = [
  "nota",
  "rkyv",
