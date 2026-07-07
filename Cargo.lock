@@ -484,19 +484,44 @@ checksum = "b39cdef0fa800fc44525c84ccb54a029961a8215f9619753635a9c0d2538d46d"
 [[package]]
 name = "schema"
 version = "0.2.0"
-source = "git+https://github.com/LiGoldragon/schema.git?rev=92bed64ad644ce4caa2827398ada5b7b79221165#92bed64ad644ce4caa2827398ada5b7b79221165"
+source = "git+https://github.com/LiGoldragon/schema.git?branch=trueschema#4a8aaf1de3aaf476577d5b4e93691ef47c135d1a"
 dependencies = [
  "blake3",
  "nota",
  "rkyv",
- "schema-cc",
+ "schema-cc 0.1.0 (git+https://github.com/LiGoldragon/schema.git?branch=trueschema)",
+ "thiserror",
+]
+
+[[package]]
+name = "schema"
+version = "0.2.0"
+source = "git+https://github.com/LiGoldragon/schema.git?rev=4a8aaf1de3aaf476577d5b4e93691ef47c135d1a#4a8aaf1de3aaf476577d5b4e93691ef47c135d1a"
+dependencies = [
+ "blake3",
+ "nota",
+ "rkyv",
+ "schema-cc 0.1.0 (git+https://github.com/LiGoldragon/schema.git?rev=4a8aaf1de3aaf476577d5b4e93691ef47c135d1a)",
  "thiserror",
 ]
 
 [[package]]
 name = "schema-cc"
 version = "0.1.0"
-source = "git+https://github.com/LiGoldragon/schema.git?rev=92bed64ad644ce4caa2827398ada5b7b79221165#92bed64ad644ce4caa2827398ada5b7b79221165"
+source = "git+https://github.com/LiGoldragon/schema.git?branch=trueschema#4a8aaf1de3aaf476577d5b4e93691ef47c135d1a"
+dependencies = [
+ "nota",
+ "prettyplease",
+ "proc-macro2",
+ "quote",
+ "syn",
+ "thiserror",
+]
+
+[[package]]
+name = "schema-cc"
+version = "0.1.0"
+source = "git+https://github.com/LiGoldragon/schema.git?rev=4a8aaf1de3aaf476577d5b4e93691ef47c135d1a#4a8aaf1de3aaf476577d5b4e93691ef47c135d1a"
 dependencies = [
  "nota",
  "prettyplease",
@@ -509,13 +534,13 @@ dependencies = [
 [[package]]
 name = "schema-rust"
 version = "0.6.0"
-source = "git+https://github.com/LiGoldragon/schema-rust.git?branch=main#a4b46ffffe5307eca3e1537539d0a70884955b4c"
+source = "git+https://github.com/LiGoldragon/schema-rust.git?branch=trueschema#886a9009077bdf9ee0e71fa0fa31aaf6e5444dd3"
 dependencies = [
  "nota",
  "prettyplease",
  "proc-macro2",
  "quote",
- "schema",
+ "schema 0.2.0 (git+https://github.com/LiGoldragon/schema.git?rev=4a8aaf1de3aaf476577d5b4e93691ef47c135d1a)",
  "syn",
  "thiserror",
  "triad-runtime",
@@ -593,10 +618,11 @@ dependencies = [
 [[package]]
 name = "signal-persona"
 version = "0.2.0"
-source = "git+https://github.com/LiGoldragon/signal-persona.git?branch=main#2babf1314e2898d7bdbe75124e00f9129cfb8d43"
+source = "git+https://github.com/LiGoldragon/signal-persona.git?branch=primary-2v5c.10.1.1-signal-persona-trueschema#e6fbc977cdf6a19b9ee31b41d235e1808091dc88"
 dependencies = [
  "nota",
  "rkyv",
+ "schema 0.2.0 (git+https://github.com/LiGoldragon/schema.git?branch=trueschema)",
  "schema-rust",
  "signal-frame",
 ]
