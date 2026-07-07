@@ -152,6 +152,12 @@ Records local to this contract:
 - `HarnessRequestUnimplemented`, `HarnessUnimplementedReason`,
   `HarnessOperationKind`.
 - `HarnessStatus`, `HarnessHealth`, `HarnessReadiness`.
+- `NamedModel`, `CapabilityProfile`, `ModelSelector`, `EffortRequest`,
+  `ModelRequest`, `ContinuationHandle`, `ContinuationRequest`,
+  `ModelResolutionRequest`, `ModelResolved`, `ModelUnavailable`, and
+  `ModelUnavailableReason` (the shared vocabulary for harness-owned model
+  resolution and continuation validation; privileged operations that use it
+  live in `meta-signal-harness`).
 - `HarnessStarted`, `HarnessStopped`, `HarnessCrashed`.
 - `AdapterReady`, `AdapterInputAccepted`, `AdapterOutput`,
   `AdapterProgress`, `AdapterCompletion`,
@@ -188,7 +194,23 @@ adapter configuration. The Pi adapter record carries command path,
 session directory path, optional model pattern, and closed delivery mode
 (`Prompt`, `Steer`, `FollowUp`).
 
-## 4 · Harness kinds
+## 4 · Model and continuation resolution vocabulary
+
+The higher-level orchestrator may ask for either an exact model name or a
+capability/profile plus a requested effort tier. The `harness` component owns
+model-to-provider resolution and technical continuation validation. This
+contract therefore carries data-only nouns for `ModelSelector`,
+`EffortRequest`, and `ContinuationRequest`; runtime retry, fallback, and
+session-reuse policy stay outside this crate.
+
+`ContinuationHandle` is an opaque provider handle enum with Claude, Codex, and
+Pi variants. Consumers such as orchestrate store and pass the handle, but they
+must not inspect provider-specific internals. If a request cannot be served,
+`ModelUnavailable` carries a typed `ModelUnavailableReason` such as no
+configured harness, unknown model, unsupported effort or capability, provider
+unavailability, continuation unavailability, or missing adapter configuration.
+
+## 5 · Harness kinds
 
 `HarnessKind` is the closed kind enum carried on `HarnessBinding`.
 Four variants, no `Other`:
@@ -214,7 +236,7 @@ exactly these four variants.
 > through `HarnessTerminalEndpoint::FixtureOnlyHuman`, which is the
 > runtime adapter for fixture delivery, not the kind label.
 
-## 5 · Recipient → harness → terminal resolution
+## 6 · Recipient → harness → terminal resolution
 
 The prototype-one resolution chain:
 
@@ -236,7 +258,7 @@ session named `"designer"`. Future cases (multiple harnesses per role,
 harness pools, separate identity/transport namespaces) get a richer
 resolution when they surface.
 
-## 6 · Messages
+## 7 · Messages
 
 ```text
 HarnessRequest                          HarnessEvent
@@ -287,7 +309,7 @@ Closed enums; typed `DeliveryFailureReason` (four variants:
 `HarnessOperationKind` is the closed request discriminator used by
 skeleton honesty events.
 
-## 7 · Sema-class projections (Layer 3)
+## 8 · Sema-class projections (Layer 3)
 
 Once migrated, each Component Command projects to a payloadless Sema
 class for observation:
@@ -307,7 +329,7 @@ The wire form carries the contract-local verb only; the Sema class
 label is computed at observation publish time inside the daemon, not
 encoded into the request.
 
-## 8 · Constraints
+## 9 · Constraints
 
 | Constraint | Witness |
 |---|---|
@@ -334,7 +356,7 @@ encoded into the request.
 | Contract crate dependencies use a named API reference (branch or tag), not a raw revision pin. | `Cargo.toml` review: `signal-frame` is declared `git = "..."` with a named-branch shape; raw `rev = "..."` pins are not used. |
 | Runtime code stays out of the contract. | Source scan: no Kameo, Tokio, socket, or redb code. |
 
-## 9 · NOTA codec shape on `signal_channel!` variants
+## 10 · NOTA codec shape on `signal_channel!` variants
 
 The current `signal_channel!` macro emits the request/reply/event
 variant head and wraps the payload's positional fields. For example,
@@ -342,7 +364,7 @@ variant head and wraps the payload's positional fields. For example,
 encodes as `(UnwatchHarnessTranscript (...))`. Canonical examples
 and round-trip tests carry the variant heads.
 
-## 10 · Versioning
+## 11 · Versioning
 
 `signal_frame::Frame` carries the protocol version. Schema-level
 changes are breaking; coordinate `router` and
@@ -352,7 +374,7 @@ This crate depends on `signal-frame` via a named-branch reference, not
 a raw revision pin. The destination is a stable `signal-frame` API
 branch/bookmark once that lane is declared.
 
-## 11 · Non-ownership
+## 12 · Non-ownership
 
 - No router daemon — that is `router`.
 - No harness daemon — that is `harness`.
@@ -363,7 +385,7 @@ branch/bookmark once that lane is declared.
   `terminal-cell` concerns.
 - No transport (UDS path, reconnect, timeouts).
 
-## 12 · Code map
+## 13 · Code map
 
 ```text
 src/

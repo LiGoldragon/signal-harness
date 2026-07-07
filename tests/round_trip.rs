@@ -10,22 +10,25 @@ use signal_frame::{
 use signal_harness::{
     AdapterCompletion, AdapterConfirmationNeeded, AdapterEventSequence, AdapterExitStatus,
     AdapterExited, AdapterInputAccepted, AdapterOutput, AdapterProgress, AdapterReady,
-    AdapterStallReason, AdapterStalled, AssistantResponseText, ClaudeModel,
-    ClaudeSessionIdentifier, ClaudeSessionLifecycle, ClaudeSessionObservation, ContextTokens,
-    DeliveryCancellation, DeliveryCompleted, DeliveryFailed, DeliveryFailureReason, HarnessCrashed,
-    HarnessEvent, HarnessFrame, HarnessFrameBody, HarnessHealth, HarnessName, HarnessOperationKind,
-    HarnessReadiness, HarnessRequest, HarnessRequestUnimplemented, HarnessStarted, HarnessStatus,
-    HarnessStatusQuery, HarnessStopped, HarnessSubscriptionRetracted, HarnessTranscriptSequence,
-    HarnessTranscriptSnapshot, HarnessTranscriptSubscriptionIdentifier, HarnessTranscriptToken,
-    HarnessUnimplementedReason, InteractionPrompt, InteractionResolved, MessageBody,
-    MessageDelivery, MessageSender, MessageSlot, PiRpcCommandPath, PiRpcDeliveryMode,
-    PiRpcJsonlAdapterConfiguration, PiRpcSessionDirectoryPath, StatusTransitionCount,
-    StreamedEventCount, TerminalSocketPath, ToolCallCount, TranscriptPath, TurnLaunch,
-    WatchHarnessTranscript,
+    AdapterStallReason, AdapterStalled, AssistantResponseText, CapabilityProfile, ClaudeModel,
+    ClaudeSessionIdentifier, ClaudeSessionLifecycle, ClaudeSessionObservation,
+    CodexContinuationIdentifier, ContextTokens, ContinuationHandle, ContinuationRequest,
+    DeliveryCancellation, DeliveryCompleted, DeliveryFailed, DeliveryFailureReason, EffortRequest,
+    HarnessCrashed, HarnessEvent, HarnessFrame, HarnessFrameBody, HarnessHealth, HarnessKind,
+    HarnessName, HarnessOperationKind, HarnessReadiness, HarnessRequest,
+    HarnessRequestUnimplemented, HarnessStarted, HarnessStatus, HarnessStatusQuery, HarnessStopped,
+    HarnessSubscriptionRetracted, HarnessTranscriptSequence, HarnessTranscriptSnapshot,
+    HarnessTranscriptSubscriptionIdentifier, HarnessTranscriptToken, HarnessUnimplementedReason,
+    InteractionPrompt, InteractionResolved, MessageBody, MessageDelivery, MessageSender,
+    MessageSlot, ModelRequest, ModelResolutionRequest, ModelResolved, ModelSelector,
+    ModelUnavailable, ModelUnavailableReason, NamedModel, PiContinuationIdentifier,
+    PiRpcCommandPath, PiRpcDeliveryMode, PiRpcJsonlAdapterConfiguration, PiRpcSessionDirectoryPath,
+    StatusTransitionCount, StreamedEventCount, TerminalSocketPath, ToolCallCount, TranscriptPath,
+    TurnLaunch, WatchHarnessTranscript,
 };
-use signal_persona::TimestampNanos;
 #[cfg(feature = "nota-text")]
 use signal_harness::{PiRpcModelPattern, TranscriptObservation};
+use signal_persona::TimestampNanos;
 use signal_persona::{
     DomainSocketMode, DomainSocketPath, EngineManagementSocketMode, EngineManagementSocketPath,
 };
@@ -213,6 +216,81 @@ fn harness_request_variants_declare_contract_local_operation_heads() {
 #[test]
 fn harness_operation_kind_round_trips_through_nota_text() {
     round_trip_nota(HarnessOperationKind::MessageDelivery, "MessageDelivery");
+}
+
+#[cfg(feature = "nota-text")]
+#[test]
+fn model_resolution_vocabulary_round_trips_through_nota_text() {
+    let exact_request = ModelResolutionRequest {
+        model: ModelRequest {
+            selector: ModelSelector::Exact(NamedModel::new("claude-sonnet-4")),
+            effort: EffortRequest::Maximum,
+        },
+        continuation: ContinuationRequest::Fresh,
+    };
+    round_trip_nota(exact_request, "(((Exact claude-sonnet-4) Maximum) Fresh)");
+
+    let profile_request = ModelResolutionRequest {
+        model: ModelRequest {
+            selector: ModelSelector::CapabilityProfile(CapabilityProfile::new("deep-design")),
+            effort: EffortRequest::ExtraHigh,
+        },
+        continuation: ContinuationRequest::Prefer(ContinuationHandle::Codex(
+            CodexContinuationIdentifier::new("codex-session-7"),
+        )),
+    };
+    round_trip_nota(
+        profile_request,
+        "(((CapabilityProfile deep-design) ExtraHigh) (Prefer (Codex codex-session-7)))",
+    );
+}
+
+#[cfg(feature = "nota-text")]
+#[test]
+fn model_resolution_replies_round_trip_through_nota_text() {
+    let resolved = ModelResolved {
+        harness: harness(),
+        harness_kind: HarnessKind::Claude,
+        model: NamedModel::new("claude-sonnet-4"),
+        effort: EffortRequest::High,
+        continuation: ContinuationHandle::Claude(ClaudeSessionIdentifier::new("claude-session-1")),
+    };
+    round_trip_nota(
+        resolved,
+        "(designer Claude claude-sonnet-4 High (Claude claude-session-1))",
+    );
+
+    let unavailable = ModelUnavailable {
+        request: ModelResolutionRequest {
+            model: ModelRequest {
+                selector: ModelSelector::Exact(NamedModel::new("pi-large")),
+                effort: EffortRequest::Medium,
+            },
+            continuation: ContinuationRequest::Require(ContinuationHandle::Pi(
+                PiContinuationIdentifier::new("pi-thread-3"),
+            )),
+        },
+        reason: ModelUnavailableReason::ContinuationUnavailable,
+    };
+    round_trip_nota(
+        unavailable,
+        "((((Exact pi-large) Medium) (Require (Pi pi-thread-3))) ContinuationUnavailable)",
+    );
+}
+
+#[test]
+fn model_unavailable_reason_covers_resolution_failures() {
+    let reasons = [
+        ModelUnavailableReason::NoConfiguredHarness,
+        ModelUnavailableReason::ModelNotKnown,
+        ModelUnavailableReason::EffortUnsupported,
+        ModelUnavailableReason::CapabilityUnsupported,
+        ModelUnavailableReason::ProviderUnavailable,
+        ModelUnavailableReason::ContinuationUnavailable,
+        ModelUnavailableReason::AdapterConfigurationMissing,
+    ];
+
+    assert_eq!(reasons.len(), 7);
 }
 
 #[test]
@@ -478,9 +556,8 @@ fn claude_session_observations() -> Vec<ClaudeSessionObservation> {
 fn claude_session_observation_round_trips_through_rkyv() {
     for observation in claude_session_observations() {
         let bytes = rkyv::to_bytes::<rkyv::rancor::Error>(&observation).expect("archive");
-        let recovered =
-            rkyv::from_bytes::<ClaudeSessionObservation, rkyv::rancor::Error>(&bytes)
-                .expect("decode rkyv");
+        let recovered = rkyv::from_bytes::<ClaudeSessionObservation, rkyv::rancor::Error>(&bytes)
+            .expect("decode rkyv");
         assert_eq!(recovered, observation);
     }
 }

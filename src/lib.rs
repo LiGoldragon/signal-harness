@@ -315,6 +315,255 @@ pub enum HarnessReadiness {
     Unavailable,
 }
 
+// ─── Model resolution vocabulary (orchestrator → harness) ─
+
+/// A provider model name requested exactly as a caller knows it. The harness
+/// resolves this literal to a configured Claude, Codex, or Pi adapter; callers
+/// do not infer the provider from the string.
+#[derive(
+    Archive,
+    RkyvSerialize,
+    RkyvDeserialize,
+    NotaEncode,
+    NotaDecode,
+    Debug,
+    Clone,
+    PartialEq,
+    Eq,
+    Hash,
+)]
+pub struct NamedModel(String);
+
+impl NamedModel {
+    pub fn new(value: impl Into<String>) -> Self {
+        Self(value.into())
+    }
+
+    pub fn as_str(&self) -> &str {
+        &self.0
+    }
+}
+
+/// A named capability/profile bundle requested instead of one exact provider
+/// model. The harness owns the mapping from profile to provider model.
+#[derive(
+    Archive,
+    RkyvSerialize,
+    RkyvDeserialize,
+    NotaEncode,
+    NotaDecode,
+    Debug,
+    Clone,
+    PartialEq,
+    Eq,
+    Hash,
+)]
+pub struct CapabilityProfile(String);
+
+impl CapabilityProfile {
+    pub fn new(value: impl Into<String>) -> Self {
+        Self(value.into())
+    }
+
+    pub fn as_str(&self) -> &str {
+        &self.0
+    }
+}
+
+#[derive(
+    Archive,
+    RkyvSerialize,
+    RkyvDeserialize,
+    NotaEncode,
+    NotaDecode,
+    Debug,
+    Clone,
+    PartialEq,
+    Eq,
+    Hash,
+)]
+pub enum ModelSelector {
+    Exact(NamedModel),
+    CapabilityProfile(CapabilityProfile),
+}
+
+/// Requested effort tier. The highest tiers are explicit variants so callers
+/// can ask for an extra-high or maximum effort without smuggling policy in a
+/// string.
+#[derive(
+    Archive,
+    RkyvSerialize,
+    RkyvDeserialize,
+    NotaEncode,
+    NotaDecode,
+    Debug,
+    Clone,
+    Copy,
+    PartialEq,
+    Eq,
+    Hash,
+)]
+pub enum EffortRequest {
+    Minimal,
+    Low,
+    Medium,
+    High,
+    ExtraHigh,
+    Maximum,
+}
+
+#[derive(
+    Archive, RkyvSerialize, RkyvDeserialize, NotaEncode, NotaDecode, Debug, Clone, PartialEq, Eq,
+)]
+pub struct ModelRequest {
+    pub selector: ModelSelector,
+    pub effort: EffortRequest,
+}
+
+/// Codex continuation identity. The provider-specific schema stays inside the
+/// Codex handle variant; consumers store and pass it without inspection.
+#[derive(
+    Archive,
+    RkyvSerialize,
+    RkyvDeserialize,
+    NotaEncode,
+    NotaDecode,
+    Debug,
+    Clone,
+    PartialEq,
+    Eq,
+    Hash,
+)]
+pub struct CodexContinuationIdentifier(String);
+
+impl CodexContinuationIdentifier {
+    pub fn new(value: impl Into<String>) -> Self {
+        Self(value.into())
+    }
+
+    pub fn as_str(&self) -> &str {
+        &self.0
+    }
+}
+
+/// Pi continuation identity. The Pi adapter owns the field meaning; the shared
+/// contract only types the handle boundary.
+#[derive(
+    Archive,
+    RkyvSerialize,
+    RkyvDeserialize,
+    NotaEncode,
+    NotaDecode,
+    Debug,
+    Clone,
+    PartialEq,
+    Eq,
+    Hash,
+)]
+pub struct PiContinuationIdentifier(String);
+
+impl PiContinuationIdentifier {
+    pub fn new(value: impl Into<String>) -> Self {
+        Self(value.into())
+    }
+
+    pub fn as_str(&self) -> &str {
+        &self.0
+    }
+}
+
+#[derive(
+    Archive,
+    RkyvSerialize,
+    RkyvDeserialize,
+    NotaEncode,
+    NotaDecode,
+    Debug,
+    Clone,
+    PartialEq,
+    Eq,
+    Hash,
+)]
+pub enum ContinuationHandle {
+    Claude(ClaudeSessionIdentifier),
+    Codex(CodexContinuationIdentifier),
+    Pi(PiContinuationIdentifier),
+}
+
+#[derive(
+    Archive,
+    RkyvSerialize,
+    RkyvDeserialize,
+    NotaEncode,
+    NotaDecode,
+    Debug,
+    Clone,
+    PartialEq,
+    Eq,
+    Hash,
+)]
+pub enum ContinuationRequest {
+    Fresh,
+    Prefer(ContinuationHandle),
+    Require(ContinuationHandle),
+}
+
+/// One privileged model-resolution attempt: choose a model by exact name or
+/// capability/profile, ask for an effort tier, and state whether an existing
+/// provider continuation is fresh, preferred, or required.
+#[derive(
+    Archive, RkyvSerialize, RkyvDeserialize, NotaEncode, NotaDecode, Debug, Clone, PartialEq, Eq,
+)]
+pub struct ModelResolutionRequest {
+    pub model: ModelRequest,
+    pub continuation: ContinuationRequest,
+}
+
+/// Harness-side resolution result. The selected harness kind and model are the
+/// provider-neutral facts a caller may act on; provider continuation internals
+/// stay wrapped in `ContinuationHandle`.
+#[derive(
+    Archive, RkyvSerialize, RkyvDeserialize, NotaEncode, NotaDecode, Debug, Clone, PartialEq, Eq,
+)]
+pub struct ModelResolved {
+    pub harness: HarnessName,
+    pub harness_kind: HarnessKind,
+    pub model: NamedModel,
+    pub effort: EffortRequest,
+    pub continuation: ContinuationHandle,
+}
+
+#[derive(
+    Archive, RkyvSerialize, RkyvDeserialize, NotaEncode, NotaDecode, Debug, Clone, PartialEq, Eq,
+)]
+pub struct ModelUnavailable {
+    pub request: ModelResolutionRequest,
+    pub reason: ModelUnavailableReason,
+}
+
+#[derive(
+    Archive,
+    RkyvSerialize,
+    RkyvDeserialize,
+    NotaEncode,
+    NotaDecode,
+    Debug,
+    Clone,
+    Copy,
+    PartialEq,
+    Eq,
+    Hash,
+)]
+pub enum ModelUnavailableReason {
+    NoConfiguredHarness,
+    ModelNotKnown,
+    EffortUnsupported,
+    CapabilityUnsupported,
+    ProviderUnavailable,
+    ContinuationUnavailable,
+    AdapterConfigurationMissing,
+}
+
 // ─── Lifecycle observations (harness → router) ────────────
 
 /// Harness started; ready to receive deliveries.
@@ -893,9 +1142,7 @@ pub enum ClaudeSessionLifecycle {
 /// because each is genuinely absent until the harness observes it — before
 /// the first turn, while a turn is still `Active`, or before a context
 /// figure has been reported.
-#[derive(
-    Archive, RkyvSerialize, RkyvDeserialize, Debug, Clone, PartialEq, Eq,
-)]
+#[derive(Archive, RkyvSerialize, RkyvDeserialize, Debug, Clone, PartialEq, Eq)]
 #[cfg_attr(feature = "nota-text", derive(NotaEncode, NotaDecode))]
 pub struct ClaudeSessionObservation {
     /// The harness instance hosting the session — the whole per-session key
