@@ -564,6 +564,129 @@ pub enum ModelUnavailableReason {
     AdapterConfigurationMissing,
 }
 
+// ─── Session launch (orchestrator → harness, meta plane) ──
+
+/// Orchestrator-minted agent identity delivered to the launched process in
+/// its initial prompt. The orchestrator owns the mint; this contract only
+/// types the token boundary.
+#[derive(
+    Archive,
+    RkyvSerialize,
+    RkyvDeserialize,
+    NotaEncode,
+    NotaDecode,
+    Debug,
+    Clone,
+    PartialEq,
+    Eq,
+    Hash,
+)]
+pub struct AgentIdentityToken(String);
+
+impl AgentIdentityToken {
+    pub fn new(value: impl Into<String>) -> Self {
+        Self(value.into())
+    }
+
+    pub fn as_str(&self) -> &str {
+        &self.0
+    }
+}
+
+/// The initial prompt text handed to the launched harness process at spawn.
+/// It carries the agent identity announcement and the mission; the harness
+/// passes it through verbatim.
+#[derive(
+    Archive, RkyvSerialize, RkyvDeserialize, NotaEncode, NotaDecode, Debug, Clone, PartialEq, Eq,
+)]
+pub struct InitialPrompt(String);
+
+impl InitialPrompt {
+    pub fn new(value: impl Into<String>) -> Self {
+        Self(value.into())
+    }
+
+    pub fn as_str(&self) -> &str {
+        &self.0
+    }
+}
+
+/// Filesystem location of the terminal session directory a launch produced,
+/// carried as path text. Present only when the launch went through a
+/// PTY-owning terminal cell.
+#[derive(
+    Archive, RkyvSerialize, RkyvDeserialize, NotaEncode, NotaDecode, Debug, Clone, PartialEq, Eq,
+)]
+pub struct SessionDirectory(String);
+
+impl SessionDirectory {
+    pub fn new(value: impl Into<String>) -> Self {
+        Self(value.into())
+    }
+
+    pub fn as_str(&self) -> &str {
+        &self.0
+    }
+}
+
+/// One privileged session-launch request: spawn a harness process of the
+/// named kind carrying an orchestrator-minted agent identity in its initial
+/// prompt, either fresh or continuing an existing provider session.
+#[derive(
+    Archive, RkyvSerialize, RkyvDeserialize, NotaEncode, NotaDecode, Debug, Clone, PartialEq, Eq,
+)]
+pub struct SessionLaunchRequest {
+    pub harness_kind: HarnessKind,
+    pub agent_identity: AgentIdentityToken,
+    pub initial_prompt: InitialPrompt,
+    pub continuation: ContinuationRequest,
+}
+
+/// Harness-side launch result: the spawned process facts a caller may act
+/// on — the child process id, and the terminal session directory when the
+/// launch went through a PTY-owning terminal cell. Provider continuation
+/// internals stay wrapped in `ContinuationHandle`.
+#[derive(
+    Archive, RkyvSerialize, RkyvDeserialize, NotaEncode, NotaDecode, Debug, Clone, PartialEq, Eq,
+)]
+pub struct SessionLaunched {
+    pub agent_identity: AgentIdentityToken,
+    pub child_process_id: u32,
+    pub session_directory: Option<SessionDirectory>,
+    pub continuation: Option<ContinuationHandle>,
+}
+
+#[derive(
+    Archive,
+    RkyvSerialize,
+    RkyvDeserialize,
+    NotaEncode,
+    NotaDecode,
+    Debug,
+    Clone,
+    Copy,
+    PartialEq,
+    Eq,
+    Hash,
+)]
+pub enum SessionLaunchRefusalReason {
+    HarnessKindUnsupported,
+    ContinuationUnsupported,
+    LauncherUnavailable,
+    SpawnFailed,
+}
+
+/// Typed launch refusal. `detail` is diagnostic text for the operator; the
+/// reason is the actionable fact.
+#[derive(
+    Archive, RkyvSerialize, RkyvDeserialize, NotaEncode, NotaDecode, Debug, Clone, PartialEq, Eq,
+)]
+pub struct SessionLaunchRefused {
+    pub request: SessionLaunchRequest,
+    pub reason: SessionLaunchRefusalReason,
+    pub detail: String,
+}
+
 // ─── Lifecycle observations (harness → router) ────────────
 
 /// Harness started; ready to receive deliveries.

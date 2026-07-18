@@ -809,3 +809,61 @@ fn pi_rpc_jsonl_adapter_configuration_round_trips_through_rkyv() {
         .expect("decode rkyv");
     assert_eq!(recovered, configuration);
 }
+
+#[test]
+fn session_launch_request_round_trips_through_rkyv() {
+    use signal_harness::{
+        AgentIdentityToken, ContinuationRequest, InitialPrompt, SessionLaunchRequest,
+    };
+    let request = SessionLaunchRequest {
+        harness_kind: HarnessKind::Pi,
+        agent_identity: AgentIdentityToken::new("xk3f"),
+        initial_prompt: InitialPrompt::new("You are agent xk3f. Map the repo."),
+        continuation: ContinuationRequest::Fresh,
+    };
+    let bytes = rkyv::to_bytes::<rkyv::rancor::Error>(&request).expect("archive");
+    let recovered =
+        rkyv::from_bytes::<SessionLaunchRequest, rkyv::rancor::Error>(&bytes).expect("decode rkyv");
+    assert_eq!(recovered, request);
+}
+
+#[test]
+fn session_launched_round_trips_through_rkyv() {
+    use signal_harness::{AgentIdentityToken, SessionDirectory, SessionLaunched};
+    let launched = SessionLaunched {
+        agent_identity: AgentIdentityToken::new("xk3f"),
+        child_process_id: 4321,
+        session_directory: Some(SessionDirectory::new(
+            "/run/user/1000/terminal-cell/session-xk3f-1784366869",
+        )),
+        continuation: None,
+    };
+    let bytes = rkyv::to_bytes::<rkyv::rancor::Error>(&launched).expect("archive");
+    let recovered =
+        rkyv::from_bytes::<SessionLaunched, rkyv::rancor::Error>(&bytes).expect("decode rkyv");
+    assert_eq!(recovered, launched);
+}
+
+#[cfg(feature = "nota-text")]
+#[test]
+fn session_launch_refusal_round_trips_through_nota_text() {
+    use signal_harness::{
+        AgentIdentityToken, ContinuationRequest, InitialPrompt, SessionLaunchRefusalReason,
+        SessionLaunchRefused, SessionLaunchRequest,
+    };
+    let refused = SessionLaunchRefused {
+        request: SessionLaunchRequest {
+            harness_kind: HarnessKind::Codex,
+            agent_identity: AgentIdentityToken::new("xk3f"),
+            initial_prompt: InitialPrompt::new("You are agent xk3f."),
+            continuation: ContinuationRequest::Fresh,
+        },
+        reason: SessionLaunchRefusalReason::HarnessKindUnsupported,
+        detail: "codex launch deferred".to_string(),
+    };
+    let text = refused.to_nota();
+    let recovered = NotaSource::new(&text)
+        .parse::<SessionLaunchRefused>()
+        .expect("decode refusal");
+    assert_eq!(recovered, refused);
+}
