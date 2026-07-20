@@ -353,7 +353,7 @@ encoded into the request.
 | Prompt-turn completion does not imply session closure. | `AdapterCompletion` is distinct from `HarnessStopped`, `HarnessCrashed`, and `AdapterExited`; no close request is paired to completion. |
 | Confirmation prompts are first-class interaction events. | `AdapterConfirmationNeeded` round-trips as a `HarnessEvent` with a typed interaction identifier, prompt text, and options. |
 | No stringly-typed dispatch (`match s.as_str()`) for closed-set states. | All kind / reason / health / readiness fields are typed closed enums. |
-| Contract crate dependencies use a named API reference (branch or tag), not a raw revision pin. | `Cargo.toml` review: `signal-frame` is declared `git = "..."` with a named-branch shape; raw `rev = "..."` pins are not used. |
+| Compatibility releases use one immutable runtime contract family. | `Cargo.toml` pins Nota 0.5.1, Signal Frame 0.3.1, and Signal Persona 0.2.1 to their compatibility revisions; ordinary runtime dependency resolution therefore cannot introduce a second NOTA or frame trait family. |
 | Runtime code stays out of the contract. | Source scan: no Kameo, Tokio, socket, or redb code. |
 
 ## 10 · NOTA codec shape on `signal_channel!` variants
@@ -370,9 +370,12 @@ and round-trip tests carry the variant heads.
 changes are breaking; coordinate `router` and
 `harness` on the upgrade.
 
-This crate depends on `signal-frame` via a named-branch reference, not
-a raw revision pin. The destination is a stable `signal-frame` API
-branch/bookmark once that lane is declared.
+The `HarnessContractCompatibility` release keeps the existing schema and
+payload types byte-for-byte stable while pinning Nota 0.5.1, Signal Frame
+0.3.1, and Signal Persona 0.2.1 to one immutable runtime family. Its
+build-time generator remains the existing checked-artifact-compatible
+revision; this crate has no build script or checked-in generated Rust output
+to regenerate.
 
 ## 12 · Non-ownership
 
