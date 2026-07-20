@@ -19,7 +19,7 @@ nota-text = ["signal-frame/nota-text", "signal-persona/nota-text"]
 [dependencies]
 nota = { package = "nota", git = "https://github.com/LiGoldragon/nota.git", rev = "ce7c564de0a0518eaa1938d55dccc460a67cadb4" }
 signal-frame = { git = "https://github.com/LiGoldragon/signal-frame.git", rev = "91e675298b79ec2aab2e0714a5e3e5b2d6d07339" }
-signal-persona = { git = "https://github.com/LiGoldragon/signal-persona.git", rev = "72a4b7b05fac2f9772470b88faad0c46d43dc2f8" }
+signal-persona = { git = "https://github.com/LiGoldragon/signal-persona.git", rev = "497b7bc4fa84eb0cc2e45b555a29432f0e2b341a" }
 rkyv                = { version = "0.8", default-features = false, features = ["std", "bytecheck", "little_endian", "pointer_width_32", "unaligned"] }
 thiserror           = "2"
 
