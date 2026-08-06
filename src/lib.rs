@@ -22,31 +22,29 @@
 //! boundaries; `~/primary/reports/designer/72-harmonized-implementation-plan.md`
 //! §6 for the contract-creation discipline.
 
-use nota::{NotaDecode, NotaEncode};
+#[cfg(feature = "dotos-text")]
+use dotos::{DotosDecode, DotosEncode};
 use rkyv::{Archive, Deserialize as RkyvDeserialize, Serialize as RkyvSerialize};
 use signal_frame::signal_channel;
-use signal_persona::{
-    DomainSocketMode, DomainSocketPath, EngineManagementSocketMode, EngineManagementSocketPath,
-    OwnerIdentity, TimestampNanos,
-};
+use signal_persona::schema::lib::{z2VNyf, z2VRBs, z2VSSX, z2VUtF, z2VckR, z2Veez};
+
+/// The ordinary Harness contract occupies the first wire seat in its family.
+pub enum HarnessWire {}
+
+impl signal_frame::WireContract for HarnessWire {
+    const BINDING: signal_frame::ContractBinding = signal_frame::ContractBinding::new(
+        signal_frame::ContractId::new(core::num::NonZeroU32::MIN),
+        signal_frame::WireRevision::new(core::num::NonZeroU16::MIN),
+    );
+}
 
 // ─── Harness identity ─────────────────────────────────────
 
 /// A typed name for one harness instance. Multiple
 /// harnesses on one machine each have their own
 /// `HarnessName`; the router routes by name.
-#[derive(
-    Archive,
-    RkyvSerialize,
-    RkyvDeserialize,
-    NotaEncode,
-    NotaDecode,
-    Debug,
-    Clone,
-    PartialEq,
-    Eq,
-    Hash,
-)]
+#[cfg_attr(feature = "dotos-text", derive(DotosEncode, DotosDecode))]
+#[derive(Archive, RkyvSerialize, RkyvDeserialize, Debug, Clone, PartialEq, Eq, Hash)]
 pub struct HarnessName(String);
 
 impl HarnessName {
@@ -59,18 +57,8 @@ impl HarnessName {
     }
 }
 
-#[derive(
-    Archive,
-    RkyvSerialize,
-    RkyvDeserialize,
-    NotaEncode,
-    NotaDecode,
-    Debug,
-    Clone,
-    PartialEq,
-    Eq,
-    Hash,
-)]
+#[cfg_attr(feature = "dotos-text", derive(DotosEncode, DotosDecode))]
+#[derive(Archive, RkyvSerialize, RkyvDeserialize, Debug, Clone, PartialEq, Eq, Hash)]
 pub struct MessageSender(String);
 
 impl MessageSender {
@@ -83,18 +71,8 @@ impl MessageSender {
     }
 }
 
-#[derive(
-    Archive,
-    RkyvSerialize,
-    RkyvDeserialize,
-    NotaEncode,
-    NotaDecode,
-    Debug,
-    Clone,
-    PartialEq,
-    Eq,
-    Hash,
-)]
+#[cfg_attr(feature = "dotos-text", derive(DotosEncode, DotosDecode))]
+#[derive(Archive, RkyvSerialize, RkyvDeserialize, Debug, Clone, PartialEq, Eq, Hash)]
 pub struct MessageBody(String);
 
 impl MessageBody {
@@ -107,19 +85,8 @@ impl MessageBody {
     }
 }
 
-#[derive(
-    Archive,
-    RkyvSerialize,
-    RkyvDeserialize,
-    NotaEncode,
-    NotaDecode,
-    Debug,
-    Clone,
-    Copy,
-    PartialEq,
-    Eq,
-    Hash,
-)]
+#[cfg_attr(feature = "dotos-text", derive(DotosEncode, DotosDecode))]
+#[derive(Archive, RkyvSerialize, RkyvDeserialize, Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct MessageSlot(u64);
 
 impl MessageSlot {
@@ -138,9 +105,8 @@ impl MessageSlot {
 /// This request does not certify prompt cleanliness. The
 /// harness / terminal adapter must acquire the terminal input
 /// gate before programmatic injection.
-#[derive(
-    Archive, RkyvSerialize, RkyvDeserialize, NotaEncode, NotaDecode, Debug, Clone, PartialEq, Eq,
-)]
+#[cfg_attr(feature = "dotos-text", derive(DotosEncode, DotosDecode))]
+#[derive(Archive, RkyvSerialize, RkyvDeserialize, Debug, Clone, PartialEq, Eq)]
 pub struct MessageDelivery {
     pub harness: HarnessName,
     pub sender: MessageSender,
@@ -156,9 +122,8 @@ pub struct MessageDelivery {
 /// and any place the system needs human confirmation. The
 /// harness shows the prompt; the human's response comes
 /// back via `InteractionResolved` event.
-#[derive(
-    Archive, RkyvSerialize, RkyvDeserialize, NotaEncode, NotaDecode, Debug, Clone, PartialEq, Eq,
-)]
+#[cfg_attr(feature = "dotos-text", derive(DotosEncode, DotosDecode))]
+#[derive(Archive, RkyvSerialize, RkyvDeserialize, Debug, Clone, PartialEq, Eq)]
 pub struct InteractionPrompt {
     pub harness: HarnessName,
     pub interaction_id: String,
@@ -169,9 +134,8 @@ pub struct InteractionPrompt {
 /// Cancel a pending delivery (e.g. the recipient went
 /// offline before delivery completed, or the router is
 /// shutting down).
-#[derive(
-    Archive, RkyvSerialize, RkyvDeserialize, NotaEncode, NotaDecode, Debug, Clone, PartialEq, Eq,
-)]
+#[cfg_attr(feature = "dotos-text", derive(DotosEncode, DotosDecode))]
+#[derive(Archive, RkyvSerialize, RkyvDeserialize, Debug, Clone, PartialEq, Eq)]
 pub struct DeliveryCancellation {
     pub harness: HarnessName,
     pub message_slot: MessageSlot,
@@ -182,9 +146,8 @@ pub struct DeliveryCancellation {
 /// This is intentionally small. Detailed lifecycle and transcript history are
 /// harness-owned state, but a supervised engine needs one cheap typed probe
 /// before it treats the daemon as started.
-#[derive(
-    Archive, RkyvSerialize, RkyvDeserialize, NotaEncode, NotaDecode, Debug, Clone, PartialEq, Eq,
-)]
+#[cfg_attr(feature = "dotos-text", derive(DotosEncode, DotosDecode))]
+#[derive(Archive, RkyvSerialize, RkyvDeserialize, Debug, Clone, PartialEq, Eq)]
 pub struct HarnessStatusQuery {
     pub harness: HarnessName,
 }
@@ -194,27 +157,24 @@ pub struct HarnessStatusQuery {
 /// The harness successfully delivered the message — the
 /// bytes hit the input surface. The router can mark the
 /// message as delivered in its store.
-#[derive(
-    Archive, RkyvSerialize, RkyvDeserialize, NotaEncode, NotaDecode, Debug, Clone, PartialEq, Eq,
-)]
+#[cfg_attr(feature = "dotos-text", derive(DotosEncode, DotosDecode))]
+#[derive(Archive, RkyvSerialize, RkyvDeserialize, Debug, Clone, PartialEq, Eq)]
 pub struct DeliveryCompleted {
     pub harness: HarnessName,
     pub message_slot: MessageSlot,
 }
 
 /// Delivery failed — typed reason carried.
-#[derive(
-    Archive, RkyvSerialize, RkyvDeserialize, NotaEncode, NotaDecode, Debug, Clone, PartialEq, Eq,
-)]
+#[cfg_attr(feature = "dotos-text", derive(DotosEncode, DotosDecode))]
+#[derive(Archive, RkyvSerialize, RkyvDeserialize, Debug, Clone, PartialEq, Eq)]
 pub struct DeliveryFailed {
     pub harness: HarnessName,
     pub message_slot: MessageSlot,
     pub reason: DeliveryFailureReason,
 }
 
-#[derive(
-    Archive, RkyvSerialize, RkyvDeserialize, NotaEncode, NotaDecode, Debug, Clone, PartialEq, Eq,
-)]
+#[cfg_attr(feature = "dotos-text", derive(DotosEncode, DotosDecode))]
+#[derive(Archive, RkyvSerialize, RkyvDeserialize, Debug, Clone, PartialEq, Eq)]
 pub enum DeliveryFailureReason {
     /// The harness's transport (PTY, terminal) couldn't
     /// accept the bytes.
@@ -233,9 +193,8 @@ pub enum DeliveryFailureReason {
 
 /// Human resolved a previously-surfaced interaction — they
 /// picked one of the options.
-#[derive(
-    Archive, RkyvSerialize, RkyvDeserialize, NotaEncode, NotaDecode, Debug, Clone, PartialEq, Eq,
-)]
+#[cfg_attr(feature = "dotos-text", derive(DotosEncode, DotosDecode))]
+#[derive(Archive, RkyvSerialize, RkyvDeserialize, Debug, Clone, PartialEq, Eq)]
 pub struct InteractionResolved {
     pub harness: HarnessName,
     pub interaction_id: String,
@@ -245,70 +204,39 @@ pub struct InteractionResolved {
 /// A valid request reached a harness daemon, but the daemon's current runtime
 /// does not implement the operation yet.
 #[derive(Archive, RkyvSerialize, RkyvDeserialize, Debug, Clone, PartialEq, Eq)]
-#[cfg_attr(feature = "nota-text", derive(NotaEncode, NotaDecode))]
+#[cfg_attr(feature = "dotos-text", derive(DotosEncode, DotosDecode))]
 pub struct HarnessRequestUnimplemented {
     pub harness: HarnessName,
     pub operation: HarnessOperationKind,
     pub reason: HarnessUnimplementedReason,
 }
 
-#[derive(
-    Archive,
-    RkyvSerialize,
-    RkyvDeserialize,
-    NotaEncode,
-    NotaDecode,
-    Debug,
-    Clone,
-    Copy,
-    PartialEq,
-    Eq,
-)]
+#[cfg_attr(feature = "dotos-text", derive(DotosEncode, DotosDecode))]
+#[derive(Archive, RkyvSerialize, RkyvDeserialize, Debug, Clone, Copy, PartialEq, Eq)]
 pub enum HarnessUnimplementedReason {
     NotBuiltYet,
     DependencyTrackNotLanded,
 }
 
 /// Minimal health surface for the daemon skeleton and supervisor witness.
-#[derive(
-    Archive, RkyvSerialize, RkyvDeserialize, NotaEncode, NotaDecode, Debug, Clone, PartialEq, Eq,
-)]
+#[cfg_attr(feature = "dotos-text", derive(DotosEncode, DotosDecode))]
+#[derive(Archive, RkyvSerialize, RkyvDeserialize, Debug, Clone, PartialEq, Eq)]
 pub struct HarnessStatus {
     pub harness: HarnessName,
     pub health: HarnessHealth,
     pub readiness: HarnessReadiness,
 }
 
-#[derive(
-    Archive,
-    RkyvSerialize,
-    RkyvDeserialize,
-    NotaEncode,
-    NotaDecode,
-    Debug,
-    Clone,
-    Copy,
-    PartialEq,
-    Eq,
-)]
+#[cfg_attr(feature = "dotos-text", derive(DotosEncode, DotosDecode))]
+#[derive(Archive, RkyvSerialize, RkyvDeserialize, Debug, Clone, Copy, PartialEq, Eq)]
 pub enum HarnessHealth {
     Running,
     Degraded,
     Stopped,
 }
 
-#[derive(
-    Archive,
-    RkyvSerialize,
-    RkyvDeserialize,
-    NotaEncode,
-    NotaDecode,
-    Debug,
-    Clone,
-    Copy,
-    PartialEq,
-    Eq,
-)]
+#[cfg_attr(feature = "dotos-text", derive(DotosEncode, DotosDecode))]
+#[derive(Archive, RkyvSerialize, RkyvDeserialize, Debug, Clone, Copy, PartialEq, Eq)]
 pub enum HarnessReadiness {
     Ready,
     Starting,
@@ -320,18 +248,8 @@ pub enum HarnessReadiness {
 /// A provider model name requested exactly as a caller knows it. The harness
 /// resolves this literal to a configured Claude, Codex, or Pi adapter; callers
 /// do not infer the provider from the string.
-#[derive(
-    Archive,
-    RkyvSerialize,
-    RkyvDeserialize,
-    NotaEncode,
-    NotaDecode,
-    Debug,
-    Clone,
-    PartialEq,
-    Eq,
-    Hash,
-)]
+#[cfg_attr(feature = "dotos-text", derive(DotosEncode, DotosDecode))]
+#[derive(Archive, RkyvSerialize, RkyvDeserialize, Debug, Clone, PartialEq, Eq, Hash)]
 pub struct NamedModel(String);
 
 impl NamedModel {
@@ -346,18 +264,8 @@ impl NamedModel {
 
 /// A named capability/profile bundle requested instead of one exact provider
 /// model. The harness owns the mapping from profile to provider model.
-#[derive(
-    Archive,
-    RkyvSerialize,
-    RkyvDeserialize,
-    NotaEncode,
-    NotaDecode,
-    Debug,
-    Clone,
-    PartialEq,
-    Eq,
-    Hash,
-)]
+#[cfg_attr(feature = "dotos-text", derive(DotosEncode, DotosDecode))]
+#[derive(Archive, RkyvSerialize, RkyvDeserialize, Debug, Clone, PartialEq, Eq, Hash)]
 pub struct CapabilityProfile(String);
 
 impl CapabilityProfile {
@@ -370,18 +278,8 @@ impl CapabilityProfile {
     }
 }
 
-#[derive(
-    Archive,
-    RkyvSerialize,
-    RkyvDeserialize,
-    NotaEncode,
-    NotaDecode,
-    Debug,
-    Clone,
-    PartialEq,
-    Eq,
-    Hash,
-)]
+#[cfg_attr(feature = "dotos-text", derive(DotosEncode, DotosDecode))]
+#[derive(Archive, RkyvSerialize, RkyvDeserialize, Debug, Clone, PartialEq, Eq, Hash)]
 pub enum ModelSelector {
     Exact(NamedModel),
     CapabilityProfile(CapabilityProfile),
@@ -390,19 +288,8 @@ pub enum ModelSelector {
 /// Requested effort tier. The highest tiers are explicit variants so callers
 /// can ask for an extra-high or maximum effort without smuggling policy in a
 /// string.
-#[derive(
-    Archive,
-    RkyvSerialize,
-    RkyvDeserialize,
-    NotaEncode,
-    NotaDecode,
-    Debug,
-    Clone,
-    Copy,
-    PartialEq,
-    Eq,
-    Hash,
-)]
+#[cfg_attr(feature = "dotos-text", derive(DotosEncode, DotosDecode))]
+#[derive(Archive, RkyvSerialize, RkyvDeserialize, Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum EffortRequest {
     Minimal,
     Low,
@@ -412,9 +299,8 @@ pub enum EffortRequest {
     Maximum,
 }
 
-#[derive(
-    Archive, RkyvSerialize, RkyvDeserialize, NotaEncode, NotaDecode, Debug, Clone, PartialEq, Eq,
-)]
+#[cfg_attr(feature = "dotos-text", derive(DotosEncode, DotosDecode))]
+#[derive(Archive, RkyvSerialize, RkyvDeserialize, Debug, Clone, PartialEq, Eq)]
 pub struct ModelRequest {
     pub selector: ModelSelector,
     pub effort: EffortRequest,
@@ -422,18 +308,8 @@ pub struct ModelRequest {
 
 /// Codex continuation identity. The provider-specific schema stays inside the
 /// Codex handle variant; consumers store and pass it without inspection.
-#[derive(
-    Archive,
-    RkyvSerialize,
-    RkyvDeserialize,
-    NotaEncode,
-    NotaDecode,
-    Debug,
-    Clone,
-    PartialEq,
-    Eq,
-    Hash,
-)]
+#[cfg_attr(feature = "dotos-text", derive(DotosEncode, DotosDecode))]
+#[derive(Archive, RkyvSerialize, RkyvDeserialize, Debug, Clone, PartialEq, Eq, Hash)]
 pub struct CodexContinuationIdentifier(String);
 
 impl CodexContinuationIdentifier {
@@ -448,18 +324,8 @@ impl CodexContinuationIdentifier {
 
 /// Pi continuation identity. The Pi adapter owns the field meaning; the shared
 /// contract only types the handle boundary.
-#[derive(
-    Archive,
-    RkyvSerialize,
-    RkyvDeserialize,
-    NotaEncode,
-    NotaDecode,
-    Debug,
-    Clone,
-    PartialEq,
-    Eq,
-    Hash,
-)]
+#[cfg_attr(feature = "dotos-text", derive(DotosEncode, DotosDecode))]
+#[derive(Archive, RkyvSerialize, RkyvDeserialize, Debug, Clone, PartialEq, Eq, Hash)]
 pub struct PiContinuationIdentifier(String);
 
 impl PiContinuationIdentifier {
@@ -472,36 +338,16 @@ impl PiContinuationIdentifier {
     }
 }
 
-#[derive(
-    Archive,
-    RkyvSerialize,
-    RkyvDeserialize,
-    NotaEncode,
-    NotaDecode,
-    Debug,
-    Clone,
-    PartialEq,
-    Eq,
-    Hash,
-)]
+#[cfg_attr(feature = "dotos-text", derive(DotosEncode, DotosDecode))]
+#[derive(Archive, RkyvSerialize, RkyvDeserialize, Debug, Clone, PartialEq, Eq, Hash)]
 pub enum ContinuationHandle {
     Claude(ClaudeSessionIdentifier),
     Codex(CodexContinuationIdentifier),
     Pi(PiContinuationIdentifier),
 }
 
-#[derive(
-    Archive,
-    RkyvSerialize,
-    RkyvDeserialize,
-    NotaEncode,
-    NotaDecode,
-    Debug,
-    Clone,
-    PartialEq,
-    Eq,
-    Hash,
-)]
+#[cfg_attr(feature = "dotos-text", derive(DotosEncode, DotosDecode))]
+#[derive(Archive, RkyvSerialize, RkyvDeserialize, Debug, Clone, PartialEq, Eq, Hash)]
 pub enum ContinuationRequest {
     Fresh,
     Prefer(ContinuationHandle),
@@ -511,9 +357,8 @@ pub enum ContinuationRequest {
 /// One privileged model-resolution attempt: choose a model by exact name or
 /// capability/profile, ask for an effort tier, and state whether an existing
 /// provider continuation is fresh, preferred, or required.
-#[derive(
-    Archive, RkyvSerialize, RkyvDeserialize, NotaEncode, NotaDecode, Debug, Clone, PartialEq, Eq,
-)]
+#[cfg_attr(feature = "dotos-text", derive(DotosEncode, DotosDecode))]
+#[derive(Archive, RkyvSerialize, RkyvDeserialize, Debug, Clone, PartialEq, Eq)]
 pub struct ModelResolutionRequest {
     pub model: ModelRequest,
     pub continuation: ContinuationRequest,
@@ -522,9 +367,8 @@ pub struct ModelResolutionRequest {
 /// Harness-side resolution result. The selected harness kind and model are the
 /// provider-neutral facts a caller may act on; provider continuation internals
 /// stay wrapped in `ContinuationHandle`.
-#[derive(
-    Archive, RkyvSerialize, RkyvDeserialize, NotaEncode, NotaDecode, Debug, Clone, PartialEq, Eq,
-)]
+#[cfg_attr(feature = "dotos-text", derive(DotosEncode, DotosDecode))]
+#[derive(Archive, RkyvSerialize, RkyvDeserialize, Debug, Clone, PartialEq, Eq)]
 pub struct ModelResolved {
     pub harness: HarnessName,
     pub harness_kind: HarnessKind,
@@ -533,27 +377,15 @@ pub struct ModelResolved {
     pub continuation: ContinuationHandle,
 }
 
-#[derive(
-    Archive, RkyvSerialize, RkyvDeserialize, NotaEncode, NotaDecode, Debug, Clone, PartialEq, Eq,
-)]
+#[cfg_attr(feature = "dotos-text", derive(DotosEncode, DotosDecode))]
+#[derive(Archive, RkyvSerialize, RkyvDeserialize, Debug, Clone, PartialEq, Eq)]
 pub struct ModelUnavailable {
     pub request: ModelResolutionRequest,
     pub reason: ModelUnavailableReason,
 }
 
-#[derive(
-    Archive,
-    RkyvSerialize,
-    RkyvDeserialize,
-    NotaEncode,
-    NotaDecode,
-    Debug,
-    Clone,
-    Copy,
-    PartialEq,
-    Eq,
-    Hash,
-)]
+#[cfg_attr(feature = "dotos-text", derive(DotosEncode, DotosDecode))]
+#[derive(Archive, RkyvSerialize, RkyvDeserialize, Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum ModelUnavailableReason {
     NoConfiguredHarness,
     ModelNotKnown,
@@ -569,18 +401,8 @@ pub enum ModelUnavailableReason {
 /// Orchestrator-minted agent identity delivered to the launched process in
 /// its initial prompt. The orchestrator owns the mint; this contract only
 /// types the token boundary.
-#[derive(
-    Archive,
-    RkyvSerialize,
-    RkyvDeserialize,
-    NotaEncode,
-    NotaDecode,
-    Debug,
-    Clone,
-    PartialEq,
-    Eq,
-    Hash,
-)]
+#[cfg_attr(feature = "dotos-text", derive(DotosEncode, DotosDecode))]
+#[derive(Archive, RkyvSerialize, RkyvDeserialize, Debug, Clone, PartialEq, Eq, Hash)]
 pub struct AgentIdentityToken(String);
 
 impl AgentIdentityToken {
@@ -596,9 +418,8 @@ impl AgentIdentityToken {
 /// The initial prompt text handed to the launched harness process at spawn.
 /// It carries the agent identity announcement and the mission; the harness
 /// passes it through verbatim.
-#[derive(
-    Archive, RkyvSerialize, RkyvDeserialize, NotaEncode, NotaDecode, Debug, Clone, PartialEq, Eq,
-)]
+#[cfg_attr(feature = "dotos-text", derive(DotosEncode, DotosDecode))]
+#[derive(Archive, RkyvSerialize, RkyvDeserialize, Debug, Clone, PartialEq, Eq)]
 pub struct InitialPrompt(String);
 
 impl InitialPrompt {
@@ -614,9 +435,8 @@ impl InitialPrompt {
 /// Filesystem location of the terminal session directory a launch produced,
 /// carried as path text. Present only when the launch went through a
 /// PTY-owning terminal cell.
-#[derive(
-    Archive, RkyvSerialize, RkyvDeserialize, NotaEncode, NotaDecode, Debug, Clone, PartialEq, Eq,
-)]
+#[cfg_attr(feature = "dotos-text", derive(DotosEncode, DotosDecode))]
+#[derive(Archive, RkyvSerialize, RkyvDeserialize, Debug, Clone, PartialEq, Eq)]
 pub struct SessionDirectory(String);
 
 impl SessionDirectory {
@@ -632,9 +452,8 @@ impl SessionDirectory {
 /// One privileged session-launch request: spawn a harness process of the
 /// named kind carrying an orchestrator-minted agent identity in its initial
 /// prompt, either fresh or continuing an existing provider session.
-#[derive(
-    Archive, RkyvSerialize, RkyvDeserialize, NotaEncode, NotaDecode, Debug, Clone, PartialEq, Eq,
-)]
+#[cfg_attr(feature = "dotos-text", derive(DotosEncode, DotosDecode))]
+#[derive(Archive, RkyvSerialize, RkyvDeserialize, Debug, Clone, PartialEq, Eq)]
 pub struct SessionLaunchRequest {
     pub harness_kind: HarnessKind,
     pub agent_identity: AgentIdentityToken,
@@ -646,9 +465,8 @@ pub struct SessionLaunchRequest {
 /// on — the child process id, and the terminal session directory when the
 /// launch went through a PTY-owning terminal cell. Provider continuation
 /// internals stay wrapped in `ContinuationHandle`.
-#[derive(
-    Archive, RkyvSerialize, RkyvDeserialize, NotaEncode, NotaDecode, Debug, Clone, PartialEq, Eq,
-)]
+#[cfg_attr(feature = "dotos-text", derive(DotosEncode, DotosDecode))]
+#[derive(Archive, RkyvSerialize, RkyvDeserialize, Debug, Clone, PartialEq, Eq)]
 pub struct SessionLaunched {
     pub agent_identity: AgentIdentityToken,
     pub child_process_id: u32,
@@ -656,19 +474,8 @@ pub struct SessionLaunched {
     pub continuation: Option<ContinuationHandle>,
 }
 
-#[derive(
-    Archive,
-    RkyvSerialize,
-    RkyvDeserialize,
-    NotaEncode,
-    NotaDecode,
-    Debug,
-    Clone,
-    Copy,
-    PartialEq,
-    Eq,
-    Hash,
-)]
+#[cfg_attr(feature = "dotos-text", derive(DotosEncode, DotosDecode))]
+#[derive(Archive, RkyvSerialize, RkyvDeserialize, Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum SessionLaunchRefusalReason {
     HarnessKindUnsupported,
     ContinuationUnsupported,
@@ -678,9 +485,8 @@ pub enum SessionLaunchRefusalReason {
 
 /// Typed launch refusal. `detail` is diagnostic text for the operator; the
 /// reason is the actionable fact.
-#[derive(
-    Archive, RkyvSerialize, RkyvDeserialize, NotaEncode, NotaDecode, Debug, Clone, PartialEq, Eq,
-)]
+#[cfg_attr(feature = "dotos-text", derive(DotosEncode, DotosDecode))]
+#[derive(Archive, RkyvSerialize, RkyvDeserialize, Debug, Clone, PartialEq, Eq)]
 pub struct SessionLaunchRefused {
     pub request: SessionLaunchRequest,
     pub reason: SessionLaunchRefusalReason,
@@ -690,27 +496,24 @@ pub struct SessionLaunchRefused {
 // ─── Lifecycle observations (harness → router) ────────────
 
 /// Harness started; ready to receive deliveries.
-#[derive(
-    Archive, RkyvSerialize, RkyvDeserialize, NotaEncode, NotaDecode, Debug, Clone, PartialEq, Eq,
-)]
+#[cfg_attr(feature = "dotos-text", derive(DotosEncode, DotosDecode))]
+#[derive(Archive, RkyvSerialize, RkyvDeserialize, Debug, Clone, PartialEq, Eq)]
 pub struct HarnessStarted {
     pub harness: HarnessName,
 }
 
 /// Harness shut down cleanly. The router stops sending
 /// deliveries to this harness.
-#[derive(
-    Archive, RkyvSerialize, RkyvDeserialize, NotaEncode, NotaDecode, Debug, Clone, PartialEq, Eq,
-)]
+#[cfg_attr(feature = "dotos-text", derive(DotosEncode, DotosDecode))]
+#[derive(Archive, RkyvSerialize, RkyvDeserialize, Debug, Clone, PartialEq, Eq)]
 pub struct HarnessStopped {
     pub harness: HarnessName,
 }
 
 /// Harness crashed / died unexpectedly. The router needs
 /// to retry or escalate.
-#[derive(
-    Archive, RkyvSerialize, RkyvDeserialize, NotaEncode, NotaDecode, Debug, Clone, PartialEq, Eq,
-)]
+#[cfg_attr(feature = "dotos-text", derive(DotosEncode, DotosDecode))]
+#[derive(Archive, RkyvSerialize, RkyvDeserialize, Debug, Clone, PartialEq, Eq)]
 pub struct HarnessCrashed {
     pub harness: HarnessName,
     pub detail: String,
@@ -721,19 +524,8 @@ pub struct HarnessCrashed {
 /// Per-adapter observation sequence pointer. Monotonic per harness
 /// adapter session. Transcript observation has its own sequence because
 /// transcript lines and adapter-state events are separate streams.
-#[derive(
-    Archive,
-    RkyvSerialize,
-    RkyvDeserialize,
-    NotaEncode,
-    NotaDecode,
-    Debug,
-    Clone,
-    Copy,
-    PartialEq,
-    Eq,
-    Hash,
-)]
+#[cfg_attr(feature = "dotos-text", derive(DotosEncode, DotosDecode))]
+#[derive(Archive, RkyvSerialize, RkyvDeserialize, Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct AdapterEventSequence(u64);
 
 impl AdapterEventSequence {
@@ -748,9 +540,8 @@ impl AdapterEventSequence {
 
 /// The adapter has observed enough provider/runtime state to accept
 /// routed input. This is distinct from process launch success.
-#[derive(
-    Archive, RkyvSerialize, RkyvDeserialize, NotaEncode, NotaDecode, Debug, Clone, PartialEq, Eq,
-)]
+#[cfg_attr(feature = "dotos-text", derive(DotosEncode, DotosDecode))]
+#[derive(Archive, RkyvSerialize, RkyvDeserialize, Debug, Clone, PartialEq, Eq)]
 pub struct AdapterReady {
     pub harness: HarnessName,
     pub sequence: AdapterEventSequence,
@@ -759,9 +550,8 @@ pub struct AdapterReady {
 /// The adapter accepted one routed input into its provider-specific
 /// surface. The input may still produce later output, progress,
 /// confirmation, completion, stalled, or exit events.
-#[derive(
-    Archive, RkyvSerialize, RkyvDeserialize, NotaEncode, NotaDecode, Debug, Clone, PartialEq, Eq,
-)]
+#[cfg_attr(feature = "dotos-text", derive(DotosEncode, DotosDecode))]
+#[derive(Archive, RkyvSerialize, RkyvDeserialize, Debug, Clone, PartialEq, Eq)]
 pub struct AdapterInputAccepted {
     pub harness: HarnessName,
     pub sequence: AdapterEventSequence,
@@ -771,9 +561,8 @@ pub struct AdapterInputAccepted {
 /// Provider-visible output observed by the adapter. Transcript storage
 /// may also publish `TranscriptObservation`; this event reports the
 /// adapter-level interpretation that output happened.
-#[derive(
-    Archive, RkyvSerialize, RkyvDeserialize, NotaEncode, NotaDecode, Debug, Clone, PartialEq, Eq,
-)]
+#[cfg_attr(feature = "dotos-text", derive(DotosEncode, DotosDecode))]
+#[derive(Archive, RkyvSerialize, RkyvDeserialize, Debug, Clone, PartialEq, Eq)]
 pub struct AdapterOutput {
     pub harness: HarnessName,
     pub sequence: AdapterEventSequence,
@@ -781,9 +570,8 @@ pub struct AdapterOutput {
 }
 
 /// Provider-neutral progress while a prompt turn is still in flight.
-#[derive(
-    Archive, RkyvSerialize, RkyvDeserialize, NotaEncode, NotaDecode, Debug, Clone, PartialEq, Eq,
-)]
+#[cfg_attr(feature = "dotos-text", derive(DotosEncode, DotosDecode))]
+#[derive(Archive, RkyvSerialize, RkyvDeserialize, Debug, Clone, PartialEq, Eq)]
 pub struct AdapterProgress {
     pub harness: HarnessName,
     pub sequence: AdapterEventSequence,
@@ -793,9 +581,8 @@ pub struct AdapterProgress {
 /// The adapter observed that one prompt turn completed. This is not a
 /// request to close the harness session; long-lived TUI sessions remain
 /// open until an explicit close path asks for shutdown.
-#[derive(
-    Archive, RkyvSerialize, RkyvDeserialize, NotaEncode, NotaDecode, Debug, Clone, PartialEq, Eq,
-)]
+#[cfg_attr(feature = "dotos-text", derive(DotosEncode, DotosDecode))]
+#[derive(Archive, RkyvSerialize, RkyvDeserialize, Debug, Clone, PartialEq, Eq)]
 pub struct AdapterCompletion {
     pub harness: HarnessName,
     pub sequence: AdapterEventSequence,
@@ -805,9 +592,8 @@ pub struct AdapterCompletion {
 /// The adapter observed a provider-neutral confirmation prompt.
 /// Policy decides whether an operator, automation rule, or later
 /// escalation path answers it.
-#[derive(
-    Archive, RkyvSerialize, RkyvDeserialize, NotaEncode, NotaDecode, Debug, Clone, PartialEq, Eq,
-)]
+#[cfg_attr(feature = "dotos-text", derive(DotosEncode, DotosDecode))]
+#[derive(Archive, RkyvSerialize, RkyvDeserialize, Debug, Clone, PartialEq, Eq)]
 pub struct AdapterConfirmationNeeded {
     pub harness: HarnessName,
     pub sequence: AdapterEventSequence,
@@ -816,18 +602,8 @@ pub struct AdapterConfirmationNeeded {
     pub options: Vec<String>,
 }
 
-#[derive(
-    Archive,
-    RkyvSerialize,
-    RkyvDeserialize,
-    NotaEncode,
-    NotaDecode,
-    Debug,
-    Clone,
-    Copy,
-    PartialEq,
-    Eq,
-)]
+#[cfg_attr(feature = "dotos-text", derive(DotosEncode, DotosDecode))]
+#[derive(Archive, RkyvSerialize, RkyvDeserialize, Debug, Clone, Copy, PartialEq, Eq)]
 pub enum AdapterStallReason {
     NoOutput,
     ReadinessTimeout,
@@ -837,27 +613,16 @@ pub enum AdapterStallReason {
 
 /// The adapter did not observe the next expected provider-neutral state
 /// transition within its local policy window.
-#[derive(
-    Archive, RkyvSerialize, RkyvDeserialize, NotaEncode, NotaDecode, Debug, Clone, PartialEq, Eq,
-)]
+#[cfg_attr(feature = "dotos-text", derive(DotosEncode, DotosDecode))]
+#[derive(Archive, RkyvSerialize, RkyvDeserialize, Debug, Clone, PartialEq, Eq)]
 pub struct AdapterStalled {
     pub harness: HarnessName,
     pub sequence: AdapterEventSequence,
     pub reason: AdapterStallReason,
 }
 
-#[derive(
-    Archive,
-    RkyvSerialize,
-    RkyvDeserialize,
-    NotaEncode,
-    NotaDecode,
-    Debug,
-    Clone,
-    Copy,
-    PartialEq,
-    Eq,
-)]
+#[cfg_attr(feature = "dotos-text", derive(DotosEncode, DotosDecode))]
+#[derive(Archive, RkyvSerialize, RkyvDeserialize, Debug, Clone, Copy, PartialEq, Eq)]
 pub enum AdapterExitStatus {
     Success,
     Failure,
@@ -866,9 +631,8 @@ pub enum AdapterExitStatus {
 /// The adapter observed that the provider process or session exited.
 /// Runtime transport failures are still reported through typed delivery
 /// failures when they affect a specific routed input.
-#[derive(
-    Archive, RkyvSerialize, RkyvDeserialize, NotaEncode, NotaDecode, Debug, Clone, PartialEq, Eq,
-)]
+#[cfg_attr(feature = "dotos-text", derive(DotosEncode, DotosDecode))]
+#[derive(Archive, RkyvSerialize, RkyvDeserialize, Debug, Clone, PartialEq, Eq)]
 pub struct AdapterExited {
     pub harness: HarnessName,
     pub sequence: AdapterEventSequence,
@@ -883,19 +647,8 @@ pub struct AdapterExited {
 /// re-anchor after reconnection, and order events causally — replacing
 /// the implicit `transcript_event_count` field formerly carried only on
 /// the harness actor's local state.
-#[derive(
-    Archive,
-    RkyvSerialize,
-    RkyvDeserialize,
-    NotaEncode,
-    NotaDecode,
-    Debug,
-    Clone,
-    Copy,
-    PartialEq,
-    Eq,
-    Hash,
-)]
+#[cfg_attr(feature = "dotos-text", derive(DotosEncode, DotosDecode))]
+#[derive(Archive, RkyvSerialize, RkyvDeserialize, Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct HarnessTranscriptSequence(u64);
 
 impl HarnessTranscriptSequence {
@@ -911,19 +664,8 @@ impl HarnessTranscriptSequence {
 /// Per-open transcript-observation subscription sequence. This is
 /// daemon-minted and unique among the currently open subscriptions for a
 /// harness daemon process.
-#[derive(
-    Archive,
-    RkyvSerialize,
-    RkyvDeserialize,
-    NotaEncode,
-    NotaDecode,
-    Debug,
-    Clone,
-    Copy,
-    PartialEq,
-    Eq,
-    Hash,
-)]
+#[cfg_attr(feature = "dotos-text", derive(DotosEncode, DotosDecode))]
+#[derive(Archive, RkyvSerialize, RkyvDeserialize, Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct HarnessTranscriptSubscriptionIdentifier(u64);
 
 impl HarnessTranscriptSubscriptionIdentifier {
@@ -940,9 +682,8 @@ impl HarnessTranscriptSubscriptionIdentifier {
 /// stream. Multiple observers may watch the same harness at the same
 /// time; the token names both the harness and the daemon-minted open
 /// subscription.
-#[derive(
-    Archive, RkyvSerialize, RkyvDeserialize, NotaEncode, NotaDecode, Debug, Clone, PartialEq, Eq,
-)]
+#[cfg_attr(feature = "dotos-text", derive(DotosEncode, DotosDecode))]
+#[derive(Archive, RkyvSerialize, RkyvDeserialize, Debug, Clone, PartialEq, Eq)]
 pub struct HarnessTranscriptToken {
     pub harness: HarnessName,
     pub subscription: HarnessTranscriptSubscriptionIdentifier,
@@ -952,9 +693,8 @@ pub struct HarnessTranscriptToken {
 /// `HarnessTranscriptSnapshot` carrying the daemon-minted subscription
 /// token and current sequence pointer; subsequent `TranscriptObservation`
 /// events arrive on the same connection as the stream pushes them.
-#[derive(
-    Archive, RkyvSerialize, RkyvDeserialize, NotaEncode, NotaDecode, Debug, Clone, PartialEq, Eq,
-)]
+#[cfg_attr(feature = "dotos-text", derive(DotosEncode, DotosDecode))]
+#[derive(Archive, RkyvSerialize, RkyvDeserialize, Debug, Clone, PartialEq, Eq)]
 pub struct WatchHarnessTranscript {
     pub harness: HarnessName,
 }
@@ -964,9 +704,8 @@ pub struct WatchHarnessTranscript {
 /// the current sequence pointer so the subscriber knows the starting
 /// position; the next `TranscriptObservation` carries sequence
 /// `current_sequence + 1`.
-#[derive(
-    Archive, RkyvSerialize, RkyvDeserialize, NotaEncode, NotaDecode, Debug, Clone, PartialEq, Eq,
-)]
+#[cfg_attr(feature = "dotos-text", derive(DotosEncode, DotosDecode))]
+#[derive(Archive, RkyvSerialize, RkyvDeserialize, Debug, Clone, PartialEq, Eq)]
 pub struct HarnessTranscriptSnapshot {
     pub token: HarnessTranscriptToken,
     pub current_sequence: HarnessTranscriptSequence,
@@ -976,9 +715,8 @@ pub struct HarnessTranscriptSnapshot {
 /// been closed. Returned in reply to `UnwatchHarnessTranscript`.
 /// Carries the retracted token so callers can match the ack to the
 /// request they sent.
-#[derive(
-    Archive, RkyvSerialize, RkyvDeserialize, NotaEncode, NotaDecode, Debug, Clone, PartialEq, Eq,
-)]
+#[cfg_attr(feature = "dotos-text", derive(DotosEncode, DotosDecode))]
+#[derive(Archive, RkyvSerialize, RkyvDeserialize, Debug, Clone, PartialEq, Eq)]
 pub struct HarnessSubscriptionRetracted {
     pub token: HarnessTranscriptToken,
 }
@@ -987,9 +725,8 @@ pub struct HarnessSubscriptionRetracted {
 /// Carries the sequence pointer so the subscriber can detect gaps and
 /// order events causally. Bytes are typed as `String` for the prototype;
 /// the eventual shape carries typed Nexus records, not raw text.
-#[derive(
-    Archive, RkyvSerialize, RkyvDeserialize, NotaEncode, NotaDecode, Debug, Clone, PartialEq, Eq,
-)]
+#[cfg_attr(feature = "dotos-text", derive(DotosEncode, DotosDecode))]
+#[derive(Archive, RkyvSerialize, RkyvDeserialize, Debug, Clone, PartialEq, Eq)]
 pub struct TranscriptObservation {
     pub harness: HarnessName,
     pub sequence: HarnessTranscriptSequence,
@@ -1010,18 +747,8 @@ pub struct TranscriptObservation {
 /// The Claude session identifier recovered from the JSONL transcript. It
 /// doubles as the `claude --resume` target; the type is named for its
 /// identity role, resume being one use of it.
-#[derive(
-    Archive,
-    RkyvSerialize,
-    RkyvDeserialize,
-    NotaEncode,
-    NotaDecode,
-    Debug,
-    Clone,
-    PartialEq,
-    Eq,
-    Hash,
-)]
+#[cfg_attr(feature = "dotos-text", derive(DotosEncode, DotosDecode))]
+#[derive(Archive, RkyvSerialize, RkyvDeserialize, Debug, Clone, PartialEq, Eq, Hash)]
 pub struct ClaudeSessionIdentifier(String);
 
 impl ClaudeSessionIdentifier {
@@ -1037,18 +764,8 @@ impl ClaudeSessionIdentifier {
 /// The Claude model literal observed for the session (e.g. a `claude-*`
 /// name or a short alias). Provider-scoped to this Claude observation
 /// contract; the cross-crate model-vocabulary unification is deferred.
-#[derive(
-    Archive,
-    RkyvSerialize,
-    RkyvDeserialize,
-    NotaEncode,
-    NotaDecode,
-    Debug,
-    Clone,
-    PartialEq,
-    Eq,
-    Hash,
-)]
+#[cfg_attr(feature = "dotos-text", derive(DotosEncode, DotosDecode))]
+#[derive(Archive, RkyvSerialize, RkyvDeserialize, Debug, Clone, PartialEq, Eq, Hash)]
 pub struct ClaudeModel(String);
 
 impl ClaudeModel {
@@ -1063,18 +780,8 @@ impl ClaudeModel {
 
 /// Filesystem path to the session's JSONL transcript file, as the harness
 /// observer discovered it.
-#[derive(
-    Archive,
-    RkyvSerialize,
-    RkyvDeserialize,
-    NotaEncode,
-    NotaDecode,
-    Debug,
-    Clone,
-    PartialEq,
-    Eq,
-    Hash,
-)]
+#[cfg_attr(feature = "dotos-text", derive(DotosEncode, DotosDecode))]
+#[derive(Archive, RkyvSerialize, RkyvDeserialize, Debug, Clone, PartialEq, Eq, Hash)]
 pub struct TranscriptPath(String);
 
 impl TranscriptPath {
@@ -1088,9 +795,8 @@ impl TranscriptPath {
 }
 
 /// The assistant's response text captured for the observed turn.
-#[derive(
-    Archive, RkyvSerialize, RkyvDeserialize, NotaEncode, NotaDecode, Debug, Clone, PartialEq, Eq,
-)]
+#[cfg_attr(feature = "dotos-text", derive(DotosEncode, DotosDecode))]
+#[derive(Archive, RkyvSerialize, RkyvDeserialize, Debug, Clone, PartialEq, Eq)]
 pub struct AssistantResponseText(String);
 
 impl AssistantResponseText {
@@ -1107,19 +813,8 @@ impl AssistantResponseText {
 /// routing/handover decision reads. This contract only carries the figure;
 /// where the number is sourced is deferred to the harness statusline wiring
 /// and is intentionally not decided here.
-#[derive(
-    Archive,
-    RkyvSerialize,
-    RkyvDeserialize,
-    NotaEncode,
-    NotaDecode,
-    Debug,
-    Clone,
-    Copy,
-    PartialEq,
-    Eq,
-    Hash,
-)]
+#[cfg_attr(feature = "dotos-text", derive(DotosEncode, DotosDecode))]
+#[derive(Archive, RkyvSerialize, RkyvDeserialize, Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct ContextTokens(u64);
 
 impl ContextTokens {
@@ -1133,19 +828,8 @@ impl ContextTokens {
 }
 
 /// Count of streamed provider events the harness observed for the turn.
-#[derive(
-    Archive,
-    RkyvSerialize,
-    RkyvDeserialize,
-    NotaEncode,
-    NotaDecode,
-    Debug,
-    Clone,
-    Copy,
-    PartialEq,
-    Eq,
-    Hash,
-)]
+#[cfg_attr(feature = "dotos-text", derive(DotosEncode, DotosDecode))]
+#[derive(Archive, RkyvSerialize, RkyvDeserialize, Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct StreamedEventCount(u64);
 
 impl StreamedEventCount {
@@ -1159,19 +843,8 @@ impl StreamedEventCount {
 }
 
 /// Count of tool calls the harness observed for the turn.
-#[derive(
-    Archive,
-    RkyvSerialize,
-    RkyvDeserialize,
-    NotaEncode,
-    NotaDecode,
-    Debug,
-    Clone,
-    Copy,
-    PartialEq,
-    Eq,
-    Hash,
-)]
+#[cfg_attr(feature = "dotos-text", derive(DotosEncode, DotosDecode))]
+#[derive(Archive, RkyvSerialize, RkyvDeserialize, Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct ToolCallCount(u64);
 
 impl ToolCallCount {
@@ -1185,19 +858,8 @@ impl ToolCallCount {
 }
 
 /// Count of status transitions the harness observed for the turn.
-#[derive(
-    Archive,
-    RkyvSerialize,
-    RkyvDeserialize,
-    NotaEncode,
-    NotaDecode,
-    Debug,
-    Clone,
-    Copy,
-    PartialEq,
-    Eq,
-    Hash,
-)]
+#[cfg_attr(feature = "dotos-text", derive(DotosEncode, DotosDecode))]
+#[derive(Archive, RkyvSerialize, RkyvDeserialize, Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct StatusTransitionCount(u64);
 
 impl StatusTransitionCount {
@@ -1214,19 +876,8 @@ impl StatusTransitionCount {
 /// `is_resume` bool: the provenance is a fixed variant set, and `SelfHealed`
 /// records the psyche-locked self-heal path where a resume target was gone
 /// and a fresh session was minted in its place.
-#[derive(
-    Archive,
-    RkyvSerialize,
-    RkyvDeserialize,
-    NotaEncode,
-    NotaDecode,
-    Debug,
-    Clone,
-    Copy,
-    PartialEq,
-    Eq,
-    Hash,
-)]
+#[cfg_attr(feature = "dotos-text", derive(DotosEncode, DotosDecode))]
+#[derive(Archive, RkyvSerialize, RkyvDeserialize, Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum TurnLaunch {
     Fresh,
     Resumed,
@@ -1236,18 +887,8 @@ pub enum TurnLaunch {
 /// The Claude session's lifecycle at the moment of observation. Closed
 /// enum; the `Exited` variant carries the process exit status, reusing the
 /// adapter exit-status vocabulary rather than re-inventing it.
-#[derive(
-    Archive,
-    RkyvSerialize,
-    RkyvDeserialize,
-    NotaEncode,
-    NotaDecode,
-    Debug,
-    Clone,
-    Copy,
-    PartialEq,
-    Eq,
-)]
+#[cfg_attr(feature = "dotos-text", derive(DotosEncode, DotosDecode))]
+#[derive(Archive, RkyvSerialize, RkyvDeserialize, Debug, Clone, Copy, PartialEq, Eq)]
 pub enum ClaudeSessionLifecycle {
     Ready,
     Active,
@@ -1266,7 +907,7 @@ pub enum ClaudeSessionLifecycle {
 /// the first turn, while a turn is still `Active`, or before a context
 /// figure has been reported.
 #[derive(Archive, RkyvSerialize, RkyvDeserialize, Debug, Clone, PartialEq, Eq)]
-#[cfg_attr(feature = "nota-text", derive(NotaEncode, NotaDecode))]
+#[cfg_attr(feature = "dotos-text", derive(DotosEncode, DotosDecode))]
 pub struct ClaudeSessionObservation {
     /// The harness instance hosting the session — the whole per-session key
     /// under one-session-per-instance addressing.
@@ -1297,7 +938,7 @@ pub struct ClaudeSessionObservation {
     pub accumulated_context: Option<ContextTokens>,
     /// Infrastructure-minted last-activity timestamp — display/ordering
     /// only, never a resume gate.
-    pub last_activity: TimestampNanos,
+    pub last_activity: z2VUtF,
     /// The session's lifecycle at observation time.
     pub lifecycle: ClaudeSessionLifecycle,
 }
@@ -1305,7 +946,7 @@ pub struct ClaudeSessionObservation {
 // ─── Channel declaration ───────────────────────────────────
 
 signal_channel! {
-    channel Harness {
+    channel Harness contract HarnessWire {
         operation MessageDelivery(MessageDelivery),
         operation InteractionPrompt(InteractionPrompt),
         operation DeliveryCancellation(DeliveryCancellation),
@@ -1406,23 +1047,13 @@ impl From<ClaudeSessionObservation> for HarnessStreamEvent {
 // ─── Daemon configuration ──────────────────────────────────
 //
 // Typed startup configuration for `harness-daemon`. Deploy/bootstrap tooling
-// may author or validate it through the NOTA projection, but the live daemon
+// may author or validate it through the Dotos projection, but the live daemon
 // accepts only the rkyv/signal-encoded file path on argv and never decodes
-// NOTA startup text.
+// Dotos startup text.
 
 /// Terminal socket endpoint delegated to a harness instance.
-#[derive(
-    Archive,
-    RkyvSerialize,
-    RkyvDeserialize,
-    NotaEncode,
-    NotaDecode,
-    Debug,
-    Clone,
-    PartialEq,
-    Eq,
-    Hash,
-)]
+#[cfg_attr(feature = "dotos-text", derive(DotosEncode, DotosDecode))]
+#[derive(Archive, RkyvSerialize, RkyvDeserialize, Debug, Clone, PartialEq, Eq, Hash)]
 pub struct TerminalSocketPath(String);
 
 impl TerminalSocketPath {
@@ -1436,18 +1067,8 @@ impl TerminalSocketPath {
 }
 
 /// Executable path for the external Pi RPC/JSONL adapter.
-#[derive(
-    Archive,
-    RkyvSerialize,
-    RkyvDeserialize,
-    NotaEncode,
-    NotaDecode,
-    Debug,
-    Clone,
-    PartialEq,
-    Eq,
-    Hash,
-)]
+#[cfg_attr(feature = "dotos-text", derive(DotosEncode, DotosDecode))]
+#[derive(Archive, RkyvSerialize, RkyvDeserialize, Debug, Clone, PartialEq, Eq, Hash)]
 pub struct PiRpcCommandPath(String);
 
 impl PiRpcCommandPath {
@@ -1461,18 +1082,8 @@ impl PiRpcCommandPath {
 }
 
 /// Session directory owned by the external Pi RPC/JSONL adapter.
-#[derive(
-    Archive,
-    RkyvSerialize,
-    RkyvDeserialize,
-    NotaEncode,
-    NotaDecode,
-    Debug,
-    Clone,
-    PartialEq,
-    Eq,
-    Hash,
-)]
+#[cfg_attr(feature = "dotos-text", derive(DotosEncode, DotosDecode))]
+#[derive(Archive, RkyvSerialize, RkyvDeserialize, Debug, Clone, PartialEq, Eq, Hash)]
 pub struct PiRpcSessionDirectoryPath(String);
 
 impl PiRpcSessionDirectoryPath {
@@ -1487,19 +1098,8 @@ impl PiRpcSessionDirectoryPath {
 
 /// The supervised harness runtime variant. Closed enum — every
 /// production harness ships with one of these kinds.
-#[derive(
-    Archive,
-    RkyvSerialize,
-    RkyvDeserialize,
-    NotaEncode,
-    NotaDecode,
-    Debug,
-    Clone,
-    Copy,
-    PartialEq,
-    Eq,
-    Hash,
-)]
+#[cfg_attr(feature = "dotos-text", derive(DotosEncode, DotosDecode))]
+#[derive(Archive, RkyvSerialize, RkyvDeserialize, Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum HarnessKind {
     Codex,
     Claude,
@@ -1508,18 +1108,8 @@ pub enum HarnessKind {
 }
 
 /// Command shape the Pi RPC/JSONL adapter uses when delivering a message.
-#[derive(
-    Archive,
-    RkyvSerialize,
-    RkyvDeserialize,
-    NotaEncode,
-    NotaDecode,
-    Debug,
-    Clone,
-    Copy,
-    PartialEq,
-    Eq,
-)]
+#[cfg_attr(feature = "dotos-text", derive(DotosEncode, DotosDecode))]
+#[derive(Archive, RkyvSerialize, RkyvDeserialize, Debug, Clone, Copy, PartialEq, Eq)]
 pub enum PiRpcDeliveryMode {
     Prompt,
     Steer,
@@ -1527,18 +1117,8 @@ pub enum PiRpcDeliveryMode {
 }
 
 /// Optional model selector passed to the Pi RPC/JSONL adapter.
-#[derive(
-    Archive,
-    RkyvSerialize,
-    RkyvDeserialize,
-    NotaEncode,
-    NotaDecode,
-    Debug,
-    Clone,
-    PartialEq,
-    Eq,
-    Hash,
-)]
+#[cfg_attr(feature = "dotos-text", derive(DotosEncode, DotosDecode))]
+#[derive(Archive, RkyvSerialize, RkyvDeserialize, Debug, Clone, PartialEq, Eq, Hash)]
 pub struct PiRpcModelPattern(String);
 
 impl PiRpcModelPattern {
@@ -1552,9 +1132,8 @@ impl PiRpcModelPattern {
 }
 
 /// Typed boundary for the external Pi RPC/JSONL adapter process.
-#[derive(
-    Archive, RkyvSerialize, RkyvDeserialize, NotaEncode, NotaDecode, Debug, Clone, PartialEq, Eq,
-)]
+#[cfg_attr(feature = "dotos-text", derive(DotosEncode, DotosDecode))]
+#[derive(Archive, RkyvSerialize, RkyvDeserialize, Debug, Clone, PartialEq, Eq)]
 pub struct PiRpcJsonlAdapterConfiguration {
     /// Executable path for the adapter command.
     pub command_path: PiRpcCommandPath,
@@ -1568,9 +1147,8 @@ pub struct PiRpcJsonlAdapterConfiguration {
 
 /// Startup configuration for one harness instance owned by
 /// `harness-daemon`.
-#[derive(
-    Archive, RkyvSerialize, RkyvDeserialize, NotaEncode, NotaDecode, Debug, Clone, PartialEq, Eq,
-)]
+#[cfg_attr(feature = "dotos-text", derive(DotosEncode, DotosDecode))]
+#[derive(Archive, RkyvSerialize, RkyvDeserialize, Debug, Clone, PartialEq, Eq)]
 pub struct HarnessInstanceConfiguration {
     /// The harness instance name this daemon serves.
     pub harness_name: HarnessName,
@@ -1589,20 +1167,19 @@ pub struct HarnessInstanceConfiguration {
 /// `PERSONA_SOCKET_MODE`, `PERSONA_SUPERVISION_SOCKET_PATH`, and
 /// `PERSONA_SUPERVISION_SOCKET_MODE` argv/environment-variable
 /// surface.
-#[derive(
-    Archive, RkyvSerialize, RkyvDeserialize, NotaEncode, NotaDecode, Debug, Clone, PartialEq, Eq,
-)]
+#[cfg_attr(feature = "dotos-text", derive(DotosEncode, DotosDecode))]
+#[derive(Archive, RkyvSerialize, RkyvDeserialize, Debug, Clone, PartialEq, Eq)]
 pub struct HarnessDaemonConfiguration {
     /// Where the daemon binds its harness Unix socket.
-    pub domain_socket_path: DomainSocketPath,
+    pub domain_socket_path: z2Veez,
     /// chmod applied to the harness socket after bind.
-    pub domain_socket_mode: DomainSocketMode,
+    pub domain_socket_mode: z2VNyf,
     /// Where the daemon binds its engine-management Unix socket.
-    pub engine_management_socket_path: EngineManagementSocketPath,
+    pub engine_management_socket_path: z2VckR,
     /// chmod applied to the engine-management socket after bind.
-    pub engine_management_socket_mode: EngineManagementSocketMode,
+    pub engine_management_socket_mode: z2VSSX,
     /// The engine owner identity passed to the harness daemon.
-    pub owner_identity: OwnerIdentity,
+    pub owner_identity: z2VRBs,
     /// The harness instances owned by this component daemon.
     pub harnesses: Vec<HarnessInstanceConfiguration>,
 }

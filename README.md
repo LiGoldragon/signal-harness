@@ -15,10 +15,7 @@ Read `src/lib.rs` for the public interface — two enums
 use signal_frame::{
     ExchangeIdentifier, ExchangeLane, LaneSequence, RequestPayload, SessionEpoch,
 };
-use signal_harness::{
-    HarnessFrame, HarnessFrameBody, HarnessName, HarnessRequest,
-    MessageBody, MessageDelivery, MessageSender, MessageSlot,
-};
+use signal_harness::{HarnessName, HarnessRequest, MessageBody, MessageDelivery, MessageSender, MessageSlot};
 
 let exchange = ExchangeIdentifier::new(
     SessionEpoch::new(1),
@@ -31,10 +28,7 @@ let request = HarnessRequest::MessageDelivery(MessageDelivery {
     body: MessageBody::new("delivery test"),
     message_slot: MessageSlot::new(1024),
 });
-let frame = HarnessFrame::new(HarnessFrameBody::Request {
-    exchange,
-    request: request.into_request(),
-});
+let frame = request.into_frame(exchange)?;
 let bytes = frame.encode_length_prefixed()?;
 // router sends bytes to designer harness's UDS
 ```

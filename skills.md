@@ -119,33 +119,26 @@ other provider renders it.
 - **No runtime code.** No Kameo, Tokio, socket, redb, or daemon
   glue in this crate.
 - **Round trips cover every variant.** rkyv length-prefixed frame
-  round trips in `tests/round_trip.rs`; canonical NOTA examples in
-  `examples/canonical.nota` with a parser test. The manifest enables
-  the crate-local `nota-text` feature by default and maps it to
-  `signal-frame/nota-text` for those text witnesses.
-- **Pin upstream contracts via a named API reference.** Cargo deps
-  declare `git = "..."` with a named branch/bookmark, never raw
-  `rev = "..."`.
+  round trips in `tests/round_trip.rs`; canonical Dotos examples in
+  `examples/canonical.dotos` with a parser test. The manifest enables
+  the opt-in crate-local `dotos-text` feature and maps it to the frame and
+  strict Persona Dotos features for those text witnesses.
+- **Pin upstream contracts exactly.** Cargo dependencies name immutable
+  published revisions; moving branches cannot change the family graph.
 
 ## Editing patterns
 
 ### Adding a new delivery failure reason
 
 1. Add the variant to `DeliveryFailureReason`.
-2. Add round-trip witnesses through rkyv and NOTA.
+2. Add round-trip witnesses through rkyv and Dotos.
 3. Update consumers' delivery error handling.
 
-### Adding the `Fixture` harness kind (next contract bump)
+### Harness kinds
 
-`HarnessKind` is the closed kind enum carried on `HarnessBinding`.
-Current daemon code carries three variants; `Fixture` is the next
-bump:
-
-1. Add `Fixture` to `HarnessKind`.
-2. Add round-trip witness for the new variant.
-3. Update `harness` to surface fixture harnesses as
-   `HarnessKind::Fixture`, not as `Codex` or `Claude`.
-4. Update consumers' kind-dispatching code.
+`HarnessKind` is closed at `Codex`, `Claude`, `Pi`, and `Fixture`. A fixture
+must remain explicitly `Fixture`; never translate it to a production kind or
+add a catch-all arm.
 
 ### Adding a new subscription kind
 
@@ -159,12 +152,12 @@ bump:
 4. Witness the full subscribe → event → retract → ack → end
    lifecycle.
 
-## NOTA codec shape
+## Dotos codec shape
 
 The current `signal_channel!` macro emits the request/reply/event
 variant head and wraps the payload's positional fields. For example,
 `HarnessRequest::UnwatchHarnessTranscript(HarnessTranscriptToken { .. })`
-encodes as `(UnwatchHarnessTranscript (...))`. Canonical examples
+encodes as `(UnwatchHarnessTranscript {harness subscription})`. Canonical examples
 and round-trip tests pin that shape.
 
 ## See also

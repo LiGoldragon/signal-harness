@@ -1,6 +1,6 @@
 [package]
 name         = "signal-harness"
-version      = "0.4.1"
+version      = "0.5.0"
 edition      = "2024"
 rust-version = "1.89"
 license      = "MIT OR Apache-2.0"
@@ -12,18 +12,23 @@ publish      = false
 name = "signal_harness"
 path = "src/lib.rs"
 
+[[test]]
+name = "canonical_examples"
+path = "tests/canonical_examples.rs"
+required-features = ["dotos-text"]
+
 [features]
-default = ["nota-text"]
-nota-text = ["signal-frame/nota-text", "signal-persona/nota-text"]
+default = []
+dotos-text = ["dep:dotos", "signal-frame/dotos-text", "signal-persona/dotos-text"]
 
 [dependencies]
-nota = { package = "nota", git = "https://github.com/LiGoldragon/nota.git", rev = "ce7c564de0a0518eaa1938d55dccc460a67cadb4" }
-signal-frame = { git = "https://github.com/LiGoldragon/signal-frame.git", rev = "91e675298b79ec2aab2e0714a5e3e5b2d6d07339" }
-signal-persona = { git = "https://github.com/LiGoldragon/signal-persona.git", rev = "497b7bc4fa84eb0cc2e45b555a29432f0e2b341a" }
-rkyv                = { version = "0.8", default-features = false, features = ["std", "bytecheck", "little_endian", "pointer_width_32", "unaligned"] }
-thiserror           = "2"
+dotos = { package = "dotos", git = "https://github.com/LiGoldragon/dotos.git", rev = "80c7b17f7ad3cf547d2624c6a243e5de5f85c9f3", optional = true }
+signal-frame = { git = "https://github.com/LiGoldragon/signal-frame.git", rev = "01676293a623d97b65e320d4138c4b480c6d5dad", default-features = false }
+signal-persona = { git = "https://github.com/LiGoldragon/signal-persona.git", rev = "7d2568d420869aa0cded49c3c04cc0ac180e66a2", default-features = false }
+rkyv = { version = "0.8", default-features = false, features = ["std", "bytecheck", "little_endian", "pointer_width_32", "unaligned"] }
+thiserror = "2"
 
 [lints.rust]
 unsafe_code = "forbid"
-unused      = { level = "warn", priority = -1 }
-dead_code   = "warn"
+unused = { level = "warn", priority = -1 }
+dead_code = "warn"

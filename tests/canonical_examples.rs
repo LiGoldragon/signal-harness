@@ -1,12 +1,12 @@
 //! Canonical examples round-trip witness.
 //!
-//! Parses `examples/canonical.nota` end-to-end, decoding each record
+//! Parses `examples/canonical.dotos` end-to-end, decoding each record
 //! as a `HarnessRequest`, `HarnessEvent`, or `HarnessStreamEvent`
 //! and asserting the re-encoded text equals the canonical form.
 
-#![cfg(feature = "nota-text")]
+#![cfg(feature = "dotos-text")]
 
-use nota::{NotaEncode, NotaSource};
+use dotos::{DotosEncode, DotosSource};
 use signal_harness::{
     AdapterCompletion, AdapterConfirmationNeeded, AdapterEventSequence, AdapterExitStatus,
     AdapterExited, AdapterInputAccepted, AdapterOutput, AdapterProgress, AdapterReady,
@@ -21,9 +21,9 @@ use signal_harness::{
     MessageDelivery, MessageSender, MessageSlot, StatusTransitionCount, StreamedEventCount,
     ToolCallCount, TranscriptObservation, TranscriptPath, TurnLaunch, WatchHarnessTranscript,
 };
-use signal_persona::TimestampNanos;
+use signal_persona::schema::lib::z2VUtF;
 
-const CANONICAL: &str = include_str!("../examples/canonical.nota");
+const CANONICAL: &str = include_str!("../examples/canonical.dotos");
 
 fn designer() -> HarnessName {
     HarnessName::new("designer")
@@ -54,7 +54,7 @@ fn canonical_request_examples_round_trip() {
                 body: body(),
                 message_slot: MessageSlot::new(1024),
             }),
-            "(MessageDelivery (designer operator hello-from-operator 1024))",
+            "(MessageDelivery {designer operator hello-from-operator 1024})",
         ),
         (
             HarnessRequest::InteractionPrompt(InteractionPrompt {
@@ -63,46 +63,42 @@ fn canonical_request_examples_round_trip() {
                 prompt: "Approve write?".to_string(),
                 options: vec!["yes".to_string(), "no".to_string()],
             }),
-            "(InteractionPrompt (designer interaction-7 [Approve write?] [yes no]))",
+            "(InteractionPrompt {designer interaction-7 (Approve write?) [yes no]})",
         ),
         (
             HarnessRequest::DeliveryCancellation(DeliveryCancellation {
                 harness: designer(),
                 message_slot: MessageSlot::new(1024),
             }),
-            "(DeliveryCancellation (designer 1024))",
+            "(DeliveryCancellation {designer 1024})",
         ),
         (
             HarnessRequest::HarnessStatusQuery(HarnessStatusQuery {
                 harness: designer(),
             }),
-            "(HarnessStatusQuery (designer))",
+            "(HarnessStatusQuery {designer})",
         ),
         (
             HarnessRequest::WatchHarnessTranscript(WatchHarnessTranscript {
                 harness: designer(),
             }),
-            "(WatchHarnessTranscript (designer))",
+            "(WatchHarnessTranscript {designer})",
         ),
         (
             HarnessRequest::UnwatchHarnessTranscript(token()),
-            "(UnwatchHarnessTranscript (designer 1))",
+            "(UnwatchHarnessTranscript {designer 1})",
         ),
     ];
 
     for (value, canonical_text) in expected {
-        let text = value.to_nota();
+        let text = value.to_dotos();
         assert_eq!(text, canonical_text, "encode for {value:?}");
 
-        let decoded = NotaSource::new(canonical_text)
+        let decoded = DotosSource::new(&text)
             .parse::<HarnessRequest>()
             .expect("decode");
         assert_eq!(decoded, value, "decode for {canonical_text}");
-
-        assert!(
-            CANONICAL.contains(canonical_text),
-            "examples/canonical.nota missing line: {canonical_text}",
-        );
+        assert!(CANONICAL.lines().any(|line| line == canonical_text));
     }
 }
 
@@ -114,7 +110,7 @@ fn canonical_reply_examples_round_trip() {
                 harness: designer(),
                 message_slot: MessageSlot::new(1024),
             }),
-            "(DeliveryCompleted (designer 1024))",
+            "(DeliveryCompleted {designer 1024})",
         ),
         (
             HarnessEvent::DeliveryFailed(DeliveryFailed {
@@ -122,7 +118,7 @@ fn canonical_reply_examples_round_trip() {
                 message_slot: MessageSlot::new(1024),
                 reason: DeliveryFailureReason::HumanInputIntervened,
             }),
-            "(DeliveryFailed (designer 1024 HumanInputIntervened))",
+            "(DeliveryFailed {designer 1024 HumanInputIntervened})",
         ),
         (
             HarnessEvent::InteractionResolved(InteractionResolved {
@@ -130,7 +126,7 @@ fn canonical_reply_examples_round_trip() {
                 interaction_id: "interaction-7".to_string(),
                 chosen: "yes".to_string(),
             }),
-            "(InteractionResolved (designer interaction-7 yes))",
+            "(InteractionResolved {designer interaction-7 yes})",
         ),
         (
             HarnessEvent::HarnessRequestUnimplemented(HarnessRequestUnimplemented {
@@ -138,7 +134,7 @@ fn canonical_reply_examples_round_trip() {
                 operation: HarnessOperationKind::WatchHarnessTranscript,
                 reason: HarnessUnimplementedReason::NotBuiltYet,
             }),
-            "(HarnessRequestUnimplemented (designer WatchHarnessTranscript NotBuiltYet))",
+            "(HarnessRequestUnimplemented {designer WatchHarnessTranscript NotBuiltYet})",
         ),
         (
             HarnessEvent::HarnessStatus(HarnessStatus {
@@ -146,33 +142,33 @@ fn canonical_reply_examples_round_trip() {
                 health: HarnessHealth::Running,
                 readiness: HarnessReadiness::Ready,
             }),
-            "(HarnessStatus (designer Running Ready))",
+            "(HarnessStatus {designer Running Ready})",
         ),
         (
             HarnessEvent::HarnessStarted(HarnessStarted {
                 harness: designer(),
             }),
-            "(HarnessStarted (designer))",
+            "(HarnessStarted {designer})",
         ),
         (
             HarnessEvent::HarnessStopped(HarnessStopped {
                 harness: designer(),
             }),
-            "(HarnessStopped (designer))",
+            "(HarnessStopped {designer})",
         ),
         (
             HarnessEvent::HarnessCrashed(HarnessCrashed {
                 harness: designer(),
                 detail: "out of memory".to_string(),
             }),
-            "(HarnessCrashed (designer [out of memory]))",
+            "(HarnessCrashed {designer (out of memory)})",
         ),
         (
             HarnessEvent::AdapterReady(AdapterReady {
                 harness: designer(),
                 sequence: AdapterEventSequence::new(1),
             }),
-            "(AdapterReady (designer 1))",
+            "(AdapterReady {designer 1})",
         ),
         (
             HarnessEvent::AdapterInputAccepted(AdapterInputAccepted {
@@ -180,7 +176,7 @@ fn canonical_reply_examples_round_trip() {
                 sequence: AdapterEventSequence::new(2),
                 message_slot: MessageSlot::new(1024),
             }),
-            "(AdapterInputAccepted (designer 2 1024))",
+            "(AdapterInputAccepted {designer 2 1024})",
         ),
         (
             HarnessEvent::AdapterOutput(AdapterOutput {
@@ -188,7 +184,7 @@ fn canonical_reply_examples_round_trip() {
                 sequence: AdapterEventSequence::new(3),
                 text: "provider output".to_string(),
             }),
-            "(AdapterOutput (designer 3 [provider output]))",
+            "(AdapterOutput {designer 3 (provider output)})",
         ),
         (
             HarnessEvent::AdapterProgress(AdapterProgress {
@@ -196,7 +192,7 @@ fn canonical_reply_examples_round_trip() {
                 sequence: AdapterEventSequence::new(4),
                 status: "working".to_string(),
             }),
-            "(AdapterProgress (designer 4 working))",
+            "(AdapterProgress {designer 4 working})",
         ),
         (
             HarnessEvent::AdapterCompletion(AdapterCompletion {
@@ -204,7 +200,7 @@ fn canonical_reply_examples_round_trip() {
                 sequence: AdapterEventSequence::new(5),
                 message_slot: MessageSlot::new(1024),
             }),
-            "(AdapterCompletion (designer 5 1024))",
+            "(AdapterCompletion {designer 5 1024})",
         ),
         (
             HarnessEvent::AdapterConfirmationNeeded(AdapterConfirmationNeeded {
@@ -214,7 +210,7 @@ fn canonical_reply_examples_round_trip() {
                 prompt: "Proceed?".to_string(),
                 options: vec!["approve".to_string(), "decline".to_string()],
             }),
-            "(AdapterConfirmationNeeded (designer 6 confirm-1 Proceed? [approve decline]))",
+            "(AdapterConfirmationNeeded {designer 6 confirm-1 Proceed? [approve decline]})",
         ),
         (
             HarnessEvent::AdapterStalled(AdapterStalled {
@@ -222,7 +218,7 @@ fn canonical_reply_examples_round_trip() {
                 sequence: AdapterEventSequence::new(7),
                 reason: AdapterStallReason::CompletionTimeout,
             }),
-            "(AdapterStalled (designer 7 CompletionTimeout))",
+            "(AdapterStalled {designer 7 CompletionTimeout})",
         ),
         (
             HarnessEvent::AdapterExited(AdapterExited {
@@ -230,36 +226,32 @@ fn canonical_reply_examples_round_trip() {
                 sequence: AdapterEventSequence::new(8),
                 status: AdapterExitStatus::Failure,
             }),
-            "(AdapterExited (designer 8 Failure))",
+            "(AdapterExited {designer 8 Failure})",
         ),
         (
             HarnessEvent::HarnessTranscriptSnapshot(HarnessTranscriptSnapshot {
                 token: token(),
                 current_sequence: HarnessTranscriptSequence::new(0),
             }),
-            "(HarnessTranscriptSnapshot ((designer 1) 0))",
+            "(HarnessTranscriptSnapshot {{designer 1} 0})",
         ),
         (
             HarnessEvent::HarnessSubscriptionRetracted(HarnessSubscriptionRetracted {
                 token: token(),
             }),
-            "(HarnessSubscriptionRetracted ((designer 1)))",
+            "(HarnessSubscriptionRetracted {{designer 1}})",
         ),
     ];
 
     for (value, canonical_text) in expected {
-        let text = value.to_nota();
+        let text = value.to_dotos();
         assert_eq!(text, canonical_text, "encode for {value:?}");
 
-        let decoded = NotaSource::new(canonical_text)
+        let decoded = DotosSource::new(&text)
             .parse::<HarnessEvent>()
             .expect("decode");
         assert_eq!(decoded, value, "decode for {canonical_text}");
-
-        assert!(
-            CANONICAL.contains(canonical_text),
-            "examples/canonical.nota missing line: {canonical_text}",
-        );
+        assert!(CANONICAL.lines().any(|line| line == canonical_text));
     }
 }
 
@@ -272,7 +264,7 @@ fn canonical_stream_event_examples_round_trip() {
                 sequence: HarnessTranscriptSequence::new(1),
                 line: "hello".to_string(),
             }),
-            "(TranscriptObservation (designer 1 hello))",
+            "(TranscriptObservation {designer 1 hello})",
         ),
         (
             HarnessStreamEvent::ClaudeSessionObservation(ClaudeSessionObservation {
@@ -287,25 +279,21 @@ fn canonical_stream_event_examples_round_trip() {
                 transcript_path: Some(TranscriptPath::new("transcript-7")),
                 response: Some(AssistantResponseText::new("ACKNOWLEDGED")),
                 accumulated_context: Some(ContextTokens::new(48000)),
-                last_activity: TimestampNanos::new(1700000000),
+                last_activity: z2VUtF::new(1700000000),
                 lifecycle: ClaudeSessionLifecycle::Completed,
             }),
-            "(ClaudeSessionObservation (designer (Some session-7) (Some haiku) Resumed True 12 3 4 (Some transcript-7) (Some ACKNOWLEDGED) (Some 48000) 1700000000 Completed))",
+            "(ClaudeSessionObservation {designer Some.session-7 Some.haiku Resumed True 12 3 4 Some.transcript-7 Some.ACKNOWLEDGED Some.48000 1700000000 Completed})",
         ),
     ];
 
     for (value, canonical_text) in expected {
-        let text = value.to_nota();
+        let text = value.to_dotos();
         assert_eq!(text, canonical_text, "encode for {value:?}");
 
-        let decoded = NotaSource::new(canonical_text)
+        let decoded = DotosSource::new(&text)
             .parse::<HarnessStreamEvent>()
             .expect("decode");
         assert_eq!(decoded, value, "decode for {canonical_text}");
-
-        assert!(
-            CANONICAL.contains(canonical_text),
-            "examples/canonical.nota missing line: {canonical_text}",
-        );
+        assert!(CANONICAL.lines().any(|line| line == canonical_text));
     }
 }

@@ -1,0 +1,34 @@
+;; Canonical Dotos examples for signal-harness.
+;; One readable projection for every request, reply, and stream-event variant.
+
+;; Requests
+(MessageDelivery {designer operator hello-from-operator 1024})
+(InteractionPrompt {designer interaction-7 (Approve write?) [yes no]})
+(DeliveryCancellation {designer 1024})
+(HarnessStatusQuery {designer})
+(WatchHarnessTranscript {designer})
+(UnwatchHarnessTranscript {designer 1})
+
+;; Replies
+(DeliveryCompleted {designer 1024})
+(DeliveryFailed {designer 1024 HumanInputIntervened})
+(InteractionResolved {designer interaction-7 yes})
+(HarnessRequestUnimplemented {designer WatchHarnessTranscript NotBuiltYet})
+(HarnessStatus {designer Running Ready})
+(HarnessStarted {designer})
+(HarnessStopped {designer})
+(HarnessCrashed {designer (out of memory)})
+(AdapterReady {designer 1})
+(AdapterInputAccepted {designer 2 1024})
+(AdapterOutput {designer 3 (provider output)})
+(AdapterProgress {designer 4 working})
+(AdapterCompletion {designer 5 1024})
+(AdapterConfirmationNeeded {designer 6 confirm-1 Proceed? [approve decline]})
+(AdapterStalled {designer 7 CompletionTimeout})
+(AdapterExited {designer 8 Failure})
+(HarnessTranscriptSnapshot {{designer 1} 0})
+(HarnessSubscriptionRetracted {{designer 1}})
+
+;; Stream events
+(TranscriptObservation {designer 1 hello})
+(ClaudeSessionObservation {designer Some.session-7 Some.haiku Resumed True 12 3 4 Some.transcript-7 Some.ACKNOWLEDGED Some.48000 1700000000 Completed})

@@ -11,8 +11,16 @@
     crane.url = "github:ipetkov/crane";
   };
 
-  outputs = { self, nixpkgs, flake-utils, fenix, crane }:
-    flake-utils.lib.eachDefaultSystem (system:
+  outputs =
+    {
+      self,
+      nixpkgs,
+      flake-utils,
+      fenix,
+      crane,
+    }:
+    flake-utils.lib.eachDefaultSystem (
+      system:
       let
         pkgs = import nixpkgs { inherit system; };
         toolchain = fenix.packages.${system}.complete.withComponents [
@@ -24,45 +32,78 @@
           "rust-src"
         ];
         craneLib = (crane.mkLib pkgs).overrideToolchain toolchain;
-        # Include `examples/` so canonical NOTA examples files are present
+        # Include `examples/` so canonical Dotos examples files are present
         # at build time for `include_str!` in `tests/canonical_examples.rs`.
         examplesFilter = path: _type: builtins.match ".*/examples(/.*)?$" path != null;
-        sourceFilter = path: type:
-          (craneLib.filterCargoSources path type) || (examplesFilter path type);
+        sourceFilter = path: type: (craneLib.filterCargoSources path type) || (examplesFilter path type);
         src = pkgs.lib.cleanSourceWith {
           src = ./.;
           filter = sourceFilter;
           name = "source";
         };
-        commonArgs = { inherit src; strictDeps = true; };
+        commonArgs = {
+          inherit src;
+          strictDeps = true;
+        };
         cargoArtifacts = craneLib.buildDepsOnly commonArgs;
       in
       {
         packages.default = craneLib.buildPackage (commonArgs // { inherit cargoArtifacts; });
         checks = {
           build = craneLib.cargoBuild (commonArgs // { inherit cargoArtifacts; });
-          test  = craneLib.cargoTest  (commonArgs // { inherit cargoArtifacts; });
-          test-round-trip = craneLib.cargoTest (commonArgs // {
-            inherit cargoArtifacts;
-            cargoTestExtraArgs = "--test round_trip";
-          });
-          test-doc = craneLib.cargoTest (commonArgs // {
-            inherit cargoArtifacts;
-            cargoTestExtraArgs = "--doc";
-          });
-          doc = craneLib.cargoDoc (commonArgs // {
-            inherit cargoArtifacts;
-            RUSTDOCFLAGS = "-D warnings";
-          });
+          test = craneLib.cargoTest (commonArgs // { inherit cargoArtifacts; });
+          test-round-trip = craneLib.cargoTest (
+            commonArgs
+            // {
+              inherit cargoArtifacts;
+              cargoTestExtraArgs = "--test round_trip";
+            }
+          );
+          test-canonical = craneLib.cargoTest (
+            commonArgs
+            // {
+              inherit cargoArtifacts;
+              cargoTestExtraArgs = "--test canonical_examples --features dotos-text";
+            }
+          );
+          test-dependency-boundary = craneLib.cargoTest (
+            commonArgs
+            // {
+              inherit cargoArtifacts;
+              cargoTestExtraArgs = "--test dependency_boundary";
+            }
+          );
+          test-doc = craneLib.cargoTest (
+            commonArgs
+            // {
+              inherit cargoArtifacts;
+              cargoTestExtraArgs = "--doc";
+            }
+          );
+          doc = craneLib.cargoDoc (
+            commonArgs
+            // {
+              inherit cargoArtifacts;
+              RUSTDOCFLAGS = "-D warnings";
+            }
+          );
           fmt = craneLib.cargoFmt { inherit src; };
-          clippy = craneLib.cargoClippy (commonArgs // {
-            inherit cargoArtifacts;
-            cargoClippyExtraArgs = "--all-targets -- -D warnings";
-          });
+          clippy = craneLib.cargoClippy (
+            commonArgs
+            // {
+              inherit cargoArtifacts;
+              cargoClippyExtraArgs = "--all-targets --all-features -- -D warnings";
+            }
+          );
         };
         devShells.default = pkgs.mkShell {
           name = "signal-harness";
-          packages = [ pkgs.jujutsu pkgs.pkg-config toolchain ];
+          packages = [
+            pkgs.jujutsu
+            pkgs.pkg-config
+            toolchain
+          ];
         };
-      });
+      }
+    );
 }

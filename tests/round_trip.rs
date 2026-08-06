@@ -1,37 +1,37 @@
 //! Architectural-truth round-trip tests for the
 //! `signal-harness` channel.
 
-#[cfg(feature = "nota-text")]
-use nota::{NotaDecode, NotaEncode, NotaSource};
+#[cfg(feature = "dotos-text")]
+use dotos::{DotosDecode, DotosEncode, DotosSource};
 use signal_frame::{
-    ExchangeIdentifier, ExchangeLane, LaneSequence, NonEmpty, Reply, RequestPayload, SessionEpoch,
-    SignalOperationHeads, SubReply,
+    ExchangeIdentifier, ExchangeLane, LaneSequence, NonEmpty, Reply, RootCode, SessionEpoch,
+    SignalOperationHeads, SubReply, VariantCode, WireRoute,
 };
 use signal_harness::{
     AdapterCompletion, AdapterConfirmationNeeded, AdapterEventSequence, AdapterExitStatus,
     AdapterExited, AdapterInputAccepted, AdapterOutput, AdapterProgress, AdapterReady,
-    AdapterStallReason, AdapterStalled, AssistantResponseText, CapabilityProfile, ClaudeModel,
-    ClaudeSessionIdentifier, ClaudeSessionLifecycle, ClaudeSessionObservation,
-    CodexContinuationIdentifier, ContextTokens, ContinuationHandle, ContinuationRequest,
-    DeliveryCancellation, DeliveryCompleted, DeliveryFailed, DeliveryFailureReason, EffortRequest,
-    HarnessCrashed, HarnessEvent, HarnessFrame, HarnessFrameBody, HarnessHealth, HarnessKind,
-    HarnessName, HarnessOperationKind, HarnessReadiness, HarnessRequest,
-    HarnessRequestUnimplemented, HarnessStarted, HarnessStatus, HarnessStatusQuery, HarnessStopped,
+    AdapterStallReason, AdapterStalled, AssistantResponseText, ClaudeModel,
+    ClaudeSessionIdentifier, ClaudeSessionLifecycle, ClaudeSessionObservation, ContextTokens,
+    DeliveryCancellation, DeliveryCompleted, DeliveryFailed, DeliveryFailureReason, HarnessCrashed,
+    HarnessEvent, HarnessFrame, HarnessFrameBody, HarnessHealth, HarnessKind, HarnessName,
+    HarnessOperationKind, HarnessReadiness, HarnessRequest, HarnessRequestUnimplemented,
+    HarnessStarted, HarnessStatus, HarnessStatusQuery, HarnessStopped,
     HarnessSubscriptionRetracted, HarnessTranscriptSequence, HarnessTranscriptSnapshot,
     HarnessTranscriptSubscriptionIdentifier, HarnessTranscriptToken, HarnessUnimplementedReason,
     InteractionPrompt, InteractionResolved, MessageBody, MessageDelivery, MessageSender,
-    MessageSlot, ModelRequest, ModelResolutionRequest, ModelResolved, ModelSelector,
-    ModelUnavailable, ModelUnavailableReason, NamedModel, PiContinuationIdentifier,
-    PiRpcCommandPath, PiRpcDeliveryMode, PiRpcJsonlAdapterConfiguration, PiRpcSessionDirectoryPath,
-    StatusTransitionCount, StreamedEventCount, TerminalSocketPath, ToolCallCount, TranscriptPath,
-    TurnLaunch, WatchHarnessTranscript,
+    MessageSlot, ModelUnavailableReason, PiRpcCommandPath, PiRpcDeliveryMode,
+    PiRpcJsonlAdapterConfiguration, PiRpcSessionDirectoryPath, StatusTransitionCount,
+    StreamedEventCount, ToolCallCount, TranscriptPath, TurnLaunch, WatchHarnessTranscript,
 };
-#[cfg(feature = "nota-text")]
-use signal_harness::{PiRpcModelPattern, TranscriptObservation};
-use signal_persona::TimestampNanos;
-use signal_persona::{
-    DomainSocketMode, DomainSocketPath, EngineManagementSocketMode, EngineManagementSocketPath,
+#[cfg(feature = "dotos-text")]
+use signal_harness::{
+    CapabilityProfile, CodexContinuationIdentifier, ContinuationHandle, ContinuationRequest,
+    EffortRequest, ModelRequest, ModelResolutionRequest, ModelResolved, ModelSelector,
+    ModelUnavailable, NamedModel, PiContinuationIdentifier, PiRpcModelPattern, TerminalSocketPath,
+    TranscriptObservation,
 };
+use signal_persona::schema::lib::z2VUtF;
+use signal_persona::schema::lib::{z2VNyf, z2VSSX, z2VckR, z2Veez};
 
 fn harness() -> HarnessName {
     HarnessName::new("designer")
@@ -53,11 +53,9 @@ fn transcript_token() -> HarnessTranscriptToken {
 }
 
 fn round_trip_request(request: HarnessRequest) -> HarnessRequest {
-    let signal_request = request.into_request();
-    let frame = HarnessFrame::new(HarnessFrameBody::Request {
-        exchange: synthetic_exchange(),
-        request: signal_request,
-    });
+    let frame = request
+        .into_frame(synthetic_exchange())
+        .expect("request route is declared");
     let bytes = frame.encode_length_prefixed().expect("encode");
     let decoded = HarnessFrame::decode_length_prefixed(&bytes).expect("decode");
     match decoded.into_body() {
@@ -67,11 +65,15 @@ fn round_trip_request(request: HarnessRequest) -> HarnessRequest {
 }
 
 fn round_trip_event(event: HarnessEvent) -> HarnessEvent {
+    let route = WireRoute::new(RootCode::new(1), VariantCode::new(event.kind() as u8));
     let reply = Reply::committed(NonEmpty::single(SubReply::Ok(event)));
-    let frame = HarnessFrame::new(HarnessFrameBody::Reply {
-        exchange: synthetic_exchange(),
-        reply,
-    });
+    let frame = HarnessFrame::new(
+        route,
+        HarnessFrameBody::Reply {
+            exchange: synthetic_exchange(),
+            reply,
+        },
+    );
     let bytes = frame.encode_length_prefixed().expect("encode");
     let decoded = HarnessFrame::decode_length_prefixed(&bytes).expect("decode");
     match decoded.into_body() {
@@ -86,14 +88,14 @@ fn round_trip_event(event: HarnessEvent) -> HarnessEvent {
     }
 }
 
-#[cfg(feature = "nota-text")]
-fn round_trip_nota<Value>(value: Value, expected: &str)
+#[cfg(feature = "dotos-text")]
+fn round_trip_dotos<Value>(value: Value, expected: &str)
 where
-    Value: NotaEncode + NotaDecode + PartialEq + std::fmt::Debug,
+    Value: DotosEncode + DotosDecode + PartialEq + std::fmt::Debug,
 {
-    let text = value.to_nota();
+    let text = value.to_dotos();
     assert_eq!(text, expected);
-    let recovered = NotaSource::new(&text).parse::<Value>().expect("decode");
+    let recovered = DotosSource::new(&text).parse::<Value>().expect("decode");
     assert_eq!(recovered, value);
 }
 
@@ -212,15 +214,15 @@ fn harness_request_variants_declare_contract_local_operation_heads() {
     );
 }
 
-#[cfg(feature = "nota-text")]
+#[cfg(feature = "dotos-text")]
 #[test]
-fn harness_operation_kind_round_trips_through_nota_text() {
-    round_trip_nota(HarnessOperationKind::MessageDelivery, "MessageDelivery");
+fn harness_operation_kind_round_trips_through_dotos_text() {
+    round_trip_dotos(HarnessOperationKind::MessageDelivery, "MessageDelivery");
 }
 
-#[cfg(feature = "nota-text")]
+#[cfg(feature = "dotos-text")]
 #[test]
-fn model_resolution_vocabulary_round_trips_through_nota_text() {
+fn model_resolution_vocabulary_round_trips_through_dotos_text() {
     let exact_request = ModelResolutionRequest {
         model: ModelRequest {
             selector: ModelSelector::Exact(NamedModel::new("claude-sonnet-4")),
@@ -228,7 +230,7 @@ fn model_resolution_vocabulary_round_trips_through_nota_text() {
         },
         continuation: ContinuationRequest::Fresh,
     };
-    round_trip_nota(exact_request, "(((Exact claude-sonnet-4) Maximum) Fresh)");
+    round_trip_dotos(exact_request, "{{Exact.claude-sonnet-4 Maximum} Fresh}");
 
     let profile_request = ModelResolutionRequest {
         model: ModelRequest {
@@ -239,15 +241,15 @@ fn model_resolution_vocabulary_round_trips_through_nota_text() {
             CodexContinuationIdentifier::new("codex-session-7"),
         )),
     };
-    round_trip_nota(
+    round_trip_dotos(
         profile_request,
-        "(((CapabilityProfile deep-design) ExtraHigh) (Prefer (Codex codex-session-7)))",
+        "{{CapabilityProfile.deep-design ExtraHigh} Prefer.Codex.codex-session-7}",
     );
 }
 
-#[cfg(feature = "nota-text")]
+#[cfg(feature = "dotos-text")]
 #[test]
-fn model_resolution_replies_round_trip_through_nota_text() {
+fn model_resolution_replies_round_trip_through_dotos_text() {
     let resolved = ModelResolved {
         harness: harness(),
         harness_kind: HarnessKind::Claude,
@@ -255,9 +257,9 @@ fn model_resolution_replies_round_trip_through_nota_text() {
         effort: EffortRequest::High,
         continuation: ContinuationHandle::Claude(ClaudeSessionIdentifier::new("claude-session-1")),
     };
-    round_trip_nota(
+    round_trip_dotos(
         resolved,
-        "(designer Claude claude-sonnet-4 High (Claude claude-session-1))",
+        "{designer Claude claude-sonnet-4 High Claude.claude-session-1}",
     );
 
     let unavailable = ModelUnavailable {
@@ -272,9 +274,9 @@ fn model_resolution_replies_round_trip_through_nota_text() {
         },
         reason: ModelUnavailableReason::ContinuationUnavailable,
     };
-    round_trip_nota(
+    round_trip_dotos(
         unavailable,
-        "((((Exact pi-large) Medium) (Require (Pi pi-thread-3))) ContinuationUnavailable)",
+        "{{{Exact.pi-large Medium} Require.Pi.pi-thread-3} ContinuationUnavailable}",
     );
 }
 
@@ -501,7 +503,7 @@ fn claude_session_observations() -> Vec<ClaudeSessionObservation> {
                 "ACKNOWLEDGED. Multi-word response with punctuation, slashes / and (parens).",
             )),
             accumulated_context: Some(ContextTokens::new(48_000)),
-            last_activity: TimestampNanos::new(1_700_000_000_000_000_000),
+            last_activity: z2VUtF::new(1_700_000_000_000_000_000),
             lifecycle: ClaudeSessionLifecycle::Completed,
         },
         ClaudeSessionObservation {
@@ -516,7 +518,7 @@ fn claude_session_observations() -> Vec<ClaudeSessionObservation> {
             transcript_path: None,
             response: None,
             accumulated_context: None,
-            last_activity: TimestampNanos::new(0),
+            last_activity: z2VUtF::new(0),
             lifecycle: ClaudeSessionLifecycle::Ready,
         },
         ClaudeSessionObservation {
@@ -531,7 +533,7 @@ fn claude_session_observations() -> Vec<ClaudeSessionObservation> {
             transcript_path: None,
             response: None,
             accumulated_context: Some(ContextTokens::new(205_000)),
-            last_activity: TimestampNanos::new(42),
+            last_activity: z2VUtF::new(42),
             lifecycle: ClaudeSessionLifecycle::Active,
         },
         ClaudeSessionObservation {
@@ -546,7 +548,7 @@ fn claude_session_observations() -> Vec<ClaudeSessionObservation> {
             transcript_path: Some(TranscriptPath::new("session-gamma-jsonl")),
             response: Some(AssistantResponseText::new("HEALED")),
             accumulated_context: Some(ContextTokens::new(101_000)),
-            last_activity: TimestampNanos::new(7),
+            last_activity: z2VUtF::new(7),
             lifecycle: ClaudeSessionLifecycle::Exited(AdapterExitStatus::Failure),
         },
     ]
@@ -562,61 +564,61 @@ fn claude_session_observation_round_trips_through_rkyv() {
     }
 }
 
-#[cfg(feature = "nota-text")]
+#[cfg(feature = "dotos-text")]
 #[test]
-fn claude_session_observation_round_trips_through_nota_text() {
+fn claude_session_observation_round_trips_through_dotos_text() {
     for observation in claude_session_observations() {
-        let text = observation.to_nota();
-        let recovered = NotaSource::new(&text)
+        let text = observation.to_dotos();
+        let recovered = DotosSource::new(&text)
             .parse::<ClaudeSessionObservation>()
             .expect("decode ClaudeSessionObservation");
-        assert_eq!(recovered, observation, "nota round-trip for {text}");
+        assert_eq!(recovered, observation, "dotos round-trip for {text}");
     }
 }
 
-#[cfg(feature = "nota-text")]
+#[cfg(feature = "dotos-text")]
 #[test]
-fn transcript_observation_event_round_trips_through_nota_text() {
+fn transcript_observation_event_round_trips_through_dotos_text() {
     let observation = TranscriptObservation {
         harness: harness(),
         sequence: HarnessTranscriptSequence::new(42),
         line: "ready for prompt".into(),
     };
 
-    round_trip_nota(observation, "(designer 42 [ready for prompt])");
+    round_trip_dotos(observation, "{designer 42 (ready for prompt)}");
 }
 
-#[cfg(feature = "nota-text")]
+#[cfg(feature = "dotos-text")]
 #[test]
-fn message_delivery_request_round_trips_through_nota_text() {
+fn message_delivery_request_round_trips_through_dotos_text() {
     let request = HarnessRequest::MessageDelivery(MessageDelivery {
         harness: harness(),
         sender: MessageSender::new("operator"),
-        body: MessageBody::new("via nota"),
+        body: MessageBody::new("via dotos"),
         message_slot: MessageSlot::new(42),
     });
 
-    round_trip_nota(
+    round_trip_dotos(
         request,
-        "(MessageDelivery (designer operator [via nota] 42))",
+        "(MessageDelivery {designer operator (via dotos) 42})",
     );
 }
 
-#[cfg(feature = "nota-text")]
+#[cfg(feature = "dotos-text")]
 #[test]
-fn delivery_failed_event_round_trips_through_nota_text() {
+fn delivery_failed_event_round_trips_through_dotos_text() {
     let event = HarnessEvent::DeliveryFailed(DeliveryFailed {
         harness: harness(),
         message_slot: MessageSlot::new(42),
         reason: DeliveryFailureReason::TransportRejected,
     });
 
-    round_trip_nota(event, "(DeliveryFailed (designer 42 TransportRejected))");
+    round_trip_dotos(event, "(DeliveryFailed {designer 42 TransportRejected})");
 }
 
-#[cfg(feature = "nota-text")]
+#[cfg(feature = "dotos-text")]
 #[test]
-fn adapter_confirmation_needed_round_trips_through_nota_text() {
+fn adapter_confirmation_needed_round_trips_through_dotos_text() {
     let event = HarnessEvent::AdapterConfirmationNeeded(AdapterConfirmationNeeded {
         harness: harness(),
         sequence: AdapterEventSequence::new(6),
@@ -625,36 +627,36 @@ fn adapter_confirmation_needed_round_trips_through_nota_text() {
         options: vec!["approve".into(), "decline".into()],
     });
 
-    round_trip_nota(
+    round_trip_dotos(
         event,
-        "(AdapterConfirmationNeeded (designer 6 confirm-1 Proceed? [approve decline]))",
+        "(AdapterConfirmationNeeded {designer 6 confirm-1 Proceed? [approve decline]})",
     );
 }
 
-#[cfg(feature = "nota-text")]
+#[cfg(feature = "dotos-text")]
 #[test]
-fn adapter_completion_round_trips_through_nota_text_without_close() {
+fn adapter_completion_round_trips_through_dotos_text_without_close() {
     let event = HarnessEvent::AdapterCompletion(AdapterCompletion {
         harness: harness(),
         sequence: AdapterEventSequence::new(5),
         message_slot: MessageSlot::new(1024),
     });
 
-    round_trip_nota(event, "(AdapterCompletion (designer 5 1024))");
+    round_trip_dotos(event, "(AdapterCompletion {designer 5 1024})");
 }
 
-#[cfg(feature = "nota-text")]
+#[cfg(feature = "dotos-text")]
 #[test]
-fn harness_unimplemented_event_round_trips_through_nota_text() {
+fn harness_unimplemented_event_round_trips_through_dotos_text() {
     let event = HarnessEvent::HarnessRequestUnimplemented(HarnessRequestUnimplemented {
         harness: harness(),
         operation: HarnessOperationKind::MessageDelivery,
         reason: HarnessUnimplementedReason::NotBuiltYet,
     });
 
-    round_trip_nota(
+    round_trip_dotos(
         event,
-        "(HarnessRequestUnimplemented (designer MessageDelivery NotBuiltYet))",
+        "(HarnessRequestUnimplemented {designer MessageDelivery NotBuiltYet})",
     );
 }
 
@@ -709,20 +711,20 @@ impl DriftScan {
     }
 }
 
-#[cfg(feature = "nota-text")]
+#[cfg(feature = "dotos-text")]
 #[test]
-fn harness_daemon_configuration_round_trips_through_nota_text() {
+fn harness_daemon_configuration_round_trips_through_dotos_text() {
     use signal_harness::{HarnessDaemonConfiguration, HarnessInstanceConfiguration, HarnessKind};
-    use signal_persona::{OwnerIdentity, UnixUserIdentifier};
+    use signal_persona::schema::lib::{z2VRBs, z2VaTc};
 
     let configuration = HarnessDaemonConfiguration {
-        domain_socket_path: DomainSocketPath::new("/run/persona/X/harness.sock"),
-        domain_socket_mode: DomainSocketMode::new(0o600),
-        engine_management_socket_path: EngineManagementSocketPath::new(
-            "/run/persona/X/harness-supervision.sock",
+        domain_socket_path: z2Veez::new("/run/persona/X/harness.sock".to_owned()),
+        domain_socket_mode: z2VNyf::new(0o600),
+        engine_management_socket_path: z2VckR::new(
+            "/run/persona/X/harness-supervision.sock".to_owned(),
         ),
-        engine_management_socket_mode: EngineManagementSocketMode::new(0o600),
-        owner_identity: OwnerIdentity::UnixUser(UnixUserIdentifier::new(1000)),
+        engine_management_socket_mode: z2VSSX::new(0o600),
+        owner_identity: z2VRBs::z2VWNV(z2VaTc::new(1000)),
         harnesses: vec![
             HarnessInstanceConfiguration {
                 harness_name: harness(),
@@ -744,8 +746,8 @@ fn harness_daemon_configuration_round_trips_through_nota_text() {
         ],
     };
 
-    let text = configuration.to_nota();
-    let recovered = NotaSource::new(&text)
+    let text = configuration.to_dotos();
+    let recovered = DotosSource::new(&text)
         .parse::<HarnessDaemonConfiguration>()
         .expect("decode configuration");
 
@@ -755,16 +757,16 @@ fn harness_daemon_configuration_round_trips_through_nota_text() {
 #[test]
 fn harness_daemon_configuration_round_trips_through_rkyv() {
     use signal_harness::{HarnessDaemonConfiguration, HarnessInstanceConfiguration, HarnessKind};
-    use signal_persona::{OwnerIdentity, UnixUserIdentifier};
+    use signal_persona::schema::lib::{z2VRBs, z2VaTc};
 
     let configuration = HarnessDaemonConfiguration {
-        domain_socket_path: DomainSocketPath::new("/run/persona/X/harness.sock"),
-        domain_socket_mode: DomainSocketMode::new(0o600),
-        engine_management_socket_path: EngineManagementSocketPath::new(
-            "/run/persona/X/harness-supervision.sock",
+        domain_socket_path: z2Veez::new("/run/persona/X/harness.sock".to_owned()),
+        domain_socket_mode: z2VNyf::new(0o600),
+        engine_management_socket_path: z2VckR::new(
+            "/run/persona/X/harness-supervision.sock".to_owned(),
         ),
-        engine_management_socket_mode: EngineManagementSocketMode::new(0o600),
-        owner_identity: OwnerIdentity::UnixUser(UnixUserIdentifier::new(1000)),
+        engine_management_socket_mode: z2VSSX::new(0o600),
+        owner_identity: z2VRBs::z2VWNV(z2VaTc::new(1000)),
         harnesses: vec![HarnessInstanceConfiguration {
             harness_name: harness(),
             harness_kind: HarnessKind::Codex,
@@ -778,9 +780,9 @@ fn harness_daemon_configuration_round_trips_through_rkyv() {
     assert_eq!(recovered, configuration);
 }
 
-#[cfg(feature = "nota-text")]
+#[cfg(feature = "dotos-text")]
 #[test]
-fn pi_rpc_jsonl_adapter_configuration_round_trips_through_nota_text() {
+fn pi_rpc_jsonl_adapter_configuration_round_trips_through_dotos_text() {
     let configuration = PiRpcJsonlAdapterConfiguration {
         command_path: PiRpcCommandPath::new("/run/current-system/sw/bin/pi-rpc"),
         session_directory_path: PiRpcSessionDirectoryPath::new("/var/lib/persona/pi"),
@@ -788,8 +790,8 @@ fn pi_rpc_jsonl_adapter_configuration_round_trips_through_nota_text() {
         delivery_mode: PiRpcDeliveryMode::Prompt,
     };
 
-    let text = configuration.to_nota();
-    let recovered = NotaSource::new(&text)
+    let text = configuration.to_dotos();
+    let recovered = DotosSource::new(&text)
         .parse::<PiRpcJsonlAdapterConfiguration>()
         .expect("decode Pi RPC adapter");
     assert_eq!(recovered, configuration);
@@ -844,9 +846,9 @@ fn session_launched_round_trips_through_rkyv() {
     assert_eq!(recovered, launched);
 }
 
-#[cfg(feature = "nota-text")]
+#[cfg(feature = "dotos-text")]
 #[test]
-fn session_launch_refusal_round_trips_through_nota_text() {
+fn session_launch_refusal_round_trips_through_dotos_text() {
     use signal_harness::{
         AgentIdentityToken, ContinuationRequest, InitialPrompt, SessionLaunchRefusalReason,
         SessionLaunchRefused, SessionLaunchRequest,
@@ -861,8 +863,8 @@ fn session_launch_refusal_round_trips_through_nota_text() {
         reason: SessionLaunchRefusalReason::HarnessKindUnsupported,
         detail: "codex launch deferred".to_string(),
     };
-    let text = refused.to_nota();
-    let recovered = NotaSource::new(&text)
+    let text = refused.to_dotos();
+    let recovered = DotosSource::new(&text)
         .parse::<SessionLaunchRefused>()
         .expect("decode refusal");
     assert_eq!(recovered, refused);
