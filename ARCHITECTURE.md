@@ -349,7 +349,7 @@ encoded into the request.
 | Prompt-turn completion does not imply session closure. | `AdapterCompletion` is distinct from `HarnessStopped`, `HarnessCrashed`, and `AdapterExited`; no close request is paired to completion. |
 | Confirmation prompts are first-class interaction events. | `AdapterConfirmationNeeded` round-trips as a `HarnessEvent` with a typed interaction identifier, prompt text, and options. |
 | No stringly-typed dispatch (`match s.as_str()`) for closed-set states. | All kind / reason / health / readiness fields are typed closed enums. |
-| Contract crate dependencies use a named API reference (branch or tag), not a raw revision pin. | `Cargo.toml` review: `signal-frame` is declared `git = "..."` with a named-branch shape; raw `rev = "..."` pins are not used. |
+| Contract crate dependencies name one exact published source revision. | `Cargo.toml` and `tests/dependency_boundary.rs` witness the sole exact `signal-frame` and `signal-persona` sources. |
 | Runtime code stays out of the contract. | Source scan: no Kameo, Tokio, socket, or redb code. |
 
 ## 10 · Dotos codec shape on `signal_channel!` variants
@@ -366,9 +366,9 @@ and round-trip tests carry the variant heads.
 changes are breaking; coordinate `router` and
 `harness` on the upgrade.
 
-This crate depends on `signal-frame` via a named-branch reference, not
-a raw revision pin. The destination is a stable `signal-frame` API
-exact published revision once that lane is declared.
+This crate depends on one exact published `signal-frame` revision.
+Its direct pin and Persona's transitive pin must resolve to that same
+source so one nominal wire world reaches every contract boundary.
 
 ## 12 · Non-ownership
 
