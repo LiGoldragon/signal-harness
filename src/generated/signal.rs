@@ -3,10 +3,7 @@
 pub type HarnessName = String;
 #[rustfmt::skip]
 #[derive(rkyv::Archive, rkyv::Serialize, rkyv::Deserialize, Clone, Debug, PartialEq)]
-#[cfg_attr(
-    feature = "datom",
-    derive(datom_codec::Datomizable, datom_codec::Compositional)
-)]
+#[cfg_attr(feature = "datom", derive(datom_codec::Datomizable, datom_codec::Composing))]
 pub enum HarnessKind {
     Codex,
     Claude,
@@ -21,10 +18,7 @@ pub type MessageBody = String;
 pub type MessageSlot = i64;
 #[rustfmt::skip]
 #[derive(rkyv::Archive, rkyv::Serialize, rkyv::Deserialize, Clone, Debug, PartialEq)]
-#[cfg_attr(
-    feature = "datom",
-    derive(datom_codec::Datomizable, datom_codec::Compositional)
-)]
+#[cfg_attr(feature = "datom", derive(datom_codec::Datomizable, datom_codec::Composing))]
 pub struct MessageDelivery {
     pub harness_name: HarnessName,
     pub message_sender: MessageSender,
@@ -41,10 +35,7 @@ pub type InteractionOption = String;
 pub type InteractionOptions = std::vec::Vec<InteractionOption>;
 #[rustfmt::skip]
 #[derive(rkyv::Archive, rkyv::Serialize, rkyv::Deserialize, Clone, Debug, PartialEq)]
-#[cfg_attr(
-    feature = "datom",
-    derive(datom_codec::Datomizable, datom_codec::Compositional)
-)]
+#[cfg_attr(feature = "datom", derive(datom_codec::Datomizable, datom_codec::Composing))]
 pub struct InteractionPrompt {
     pub harness_name: HarnessName,
     pub interaction_identifier: InteractionIdentifier,
@@ -53,39 +44,27 @@ pub struct InteractionPrompt {
 }
 #[rustfmt::skip]
 #[derive(rkyv::Archive, rkyv::Serialize, rkyv::Deserialize, Clone, Debug, PartialEq)]
-#[cfg_attr(
-    feature = "datom",
-    derive(datom_codec::Datomizable, datom_codec::Compositional)
-)]
+#[cfg_attr(feature = "datom", derive(datom_codec::Datomizable, datom_codec::Composing))]
 pub struct DeliveryCancellation {
     pub harness_name: HarnessName,
     pub message_slot: MessageSlot,
 }
 #[rustfmt::skip]
 #[derive(rkyv::Archive, rkyv::Serialize, rkyv::Deserialize, Clone, Debug, PartialEq)]
-#[cfg_attr(
-    feature = "datom",
-    derive(datom_codec::Datomizable, datom_codec::Compositional)
-)]
+#[cfg_attr(feature = "datom", derive(datom_codec::Datomizable, datom_codec::Composing))]
 pub struct HarnessStatusQuery {
     pub harness_name: HarnessName,
 }
 #[rustfmt::skip]
 #[derive(rkyv::Archive, rkyv::Serialize, rkyv::Deserialize, Clone, Debug, PartialEq)]
-#[cfg_attr(
-    feature = "datom",
-    derive(datom_codec::Datomizable, datom_codec::Compositional)
-)]
+#[cfg_attr(feature = "datom", derive(datom_codec::Datomizable, datom_codec::Composing))]
 pub struct DeliveryCompleted {
     pub harness_name: HarnessName,
     pub message_slot: MessageSlot,
 }
 #[rustfmt::skip]
 #[derive(rkyv::Archive, rkyv::Serialize, rkyv::Deserialize, Clone, Debug, PartialEq)]
-#[cfg_attr(
-    feature = "datom",
-    derive(datom_codec::Datomizable, datom_codec::Compositional)
-)]
+#[cfg_attr(feature = "datom", derive(datom_codec::Datomizable, datom_codec::Composing))]
 pub enum DeliveryFailureReason {
     TransportRejected,
     HumanInputIntervened,
@@ -94,10 +73,7 @@ pub enum DeliveryFailureReason {
 }
 #[rustfmt::skip]
 #[derive(rkyv::Archive, rkyv::Serialize, rkyv::Deserialize, Clone, Debug, PartialEq)]
-#[cfg_attr(
-    feature = "datom",
-    derive(datom_codec::Datomizable, datom_codec::Compositional)
-)]
+#[cfg_attr(feature = "datom", derive(datom_codec::Datomizable, datom_codec::Composing))]
 pub struct DeliveryFailed {
     pub harness_name: HarnessName,
     pub message_slot: MessageSlot,
@@ -107,10 +83,7 @@ pub struct DeliveryFailed {
 pub type InteractionChoice = String;
 #[rustfmt::skip]
 #[derive(rkyv::Archive, rkyv::Serialize, rkyv::Deserialize, Clone, Debug, PartialEq)]
-#[cfg_attr(
-    feature = "datom",
-    derive(datom_codec::Datomizable, datom_codec::Compositional)
-)]
+#[cfg_attr(feature = "datom", derive(datom_codec::Datomizable, datom_codec::Composing))]
 pub struct InteractionResolved {
     pub harness_name: HarnessName,
     pub interaction_identifier: InteractionIdentifier,
@@ -118,10 +91,7 @@ pub struct InteractionResolved {
 }
 #[rustfmt::skip]
 #[derive(rkyv::Archive, rkyv::Serialize, rkyv::Deserialize, Clone, Debug, PartialEq)]
-#[cfg_attr(
-    feature = "datom",
-    derive(datom_codec::Datomizable, datom_codec::Compositional)
-)]
+#[cfg_attr(feature = "datom", derive(datom_codec::Datomizable, datom_codec::Composing))]
 pub enum HarnessOperationKind {
     DeliverMessage,
     PromptInteraction,
@@ -132,20 +102,14 @@ pub enum HarnessOperationKind {
 }
 #[rustfmt::skip]
 #[derive(rkyv::Archive, rkyv::Serialize, rkyv::Deserialize, Clone, Debug, PartialEq)]
-#[cfg_attr(
-    feature = "datom",
-    derive(datom_codec::Datomizable, datom_codec::Compositional)
-)]
+#[cfg_attr(feature = "datom", derive(datom_codec::Datomizable, datom_codec::Composing))]
 pub enum HarnessUnimplementedReason {
     NotBuiltYet,
     DependencyTrackNotLanded,
 }
 #[rustfmt::skip]
 #[derive(rkyv::Archive, rkyv::Serialize, rkyv::Deserialize, Clone, Debug, PartialEq)]
-#[cfg_attr(
-    feature = "datom",
-    derive(datom_codec::Datomizable, datom_codec::Compositional)
-)]
+#[cfg_attr(feature = "datom", derive(datom_codec::Datomizable, datom_codec::Composing))]
 pub struct HarnessRequestUnimplemented {
     pub harness_name: HarnessName,
     pub harness_operation_kind: HarnessOperationKind,
@@ -153,10 +117,7 @@ pub struct HarnessRequestUnimplemented {
 }
 #[rustfmt::skip]
 #[derive(rkyv::Archive, rkyv::Serialize, rkyv::Deserialize, Clone, Debug, PartialEq)]
-#[cfg_attr(
-    feature = "datom",
-    derive(datom_codec::Datomizable, datom_codec::Compositional)
-)]
+#[cfg_attr(feature = "datom", derive(datom_codec::Datomizable, datom_codec::Composing))]
 pub enum HarnessHealth {
     Running,
     Degraded,
@@ -164,10 +125,7 @@ pub enum HarnessHealth {
 }
 #[rustfmt::skip]
 #[derive(rkyv::Archive, rkyv::Serialize, rkyv::Deserialize, Clone, Debug, PartialEq)]
-#[cfg_attr(
-    feature = "datom",
-    derive(datom_codec::Datomizable, datom_codec::Compositional)
-)]
+#[cfg_attr(feature = "datom", derive(datom_codec::Datomizable, datom_codec::Composing))]
 pub enum HarnessReadiness {
     Ready,
     Starting,
@@ -175,10 +133,7 @@ pub enum HarnessReadiness {
 }
 #[rustfmt::skip]
 #[derive(rkyv::Archive, rkyv::Serialize, rkyv::Deserialize, Clone, Debug, PartialEq)]
-#[cfg_attr(
-    feature = "datom",
-    derive(datom_codec::Datomizable, datom_codec::Compositional)
-)]
+#[cfg_attr(feature = "datom", derive(datom_codec::Datomizable, datom_codec::Composing))]
 pub struct HarnessStatus {
     pub harness_name: HarnessName,
     pub harness_health: HarnessHealth,
@@ -190,20 +145,14 @@ pub type NamedModel = String;
 pub type CapabilityProfile = String;
 #[rustfmt::skip]
 #[derive(rkyv::Archive, rkyv::Serialize, rkyv::Deserialize, Clone, Debug, PartialEq)]
-#[cfg_attr(
-    feature = "datom",
-    derive(datom_codec::Datomizable, datom_codec::Compositional)
-)]
+#[cfg_attr(feature = "datom", derive(datom_codec::Datomizable, datom_codec::Composing))]
 pub enum ModelSelector {
     Exact(NamedModel),
     CapabilityProfile(CapabilityProfile),
 }
 #[rustfmt::skip]
 #[derive(rkyv::Archive, rkyv::Serialize, rkyv::Deserialize, Clone, Debug, PartialEq)]
-#[cfg_attr(
-    feature = "datom",
-    derive(datom_codec::Datomizable, datom_codec::Compositional)
-)]
+#[cfg_attr(feature = "datom", derive(datom_codec::Datomizable, datom_codec::Composing))]
 pub enum EffortRequest {
     Minimal,
     Low,
@@ -214,10 +163,7 @@ pub enum EffortRequest {
 }
 #[rustfmt::skip]
 #[derive(rkyv::Archive, rkyv::Serialize, rkyv::Deserialize, Clone, Debug, PartialEq)]
-#[cfg_attr(
-    feature = "datom",
-    derive(datom_codec::Datomizable, datom_codec::Compositional)
-)]
+#[cfg_attr(feature = "datom", derive(datom_codec::Datomizable, datom_codec::Composing))]
 pub struct ModelRequest {
     pub model_selector: ModelSelector,
     pub effort_request: EffortRequest,
@@ -230,10 +176,7 @@ pub type CodexContinuationIdentifier = String;
 pub type PiContinuationIdentifier = String;
 #[rustfmt::skip]
 #[derive(rkyv::Archive, rkyv::Serialize, rkyv::Deserialize, Clone, Debug, PartialEq)]
-#[cfg_attr(
-    feature = "datom",
-    derive(datom_codec::Datomizable, datom_codec::Compositional)
-)]
+#[cfg_attr(feature = "datom", derive(datom_codec::Datomizable, datom_codec::Composing))]
 pub enum ContinuationHandle {
     Claude(ClaudeSessionIdentifier),
     Codex(CodexContinuationIdentifier),
@@ -241,10 +184,7 @@ pub enum ContinuationHandle {
 }
 #[rustfmt::skip]
 #[derive(rkyv::Archive, rkyv::Serialize, rkyv::Deserialize, Clone, Debug, PartialEq)]
-#[cfg_attr(
-    feature = "datom",
-    derive(datom_codec::Datomizable, datom_codec::Compositional)
-)]
+#[cfg_attr(feature = "datom", derive(datom_codec::Datomizable, datom_codec::Composing))]
 pub enum ContinuationRequest {
     Fresh,
     Prefer(ContinuationHandle),
@@ -252,20 +192,14 @@ pub enum ContinuationRequest {
 }
 #[rustfmt::skip]
 #[derive(rkyv::Archive, rkyv::Serialize, rkyv::Deserialize, Clone, Debug, PartialEq)]
-#[cfg_attr(
-    feature = "datom",
-    derive(datom_codec::Datomizable, datom_codec::Compositional)
-)]
+#[cfg_attr(feature = "datom", derive(datom_codec::Datomizable, datom_codec::Composing))]
 pub struct ModelResolutionRequest {
     pub model_request: ModelRequest,
     pub continuation_request: ContinuationRequest,
 }
 #[rustfmt::skip]
 #[derive(rkyv::Archive, rkyv::Serialize, rkyv::Deserialize, Clone, Debug, PartialEq)]
-#[cfg_attr(
-    feature = "datom",
-    derive(datom_codec::Datomizable, datom_codec::Compositional)
-)]
+#[cfg_attr(feature = "datom", derive(datom_codec::Datomizable, datom_codec::Composing))]
 pub struct ModelResolved {
     pub harness_name: HarnessName,
     pub harness_kind: HarnessKind,
@@ -275,10 +209,7 @@ pub struct ModelResolved {
 }
 #[rustfmt::skip]
 #[derive(rkyv::Archive, rkyv::Serialize, rkyv::Deserialize, Clone, Debug, PartialEq)]
-#[cfg_attr(
-    feature = "datom",
-    derive(datom_codec::Datomizable, datom_codec::Compositional)
-)]
+#[cfg_attr(feature = "datom", derive(datom_codec::Datomizable, datom_codec::Composing))]
 pub enum ModelUnavailableReason {
     NoConfiguredHarness,
     ModelNotKnown,
@@ -290,10 +221,7 @@ pub enum ModelUnavailableReason {
 }
 #[rustfmt::skip]
 #[derive(rkyv::Archive, rkyv::Serialize, rkyv::Deserialize, Clone, Debug, PartialEq)]
-#[cfg_attr(
-    feature = "datom",
-    derive(datom_codec::Datomizable, datom_codec::Compositional)
-)]
+#[cfg_attr(feature = "datom", derive(datom_codec::Datomizable, datom_codec::Composing))]
 pub struct ModelUnavailable {
     pub model_resolution_request: ModelResolutionRequest,
     pub model_unavailable_reason: ModelUnavailableReason,
@@ -306,10 +234,7 @@ pub type InitialPrompt = String;
 pub type SessionDirectory = String;
 #[rustfmt::skip]
 #[derive(rkyv::Archive, rkyv::Serialize, rkyv::Deserialize, Clone, Debug, PartialEq)]
-#[cfg_attr(
-    feature = "datom",
-    derive(datom_codec::Datomizable, datom_codec::Compositional)
-)]
+#[cfg_attr(feature = "datom", derive(datom_codec::Datomizable, datom_codec::Composing))]
 pub struct SessionLaunchRequest {
     pub harness_kind: HarnessKind,
     pub agent_identity_token: AgentIdentityToken,
@@ -320,10 +245,7 @@ pub struct SessionLaunchRequest {
 pub type ChildProcessIdentifier = i64;
 #[rustfmt::skip]
 #[derive(rkyv::Archive, rkyv::Serialize, rkyv::Deserialize, Clone, Debug, PartialEq)]
-#[cfg_attr(
-    feature = "datom",
-    derive(datom_codec::Datomizable, datom_codec::Compositional)
-)]
+#[cfg_attr(feature = "datom", derive(datom_codec::Datomizable, datom_codec::Composing))]
 pub struct SessionLaunched {
     pub agent_identity_token: AgentIdentityToken,
     pub child_process_identifier: ChildProcessIdentifier,
@@ -332,10 +254,7 @@ pub struct SessionLaunched {
 }
 #[rustfmt::skip]
 #[derive(rkyv::Archive, rkyv::Serialize, rkyv::Deserialize, Clone, Debug, PartialEq)]
-#[cfg_attr(
-    feature = "datom",
-    derive(datom_codec::Datomizable, datom_codec::Compositional)
-)]
+#[cfg_attr(feature = "datom", derive(datom_codec::Datomizable, datom_codec::Composing))]
 pub enum SessionLaunchRefusalReason {
     HarnessKindUnsupported,
     ContinuationUnsupported,
@@ -346,10 +265,7 @@ pub enum SessionLaunchRefusalReason {
 pub type SessionLaunchRefusalDetail = String;
 #[rustfmt::skip]
 #[derive(rkyv::Archive, rkyv::Serialize, rkyv::Deserialize, Clone, Debug, PartialEq)]
-#[cfg_attr(
-    feature = "datom",
-    derive(datom_codec::Datomizable, datom_codec::Compositional)
-)]
+#[cfg_attr(feature = "datom", derive(datom_codec::Datomizable, datom_codec::Composing))]
 pub struct SessionLaunchRefused {
     pub session_launch_request: SessionLaunchRequest,
     pub session_launch_refusal_reason: SessionLaunchRefusalReason,
@@ -357,19 +273,13 @@ pub struct SessionLaunchRefused {
 }
 #[rustfmt::skip]
 #[derive(rkyv::Archive, rkyv::Serialize, rkyv::Deserialize, Clone, Debug, PartialEq)]
-#[cfg_attr(
-    feature = "datom",
-    derive(datom_codec::Datomizable, datom_codec::Compositional)
-)]
+#[cfg_attr(feature = "datom", derive(datom_codec::Datomizable, datom_codec::Composing))]
 pub struct HarnessStarted {
     pub harness_name: HarnessName,
 }
 #[rustfmt::skip]
 #[derive(rkyv::Archive, rkyv::Serialize, rkyv::Deserialize, Clone, Debug, PartialEq)]
-#[cfg_attr(
-    feature = "datom",
-    derive(datom_codec::Datomizable, datom_codec::Compositional)
-)]
+#[cfg_attr(feature = "datom", derive(datom_codec::Datomizable, datom_codec::Composing))]
 pub struct HarnessStopped {
     pub harness_name: HarnessName,
 }
@@ -377,10 +287,7 @@ pub struct HarnessStopped {
 pub type HarnessCrashDetail = String;
 #[rustfmt::skip]
 #[derive(rkyv::Archive, rkyv::Serialize, rkyv::Deserialize, Clone, Debug, PartialEq)]
-#[cfg_attr(
-    feature = "datom",
-    derive(datom_codec::Datomizable, datom_codec::Compositional)
-)]
+#[cfg_attr(feature = "datom", derive(datom_codec::Datomizable, datom_codec::Composing))]
 pub struct HarnessCrashed {
     pub harness_name: HarnessName,
     pub harness_crash_detail: HarnessCrashDetail,
@@ -389,20 +296,14 @@ pub struct HarnessCrashed {
 pub type AdapterEventSequence = i64;
 #[rustfmt::skip]
 #[derive(rkyv::Archive, rkyv::Serialize, rkyv::Deserialize, Clone, Debug, PartialEq)]
-#[cfg_attr(
-    feature = "datom",
-    derive(datom_codec::Datomizable, datom_codec::Compositional)
-)]
+#[cfg_attr(feature = "datom", derive(datom_codec::Datomizable, datom_codec::Composing))]
 pub struct AdapterReady {
     pub harness_name: HarnessName,
     pub adapter_event_sequence: AdapterEventSequence,
 }
 #[rustfmt::skip]
 #[derive(rkyv::Archive, rkyv::Serialize, rkyv::Deserialize, Clone, Debug, PartialEq)]
-#[cfg_attr(
-    feature = "datom",
-    derive(datom_codec::Datomizable, datom_codec::Compositional)
-)]
+#[cfg_attr(feature = "datom", derive(datom_codec::Datomizable, datom_codec::Composing))]
 pub struct AdapterInputAccepted {
     pub harness_name: HarnessName,
     pub adapter_event_sequence: AdapterEventSequence,
@@ -412,10 +313,7 @@ pub struct AdapterInputAccepted {
 pub type AdapterOutputText = String;
 #[rustfmt::skip]
 #[derive(rkyv::Archive, rkyv::Serialize, rkyv::Deserialize, Clone, Debug, PartialEq)]
-#[cfg_attr(
-    feature = "datom",
-    derive(datom_codec::Datomizable, datom_codec::Compositional)
-)]
+#[cfg_attr(feature = "datom", derive(datom_codec::Datomizable, datom_codec::Composing))]
 pub struct AdapterOutput {
     pub harness_name: HarnessName,
     pub adapter_event_sequence: AdapterEventSequence,
@@ -425,10 +323,7 @@ pub struct AdapterOutput {
 pub type AdapterProgressStatus = String;
 #[rustfmt::skip]
 #[derive(rkyv::Archive, rkyv::Serialize, rkyv::Deserialize, Clone, Debug, PartialEq)]
-#[cfg_attr(
-    feature = "datom",
-    derive(datom_codec::Datomizable, datom_codec::Compositional)
-)]
+#[cfg_attr(feature = "datom", derive(datom_codec::Datomizable, datom_codec::Composing))]
 pub struct AdapterProgress {
     pub harness_name: HarnessName,
     pub adapter_event_sequence: AdapterEventSequence,
@@ -436,10 +331,7 @@ pub struct AdapterProgress {
 }
 #[rustfmt::skip]
 #[derive(rkyv::Archive, rkyv::Serialize, rkyv::Deserialize, Clone, Debug, PartialEq)]
-#[cfg_attr(
-    feature = "datom",
-    derive(datom_codec::Datomizable, datom_codec::Compositional)
-)]
+#[cfg_attr(feature = "datom", derive(datom_codec::Datomizable, datom_codec::Composing))]
 pub struct AdapterCompletion {
     pub harness_name: HarnessName,
     pub adapter_event_sequence: AdapterEventSequence,
@@ -447,10 +339,7 @@ pub struct AdapterCompletion {
 }
 #[rustfmt::skip]
 #[derive(rkyv::Archive, rkyv::Serialize, rkyv::Deserialize, Clone, Debug, PartialEq)]
-#[cfg_attr(
-    feature = "datom",
-    derive(datom_codec::Datomizable, datom_codec::Compositional)
-)]
+#[cfg_attr(feature = "datom", derive(datom_codec::Datomizable, datom_codec::Composing))]
 pub struct AdapterConfirmationNeeded {
     pub harness_name: HarnessName,
     pub adapter_event_sequence: AdapterEventSequence,
@@ -460,10 +349,7 @@ pub struct AdapterConfirmationNeeded {
 }
 #[rustfmt::skip]
 #[derive(rkyv::Archive, rkyv::Serialize, rkyv::Deserialize, Clone, Debug, PartialEq)]
-#[cfg_attr(
-    feature = "datom",
-    derive(datom_codec::Datomizable, datom_codec::Compositional)
-)]
+#[cfg_attr(feature = "datom", derive(datom_codec::Datomizable, datom_codec::Composing))]
 pub enum AdapterStallReason {
     NoOutput,
     ReadinessTimeout,
@@ -472,10 +358,7 @@ pub enum AdapterStallReason {
 }
 #[rustfmt::skip]
 #[derive(rkyv::Archive, rkyv::Serialize, rkyv::Deserialize, Clone, Debug, PartialEq)]
-#[cfg_attr(
-    feature = "datom",
-    derive(datom_codec::Datomizable, datom_codec::Compositional)
-)]
+#[cfg_attr(feature = "datom", derive(datom_codec::Datomizable, datom_codec::Composing))]
 pub struct AdapterStalled {
     pub harness_name: HarnessName,
     pub adapter_event_sequence: AdapterEventSequence,
@@ -483,20 +366,14 @@ pub struct AdapterStalled {
 }
 #[rustfmt::skip]
 #[derive(rkyv::Archive, rkyv::Serialize, rkyv::Deserialize, Clone, Debug, PartialEq)]
-#[cfg_attr(
-    feature = "datom",
-    derive(datom_codec::Datomizable, datom_codec::Compositional)
-)]
+#[cfg_attr(feature = "datom", derive(datom_codec::Datomizable, datom_codec::Composing))]
 pub enum AdapterExitStatus {
     Success,
     Failure,
 }
 #[rustfmt::skip]
 #[derive(rkyv::Archive, rkyv::Serialize, rkyv::Deserialize, Clone, Debug, PartialEq)]
-#[cfg_attr(
-    feature = "datom",
-    derive(datom_codec::Datomizable, datom_codec::Compositional)
-)]
+#[cfg_attr(feature = "datom", derive(datom_codec::Datomizable, datom_codec::Composing))]
 pub struct AdapterExited {
     pub harness_name: HarnessName,
     pub adapter_event_sequence: AdapterEventSequence,
@@ -508,39 +385,27 @@ pub type HarnessTranscriptSequence = i64;
 pub type HarnessTranscriptSubscriptionIdentifier = i64;
 #[rustfmt::skip]
 #[derive(rkyv::Archive, rkyv::Serialize, rkyv::Deserialize, Clone, Debug, PartialEq)]
-#[cfg_attr(
-    feature = "datom",
-    derive(datom_codec::Datomizable, datom_codec::Compositional)
-)]
+#[cfg_attr(feature = "datom", derive(datom_codec::Datomizable, datom_codec::Composing))]
 pub struct HarnessTranscriptToken {
     pub harness_name: HarnessName,
     pub harness_transcript_subscription_identifier: HarnessTranscriptSubscriptionIdentifier,
 }
 #[rustfmt::skip]
 #[derive(rkyv::Archive, rkyv::Serialize, rkyv::Deserialize, Clone, Debug, PartialEq)]
-#[cfg_attr(
-    feature = "datom",
-    derive(datom_codec::Datomizable, datom_codec::Compositional)
-)]
+#[cfg_attr(feature = "datom", derive(datom_codec::Datomizable, datom_codec::Composing))]
 pub struct WatchHarnessTranscript {
     pub harness_name: HarnessName,
 }
 #[rustfmt::skip]
 #[derive(rkyv::Archive, rkyv::Serialize, rkyv::Deserialize, Clone, Debug, PartialEq)]
-#[cfg_attr(
-    feature = "datom",
-    derive(datom_codec::Datomizable, datom_codec::Compositional)
-)]
+#[cfg_attr(feature = "datom", derive(datom_codec::Datomizable, datom_codec::Composing))]
 pub struct HarnessTranscriptSnapshot {
     pub harness_transcript_token: HarnessTranscriptToken,
     pub harness_transcript_sequence: HarnessTranscriptSequence,
 }
 #[rustfmt::skip]
 #[derive(rkyv::Archive, rkyv::Serialize, rkyv::Deserialize, Clone, Debug, PartialEq)]
-#[cfg_attr(
-    feature = "datom",
-    derive(datom_codec::Datomizable, datom_codec::Compositional)
-)]
+#[cfg_attr(feature = "datom", derive(datom_codec::Datomizable, datom_codec::Composing))]
 pub struct HarnessSubscriptionRetracted {
     pub harness_transcript_token: HarnessTranscriptToken,
 }
@@ -548,10 +413,7 @@ pub struct HarnessSubscriptionRetracted {
 pub type TranscriptLine = String;
 #[rustfmt::skip]
 #[derive(rkyv::Archive, rkyv::Serialize, rkyv::Deserialize, Clone, Debug, PartialEq)]
-#[cfg_attr(
-    feature = "datom",
-    derive(datom_codec::Datomizable, datom_codec::Compositional)
-)]
+#[cfg_attr(feature = "datom", derive(datom_codec::Datomizable, datom_codec::Composing))]
 pub struct TranscriptObservation {
     pub harness_name: HarnessName,
     pub harness_transcript_sequence: HarnessTranscriptSequence,
@@ -575,10 +437,7 @@ pub type StatusTransitionCount = i64;
 pub type ReachedEndOfTurn = bool;
 #[rustfmt::skip]
 #[derive(rkyv::Archive, rkyv::Serialize, rkyv::Deserialize, Clone, Debug, PartialEq)]
-#[cfg_attr(
-    feature = "datom",
-    derive(datom_codec::Datomizable, datom_codec::Compositional)
-)]
+#[cfg_attr(feature = "datom", derive(datom_codec::Datomizable, datom_codec::Composing))]
 pub enum TurnLaunch {
     Fresh,
     Resumed,
@@ -586,10 +445,7 @@ pub enum TurnLaunch {
 }
 #[rustfmt::skip]
 #[derive(rkyv::Archive, rkyv::Serialize, rkyv::Deserialize, Clone, Debug, PartialEq)]
-#[cfg_attr(
-    feature = "datom",
-    derive(datom_codec::Datomizable, datom_codec::Compositional)
-)]
+#[cfg_attr(feature = "datom", derive(datom_codec::Datomizable, datom_codec::Composing))]
 pub enum ClaudeSessionLifecycle {
     Ready,
     Active,
@@ -598,10 +454,7 @@ pub enum ClaudeSessionLifecycle {
 }
 #[rustfmt::skip]
 #[derive(rkyv::Archive, rkyv::Serialize, rkyv::Deserialize, Clone, Debug, PartialEq)]
-#[cfg_attr(
-    feature = "datom",
-    derive(datom_codec::Datomizable, datom_codec::Compositional)
-)]
+#[cfg_attr(feature = "datom", derive(datom_codec::Datomizable, datom_codec::Composing))]
 pub struct ClaudeSessionObservation {
     pub harness_name: HarnessName,
     pub claude_session_identifier_option: Option<ClaudeSessionIdentifier>,
@@ -619,10 +472,7 @@ pub struct ClaudeSessionObservation {
 }
 #[rustfmt::skip]
 #[derive(rkyv::Archive, rkyv::Serialize, rkyv::Deserialize, Clone, Debug, PartialEq)]
-#[cfg_attr(
-    feature = "datom",
-    derive(datom_codec::Datomizable, datom_codec::Compositional)
-)]
+#[cfg_attr(feature = "datom", derive(datom_codec::Datomizable, datom_codec::Composing))]
 pub enum HarnessStreamEvent {
     TranscriptObservation(TranscriptObservation),
     ClaudeSessionObservation(ClaudeSessionObservation),
@@ -635,10 +485,7 @@ pub type PiRpcCommandPath = String;
 pub type PiRpcSessionDirectoryPath = String;
 #[rustfmt::skip]
 #[derive(rkyv::Archive, rkyv::Serialize, rkyv::Deserialize, Clone, Debug, PartialEq)]
-#[cfg_attr(
-    feature = "datom",
-    derive(datom_codec::Datomizable, datom_codec::Compositional)
-)]
+#[cfg_attr(feature = "datom", derive(datom_codec::Datomizable, datom_codec::Composing))]
 pub enum PiRpcDeliveryMode {
     Prompt,
     Steer,
@@ -648,10 +495,7 @@ pub enum PiRpcDeliveryMode {
 pub type PiRpcModelPattern = String;
 #[rustfmt::skip]
 #[derive(rkyv::Archive, rkyv::Serialize, rkyv::Deserialize, Clone, Debug, PartialEq)]
-#[cfg_attr(
-    feature = "datom",
-    derive(datom_codec::Datomizable, datom_codec::Compositional)
-)]
+#[cfg_attr(feature = "datom", derive(datom_codec::Datomizable, datom_codec::Composing))]
 pub struct PiRpcJsonlAdapterConfiguration {
     pub pi_rpc_command_path: PiRpcCommandPath,
     pub pi_rpc_session_directory_path: PiRpcSessionDirectoryPath,
@@ -660,10 +504,7 @@ pub struct PiRpcJsonlAdapterConfiguration {
 }
 #[rustfmt::skip]
 #[derive(rkyv::Archive, rkyv::Serialize, rkyv::Deserialize, Clone, Debug, PartialEq)]
-#[cfg_attr(
-    feature = "datom",
-    derive(datom_codec::Datomizable, datom_codec::Compositional)
-)]
+#[cfg_attr(feature = "datom", derive(datom_codec::Datomizable, datom_codec::Composing))]
 pub struct HarnessInstanceConfiguration {
     pub harness_name: HarnessName,
     pub harness_kind: HarnessKind,
@@ -676,10 +517,7 @@ pub struct HarnessInstanceConfiguration {
 pub type HarnessInstanceConfigurations = std::vec::Vec<HarnessInstanceConfiguration>;
 #[rustfmt::skip]
 #[derive(rkyv::Archive, rkyv::Serialize, rkyv::Deserialize, Clone, Debug, PartialEq)]
-#[cfg_attr(
-    feature = "datom",
-    derive(datom_codec::Datomizable, datom_codec::Compositional)
-)]
+#[cfg_attr(feature = "datom", derive(datom_codec::Datomizable, datom_codec::Composing))]
 pub struct HarnessDaemonConfiguration {
     pub domain_socket_path: signal_persona::DomainSocketPath,
     pub domain_socket_mode: signal_persona::DomainSocketMode,
@@ -690,10 +528,7 @@ pub struct HarnessDaemonConfiguration {
 }
 #[rustfmt::skip]
 #[derive(rkyv::Archive, rkyv::Serialize, rkyv::Deserialize, Clone, Debug, PartialEq)]
-#[cfg_attr(
-    feature = "datom",
-    derive(datom_codec::Datomizable, datom_codec::Compositional)
-)]
+#[cfg_attr(feature = "datom", derive(datom_codec::Datomizable, datom_codec::Composing))]
 pub enum Query {
     MessageDelivery(MessageDelivery),
     InteractionPrompt(InteractionPrompt),
@@ -704,10 +539,7 @@ pub enum Query {
 }
 #[rustfmt::skip]
 #[derive(rkyv::Archive, rkyv::Serialize, rkyv::Deserialize, Clone, Debug, PartialEq)]
-#[cfg_attr(
-    feature = "datom",
-    derive(datom_codec::Datomizable, datom_codec::Compositional)
-)]
+#[cfg_attr(feature = "datom", derive(datom_codec::Datomizable, datom_codec::Composing))]
 pub enum Response {
     DeliveryCompleted(DeliveryCompleted),
     DeliveryFailed(DeliveryFailed),
