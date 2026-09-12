@@ -1,109 +1,61 @@
 {
-  description = "signal-harness — Signal contract for persona-router ↔ harness";
+  description = "signal-harness - Signal contract for persona-router ↔ harness";
 
   inputs = {
     nixpkgs.url = "github:NixOS/nixpkgs/nixpkgs-unstable";
     flake-utils.url = "github:numtide/flake-utils";
-    fenix = {
-      url = "github:nix-community/fenix";
+    rust-build = {
+      url = "github:LiGoldragon/rust-build";
       inputs.nixpkgs.follows = "nixpkgs";
     };
-    crane.url = "github:ipetkov/crane";
   };
 
-  outputs =
-    {
-      self,
-      nixpkgs,
-      flake-utils,
-      fenix,
-      crane,
-    }:
-    flake-utils.lib.eachDefaultSystem (
-      system:
+  outputs = { self, nixpkgs, flake-utils, rust-build }:
+    flake-utils.lib.eachDefaultSystem (system:
       let
         pkgs = import nixpkgs { inherit system; };
-        toolchain = fenix.packages.${system}.complete.withComponents [
-          "cargo"
-          "rustc"
-          "rustfmt"
-          "clippy"
-          "rust-analyzer"
-          "rust-src"
-        ];
-        craneLib = (crane.mkLib pkgs).overrideToolchain toolchain;
-        # Include `examples/` so canonical Dotos examples files are present
-        # at build time for `include_str!` in `tests/canonical_examples.rs`.
+        rust = rust-build.lib.${system}.fromPkgs pkgs;
+        inherit (rust) craneLib toolchain;
         examplesFilter = path: _type: builtins.match ".*/examples(/.*)?$" path != null;
-        sourceFilter = path: type: (craneLib.filterCargoSources path type) || (examplesFilter path type);
-        src = pkgs.lib.cleanSourceWith {
-          src = ./.;
-          filter = sourceFilter;
-          name = "source";
-        };
-        commonArgs = {
-          inherit src;
+        contractFilter = path: type:
+          type == "regular" && (
+            pkgs.lib.hasSuffix ".ethos" path ||
+            pkgs.lib.hasSuffix "/build.rs" path ||
+            builtins.match ".*/src/generated(/.*)?$" path != null
+          );
+        src = rust.cleanSource { root = ./.; extraFilters = [ examplesFilter contractFilter ]; };
+        cargoVendorDirectory = craneLib.vendorCargoDeps { inherit src; };
+        commonArguments = {
+          inherit src cargoVendorDirectory;
           strictDeps = true;
         };
-        cargoArtifacts = craneLib.buildDepsOnly commonArgs;
+        cargoArtifacts = craneLib.buildDepsOnly commonArguments;
       in
       {
-        packages.default = craneLib.buildPackage (commonArgs // { inherit cargoArtifacts; });
+        packages.default = craneLib.buildPackage (commonArguments // { inherit cargoArtifacts; });
         checks = {
-          build = craneLib.cargoBuild (commonArgs // { inherit cargoArtifacts; });
-          test = craneLib.cargoTest (commonArgs // { inherit cargoArtifacts; });
-          test-round-trip = craneLib.cargoTest (
-            commonArgs
-            // {
-              inherit cargoArtifacts;
-              cargoTestExtraArgs = "--test round_trip";
-            }
-          );
-          test-canonical = craneLib.cargoTest (
-            commonArgs
-            // {
-              inherit cargoArtifacts;
-              cargoTestExtraArgs = "--test canonical_examples --features dotos-text";
-            }
-          );
-          test-dependency-boundary = craneLib.cargoTest (
-            commonArgs
-            // {
-              inherit cargoArtifacts;
-              cargoTestExtraArgs = "--test dependency_boundary";
-            }
-          );
-          test-doc = craneLib.cargoTest (
-            commonArgs
-            // {
-              inherit cargoArtifacts;
-              cargoTestExtraArgs = "--doc";
-            }
-          );
-          doc = craneLib.cargoDoc (
-            commonArgs
-            // {
-              inherit cargoArtifacts;
-              RUSTDOCFLAGS = "-D warnings";
-            }
-          );
+          build = craneLib.cargoBuild (commonArguments // { inherit cargoArtifacts; });
+          test = craneLib.cargoTest (commonArguments // { inherit cargoArtifacts; });
+          test-datom = craneLib.cargoTest (commonArguments // { inherit cargoArtifacts; cargoTestExtraArgs = "--features datom"; });
+          doc = craneLib.cargoDoc (commonArguments // {
+            inherit cargoArtifacts;
+            RUSTDOCFLAGS = "-D warnings";
+          });
           fmt = craneLib.cargoFmt { inherit src; };
-          clippy = craneLib.cargoClippy (
-            commonArgs
-            // {
-              inherit cargoArtifacts;
-              cargoClippyExtraArgs = "--all-targets --all-features -- -D warnings";
-            }
-          );
+          clippy = craneLib.cargoClippy (commonArguments // {
+            inherit cargoArtifacts;
+            cargoClippyExtraArgs = "--all-targets --all-features -- -D warnings";
+          });
+          no-free-functions = pkgs.runCommand "signal-harness-no-free-functions" { inherit src; } ''
+            ${builtins.readFile ./checks/no-free-functions.sh}
+          '';
+          no-inherent-methods = pkgs.runCommand "signal-harness-no-inherent-methods" { inherit src; } ''
+            ${builtins.readFile ./checks/no-inherent-methods.sh}
+          '';
         };
         devShells.default = pkgs.mkShell {
           name = "signal-harness";
-          packages = [
-            pkgs.jujutsu
-            pkgs.pkg-config
-            toolchain
-          ];
+          packages = [ pkgs.jujutsu pkgs.pkg-config toolchain ];
         };
-      }
-    );
+      });
 }

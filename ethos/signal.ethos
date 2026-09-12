@@ -1,0 +1,119 @@
+Signal
+[ signal_persona:[ DomainSocketPath DomainSocketMode EngineManagementSocketPath EngineManagementSocketMode OwnerIdentity TimestampNanoseconds ] ]
+[ MessageDelivery.MessageDelivery
+  InteractionPrompt.InteractionPrompt
+  DeliveryCancellation.DeliveryCancellation
+  HarnessStatusQuery.HarnessStatusQuery
+  WatchHarnessTranscript.WatchHarnessTranscript
+  UnwatchHarnessTranscript.HarnessTranscriptToken ]
+[ DeliveryCompleted.DeliveryCompleted
+  DeliveryFailed.DeliveryFailed
+  InteractionResolved.InteractionResolved
+  HarnessRequestUnimplemented.HarnessRequestUnimplemented
+  HarnessStatus.HarnessStatus
+  HarnessStarted.HarnessStarted
+  HarnessStopped.HarnessStopped
+  HarnessCrashed.HarnessCrashed
+  AdapterReady.AdapterReady
+  AdapterInputAccepted.AdapterInputAccepted
+  AdapterOutput.AdapterOutput
+  AdapterProgress.AdapterProgress
+  AdapterCompletion.AdapterCompletion
+  AdapterConfirmationNeeded.AdapterConfirmationNeeded
+  AdapterStalled.AdapterStalled
+  AdapterExited.AdapterExited
+  HarnessTranscriptSnapshot.HarnessTranscriptSnapshot
+  HarnessSubscriptionRetracted.HarnessSubscriptionRetracted ]
+[ HarnessName.String
+  HarnessKind.[ Codex Claude Pi Fixture ]
+  MessageSender.String
+  MessageBody.String
+  MessageSlot.Integer
+  MessageDelivery.{ HarnessName MessageSender MessageBody MessageSlot }
+  InteractionIdentifier.String
+  InteractionPromptText.String
+  InteractionOption.String
+  InteractionOptions.Vector<InteractionOption>
+  InteractionPrompt.{ HarnessName InteractionIdentifier InteractionPromptText InteractionOptions }
+  DeliveryCancellation.{ HarnessName MessageSlot }
+  HarnessStatusQuery.{ HarnessName }
+  DeliveryCompleted.{ HarnessName MessageSlot }
+  DeliveryFailureReason.[ TransportRejected HumanInputIntervened HarnessStoppedBeforeDelivery HarnessUnavailable ]
+  DeliveryFailed.{ HarnessName MessageSlot DeliveryFailureReason }
+  InteractionChoice.String
+  InteractionResolved.{ HarnessName InteractionIdentifier InteractionChoice }
+  HarnessOperationKind.[ DeliverMessage PromptInteraction CancelDelivery QueryHarnessStatus WatchTranscript UnwatchTranscript ]
+  HarnessUnimplementedReason.[ NotBuiltYet DependencyTrackNotLanded ]
+  HarnessRequestUnimplemented.{ HarnessName HarnessOperationKind HarnessUnimplementedReason }
+  HarnessHealth.[ Running Degraded Stopped ]
+  HarnessReadiness.[ Ready Starting Unavailable ]
+  HarnessStatus.{ HarnessName HarnessHealth HarnessReadiness }
+  NamedModel.String
+  CapabilityProfile.String
+  ModelSelector.[ Exact.NamedModel CapabilityProfile.CapabilityProfile ]
+  EffortRequest.[ Minimal Low Medium High ExtraHigh Maximum ]
+  ModelRequest.{ ModelSelector EffortRequest }
+  ClaudeSessionIdentifier.String
+  CodexContinuationIdentifier.String
+  PiContinuationIdentifier.String
+  ContinuationHandle.[ Claude.ClaudeSessionIdentifier Codex.CodexContinuationIdentifier Pi.PiContinuationIdentifier ]
+  ContinuationRequest.[ Fresh Prefer.ContinuationHandle Require.ContinuationHandle ]
+  ModelResolutionRequest.{ ModelRequest ContinuationRequest }
+  ModelResolved.{ HarnessName HarnessKind NamedModel EffortRequest ContinuationHandle }
+  ModelUnavailableReason.[ NoConfiguredHarness ModelNotKnown EffortUnsupported CapabilityUnsupported ProviderUnavailable ContinuationUnavailable AdapterConfigurationMissing ]
+  ModelUnavailable.{ ModelResolutionRequest ModelUnavailableReason }
+  AgentIdentityToken.String
+  InitialPrompt.String
+  SessionDirectory.String
+  SessionLaunchRequest.{ HarnessKind AgentIdentityToken InitialPrompt ContinuationRequest }
+  ChildProcessIdentifier.Integer
+  SessionLaunched.{ AgentIdentityToken ChildProcessIdentifier Option<SessionDirectory> Option<ContinuationHandle> }
+  SessionLaunchRefusalReason.[ HarnessKindUnsupported ContinuationUnsupported LauncherUnavailable SpawnFailed ]
+  SessionLaunchRefusalDetail.String
+  SessionLaunchRefused.{ SessionLaunchRequest SessionLaunchRefusalReason SessionLaunchRefusalDetail }
+  HarnessStarted.{ HarnessName }
+  HarnessStopped.{ HarnessName }
+  HarnessCrashDetail.String
+  HarnessCrashed.{ HarnessName HarnessCrashDetail }
+  AdapterEventSequence.Integer
+  AdapterReady.{ HarnessName AdapterEventSequence }
+  AdapterInputAccepted.{ HarnessName AdapterEventSequence MessageSlot }
+  AdapterOutputText.String
+  AdapterOutput.{ HarnessName AdapterEventSequence AdapterOutputText }
+  AdapterProgressStatus.String
+  AdapterProgress.{ HarnessName AdapterEventSequence AdapterProgressStatus }
+  AdapterCompletion.{ HarnessName AdapterEventSequence MessageSlot }
+  AdapterConfirmationNeeded.{ HarnessName AdapterEventSequence InteractionIdentifier InteractionPromptText InteractionOptions }
+  AdapterStallReason.[ NoOutput ReadinessTimeout CompletionTimeout TransportBackpressure ]
+  AdapterStalled.{ HarnessName AdapterEventSequence AdapterStallReason }
+  AdapterExitStatus.[ Success Failure ]
+  AdapterExited.{ HarnessName AdapterEventSequence AdapterExitStatus }
+  HarnessTranscriptSequence.Integer
+  HarnessTranscriptSubscriptionIdentifier.Integer
+  HarnessTranscriptToken.{ HarnessName HarnessTranscriptSubscriptionIdentifier }
+  WatchHarnessTranscript.{ HarnessName }
+  HarnessTranscriptSnapshot.{ HarnessTranscriptToken HarnessTranscriptSequence }
+  HarnessSubscriptionRetracted.{ HarnessTranscriptToken }
+  TranscriptLine.String
+  TranscriptObservation.{ HarnessName HarnessTranscriptSequence TranscriptLine }
+  ClaudeModel.String
+  TranscriptPath.String
+  AssistantResponseText.String
+  ContextTokens.Integer
+  StreamedEventCount.Integer
+  ToolCallCount.Integer
+  StatusTransitionCount.Integer
+  ReachedEndOfTurn.Boolean
+  TurnLaunch.[ Fresh Resumed SelfHealed ]
+  ClaudeSessionLifecycle.[ Ready Active Completed Exited.AdapterExitStatus ]
+  ClaudeSessionObservation.{ HarnessName Option<ClaudeSessionIdentifier> Option<ClaudeModel> TurnLaunch ReachedEndOfTurn StreamedEventCount ToolCallCount StatusTransitionCount Option<TranscriptPath> Option<AssistantResponseText> Option<ContextTokens> TimestampNanoseconds ClaudeSessionLifecycle }
+  HarnessStreamEvent.[ TranscriptObservation.TranscriptObservation ClaudeSessionObservation.ClaudeSessionObservation ]
+  TerminalSocketPath.String
+  PiRpcCommandPath.String
+  PiRpcSessionDirectoryPath.String
+  PiRpcDeliveryMode.[ Prompt Steer FollowUp ]
+  PiRpcModelPattern.String
+  PiRpcJsonlAdapterConfiguration.{ PiRpcCommandPath PiRpcSessionDirectoryPath Option<PiRpcModelPattern> PiRpcDeliveryMode }
+  HarnessInstanceConfiguration.{ HarnessName HarnessKind Option<TerminalSocketPath> Option<PiRpcJsonlAdapterConfiguration> }
+  HarnessInstanceConfigurations.Vector<HarnessInstanceConfiguration>
+  HarnessDaemonConfiguration.{ DomainSocketPath DomainSocketMode EngineManagementSocketPath EngineManagementSocketMode OwnerIdentity HarnessInstanceConfigurations } ]

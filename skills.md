@@ -1,172 +1,27 @@
 # skills — signal-harness
 
-*Per-repo agent guide for the delivery and transcript-observation
-contract between `router` and `harness`.*
+Before editing this repo, read:
 
-## Checkpoint — read before editing
+- the `ethos` skill — the contract is an ethos file, and the Rust is generated
+- the `datom` skill — the text dialect the `datom` feature projects into
+- `ARCHITECTURE.md`
+- `signal-persona`'s `ethos/signal.ethos`, which owns the imported nouns
 
-Before changing code in this repo, read:
+This crate owns only the ordinary Signal contract for router ↔ harness
+traffic. Do not add runtime, storage, or CLI behavior here.
 
-- `~/primary/skills/contract-repo.md`
-- `~/primary/skills/architecture-editor.md`
-- `~/primary/skills/architectural-truth-tests.md`
-- `~/primary/skills/push-not-pull.md` (harness events push to the
-  router, never polled)
-- `~/primary/skills/subscription-lifecycle.md` (the canonical
-  subscription FSM the transcript stream implements)
-- `~/primary/skills/nix-discipline.md`
-- this repo's `ARCHITECTURE.md`
-- the consumers' `ARCHITECTURE.md` files
-  (`router/`, `harness/`).
+## Invariants
 
-## What this repo is for
-
-`signal-harness` carries the delivery channel between the
-router (request side) and one or more harness instances (reply / event
-side). The router asks for delivery, interaction, cancellation,
-status, and transcript observation; the harness pushes acks,
-interaction resolutions, status, lifecycle events, and
-generic adapter events plus transcript-observation events.
-
-The transcript-observation subscription follows the canonical
-lifecycle in `~/primary/skills/subscription-lifecycle.md`: open with
-a typed `WatchHarnessTranscript`, push typed `TranscriptObservation`
-events, close with a typed request-side `UnwatchHarnessTranscript`
-carrying the per-stream token, end with a typed reply-side
-`HarnessSubscriptionRetracted` ack echoing the token.
-
-Generic TUI adapters report provider-neutral events here:
-`AdapterReady`, `AdapterInputAccepted`, `AdapterOutput`,
-`AdapterProgress`, `AdapterCompletion`,
-`AdapterConfirmationNeeded`, `AdapterStalled`, and `AdapterExited`.
-Keep provider-specific detection rules in the concrete adapter. The
-generic contract names the event, not how Claude, Codex, Pi, or any
-other provider renders it.
-
-## What this repo owns
-
-- `HarnessName` (typed name for one harness instance).
-- The closed `HarnessRequest` enum (delivery requests, cancellations,
-  interaction surfacing, status query, transcript subscribe +
-  retract).
-- The closed `HarnessEvent` enum (delivery acks, interaction
-  resolutions, lifecycle events, transcript snapshot, transcript
-  retraction ack).
-- `DeliveryFailureReason`, `HarnessUnimplementedReason`,
-  `HarnessOperationKind`, `HarnessHealth`, `HarnessReadiness`,
-  `SubscriptionKind` — closed typed enums.
-- `HarnessTranscriptToken`, `HarnessTranscriptSequence`,
-  `HarnessSubscriptionRetracted` — transcript-stream identity and
-  ack.
-- `AdapterEventSequence` plus the generic adapter event records for
-  ready/input-accepted/output/progress/completion/confirmation-needed/
-  stalled/exited observations.
-- `HarnessDaemonConfiguration` and `HarnessInstanceConfiguration`
-  — one component daemon startup record carrying a list of internal
-  harness instances.
-- The `Frame` type alias.
-- Wire-form round-trip tests.
-
-## What this repo does not own
-
-- The router actor or its delivery state machine.
-- The harness actor or its PTY adapter.
-- Transport (UDS path, reconnect, timeouts).
-- Terminal prompt cleanliness, input gates, and write-injection
-  safety (owned by `signal-terminal`, `terminal`,
-  and `terminal-cell`).
-
-## Load-bearing invariants
-
-- **Subscription close uses both sides.** The kernel grammar in
-  `signal-frame/macros/src/validate.rs` requires the `stream` block
-  to name a request-side close operation; the reply-side
-  `HarnessSubscriptionRetracted` ack is the final event consumers
-  bind to. Both are present in `src/lib.rs`. Do not remove either.
-- **Wire enums are closed.** No `Unknown` variant on any wire enum.
-  `HarnessKind` is closed: `Codex`, `Claude`, `Pi`, `Fixture` — no
-  `Other`. A fixture harness types as `Fixture`, not as a
-  production kind. `DeliveryFailureReason` has four closed causes,
-  including `HarnessUnavailable` for requests addressed to an
-  instance this daemon does not serve.
-- **Every request variant declares a contract-local operation head.** The
-  `signal_channel!` declaration is the source of truth; the macro
-  generates `SignalOperationHeads` and round-trip tests assert every
-  variant.
-- **Skeleton honesty uses typed reasons.** A request that reaches
-  a skeleton harness daemon and is not built yet returns
-  `HarnessRequestUnimplemented` carrying typed
-  `HarnessOperationKind` and `HarnessUnimplementedReason`, not a
-  text error or a hang.
-- **Transcript observation is pushed, never polled.** The harness's
-  internal transcript event count is not the observation surface;
-  `TranscriptObservation` on `HarnessTranscriptStream` is the only
-  sanctioned way to read transcript progress.
-- **Adapter events are provider-neutral.** No Claude-, Codex-, Pi-, or
-  terminal-cell-specific event variant belongs here. Translate concrete
-  TUI behavior into ready, input accepted, output, progress,
-  completion, confirmation needed, stalled, or exited.
-- **Completion is not close.** `AdapterCompletion` reports one
-  prompt-turn done event. A long-lived TUI session closes only when a
-  runtime exit is observed or an explicit close-if-asked path asks for
-  shutdown.
-- **Confirmation is first-class.** Permission/confirmation prompts are
-  `AdapterConfirmationNeeded` events; policy or operator paths decide
-  how to answer them.
-- **Every transcript event carries a monotonic sequence.**
-  `HarnessTranscriptSequence` is the per-event ordering field; the
-  subscriber uses it to detect gaps and re-anchor after reconnect.
-- **No runtime code.** No Kameo, Tokio, socket, redb, or daemon
-  glue in this crate.
-- **Round trips cover every variant.** rkyv length-prefixed frame
-  round trips in `tests/round_trip.rs`; canonical Dotos examples in
-  `examples/canonical.dotos` with a parser test. The manifest enables
-  the opt-in crate-local `dotos-text` feature and maps it to the frame and
-  strict Persona Dotos features for those text witnesses.
-- **Pin upstream contracts exactly.** Cargo dependencies name immutable
-  published revisions; moving branches cannot change the family graph.
-
-## Editing patterns
-
-### Adding a new delivery failure reason
-
-1. Add the variant to `DeliveryFailureReason`.
-2. Add round-trip witnesses through rkyv and Dotos.
-3. Update consumers' delivery error handling.
-
-### Harness kinds
-
-`HarnessKind` is closed at `Codex`, `Claude`, `Pi`, and `Fixture`. A fixture
-must remain explicitly `Fixture`; never translate it to a production kind or
-add a catch-all arm.
-
-### Adding a new subscription kind
-
-1. Read `~/primary/skills/subscription-lifecycle.md` end-to-end.
-2. Add the typed subscribe payload, token, snapshot, and event
-   records.
-3. Add the new `stream` block in `signal_channel!`, with the
-   subscribe request, the request-side close operation, the
-   reply-side ack, and the typed event variant. The kernel grammar
-   enforces the close-operation shape.
-4. Witness the full subscribe → event → retract → ack → end
-   lifecycle.
-
-## Dotos codec shape
-
-The current `signal_channel!` macro emits the request/reply/event
-variant head and wraps the payload's positional fields. For example,
-`HarnessRequest::UnwatchHarnessTranscript(HarnessTranscriptToken { .. })`
-encodes as `(UnwatchHarnessTranscript {harness subscription})`. Canonical examples
-and round-trip tests pin that shape.
-
-## See also
-
-- this workspace's `skills/contract-repo.md`.
-- this workspace's `skills/subscription-lifecycle.md`.
-- this workspace's `skills/push-not-pull.md`.
-- this workspace's `skills/architectural-truth-tests.md`.
-- `signal-system`'s `skills.md`,
-  `signal-terminal`'s `skills.md`, and `signal-criome`'s
-  `skills.md` — sibling contracts using the same Path A subscription
-  discipline.
+- The contract is changed by editing `ethos/signal.ethos` and regenerating with
+  `ethos-zero`; never by editing `src/generated/signal.rs`.
+- Regenerated output is committed in the same change; `build.rs` is the gate.
+- Socket paths, socket modes, owner identity and timestamps are imported from
+  `signal-persona`; do not duplicate them.
+- Every `Query`, `Response` and `HarnessStreamEvent` variant needs a frame
+  round-trip witness in `tests/contract.rs`.
+- Every canonical line in `examples/canonical.datom` must actualize into a
+  contract head; `every_canonical_datom_line_actualizes_into_a_contract_head`
+  is the gate on that file. An ungated canonical file drifts silently.
+- A bare ethos enum variant whose name matches a declared type generates a
+  payload-carrying variant. Tag enums such as `HarnessOperationKind` therefore
+  use names that are not themselves declared types.

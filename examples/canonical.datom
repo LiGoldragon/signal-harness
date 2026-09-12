@@ -1,0 +1,31 @@
+; Canonical Datom examples for signal-harness.
+; Every line is one contract head: a Query, a Response, or a HarnessStreamEvent.
+
+MessageDelivery.{ claude operator «rebase onto main, please» 7 }
+InteractionPrompt.{ claude interaction-7 «Proceed with the rebase?» [ Yes No ] }
+DeliveryCancellation.{ claude 7 }
+HarnessStatusQuery.{ claude }
+WatchHarnessTranscript.{ claude }
+UnwatchHarnessTranscript.{ claude 3 }
+
+DeliveryCompleted.{ claude 7 }
+DeliveryFailed.{ claude 7 TransportRejected }
+InteractionResolved.{ claude interaction-7 Yes }
+HarnessRequestUnimplemented.{ claude WatchTranscript NotBuiltYet }
+HarnessStatus.{ claude Running Ready }
+HarnessStarted.{ claude }
+HarnessStopped.{ claude }
+HarnessCrashed.{ claude «adapter exited on signal 9» }
+AdapterReady.{ claude 1 }
+AdapterInputAccepted.{ claude 2 7 }
+AdapterOutput.{ claude 3 «rebase complete» }
+AdapterProgress.{ claude 4 thinking }
+AdapterCompletion.{ claude 5 7 }
+AdapterConfirmationNeeded.{ claude 6 interaction-7 «Proceed with the rebase?» [ Yes No ] }
+AdapterStalled.{ claude 7 ReadinessTimeout }
+AdapterExited.{ claude 8 Success }
+HarnessTranscriptSnapshot.{ { claude 3 } 42 }
+HarnessSubscriptionRetracted.{ { claude 3 } }
+
+TranscriptObservation.{ claude 43 «> jj log» }
+ClaudeSessionObservation.{ claude Some.session-abc Some.claude-opus-5 Resumed True 12 3 4 Some./home/li/.claude/projects/session.jsonl Some.«rebase complete» Some.120000 1757600000000000000 Active }

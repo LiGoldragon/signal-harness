@@ -1,32 +1,30 @@
 [package]
-name         = "signal-harness"
-version      = "0.5.1"
-edition      = "2024"
+name = "signal-harness"
+version = "2.0.0"
+edition = "2024"
 rust-version = "1.89"
-license      = "MIT OR Apache-2.0"
-repository   = "https://github.com/LiGoldragon/signal-harness"
-description  = "Signal contract — router ↔ harness channel for delivery + harness observations."
-publish      = false
+license = "MIT OR Apache-2.0"
+repository = "https://github.com/LiGoldragon/signal-harness"
+description = "Signal contract — router ↔ harness channel for delivery + harness observations."
+publish = false
+build = "build.rs"
 
 [lib]
 name = "signal_harness"
 path = "src/lib.rs"
 
-[[test]]
-name = "canonical_examples"
-path = "tests/canonical_examples.rs"
-required-features = ["dotos-text"]
-
 [features]
 default = []
-dotos-text = ["dep:dotos", "signal-frame/dotos-text", "signal-persona/dotos-text"]
+datom = ["dep:datom-codec", "dep:protos", "signal-persona/datom"]
 
 [dependencies]
-dotos = { package = "dotos", git = "https://github.com/LiGoldragon/dotos.git", rev = "80c7b17f7ad3cf547d2624c6a243e5de5f85c9f3", optional = true }
-signal-frame = { git = "https://github.com/LiGoldragon/signal-frame.git", rev = "8aa0bcaeb29fe9e461a11706a469638d2fd109ac", default-features = false }
-signal-persona = { git = "https://github.com/LiGoldragon/signal-persona.git", rev = "0baf90c8c7da11330b5e220a2a00665272ad93b3", default-features = false }
+signal-persona = { git = "https://github.com/LiGoldragon/signal-persona.git", rev = "48118557368f26b7292f6b0fb2f98df5cec29fc5", default-features = false }
+datom-codec = { git = "https://github.com/LiGoldragon/datom-codec", rev = "627db67f2655efd9f786864009955005fd8ab2ad", optional = true }
+protos = { git = "https://github.com/LiGoldragon/protos", rev = "171b21f65337983ab624b7b906397a4f1f92c5a3", optional = true }
 rkyv = { version = "0.8", default-features = false, features = ["std", "bytecheck", "little_endian", "pointer_width_32", "unaligned"] }
-thiserror = "2"
+
+[build-dependencies]
+ethos-zero = { git = "https://github.com/LiGoldragon/ethos-zero", rev = "de3d9928b156f2e1a92d060b7817af201abfdbef" }
 
 [lints.rust]
 unsafe_code = "forbid"
