@@ -24,6 +24,7 @@ generates `Query`, its reply root generates `Response`, and the declared
 | `HarnessStatusQuery` | Ask one harness for its health and readiness. |
 | `WatchHarnessTranscript` | Open a transcript subscription; answered with `HarnessTranscriptSnapshot`. |
 | `UnwatchHarnessTranscript(HarnessTranscriptToken)` | Close the subscription the token names. |
+| `UsageSnapshotQuery` | Read one fresh snapshot of every known Claude and Codex subscription's quota windows and every live session's context; answered with `UsageSnapshot`. Daemon-level: it names no harness instance. |
 
 | Reply | Meaning |
 |---|---|
@@ -35,6 +36,7 @@ generates `Query`, its reply root generates `Response`, and the declared
 | `AdapterReady` / `AdapterInputAccepted` / `AdapterOutput` / `AdapterProgress` / `AdapterCompletion` / `AdapterConfirmationNeeded` / `AdapterStalled` / `AdapterExited` | The adapter's own sequenced observations, each carrying an `AdapterEventSequence`. |
 | `HarnessTranscriptSnapshot` | A subscription opened; carries its token and the current sequence. |
 | `HarnessSubscriptionRetracted` | The subscription the token names is closed. |
+| `UsageSnapshot` | One read-only usage snapshot: per-provider `SubscriptionObservation`s and per-session `SessionContextObservation`s. |
 
 | Stream event | Meaning |
 |---|---|
@@ -52,6 +54,37 @@ imports its socket paths, socket modes and owner identity from
 `signal-persona` and carries the per-instance
 `HarnessInstanceConfiguration` set, including the Pi RPC JSONL adapter
 configuration.
+
+## Usage snapshot
+
+`UsageSnapshot` is paced by invocation: one `UsageSnapshotQuery` yields one
+snapshot. It carries no subscription, watch or history.
+
+- Every provider and session result carries its own `ObservationTime`
+  (epoch nanoseconds); the snapshot carries `SnapshotTime`.
+- A provider result is `Observed(SubscriptionUsage)` or
+  `Unavailable(UsageUnavailable)` with a stable `UsageUnavailableReason`; one
+  provider's failure never removes another's result. A Codex result lists the
+  `AccountHomes` that answered for the same account, so same-account homes are
+  one subscription.
+- `QuotaLimits` lists every provider-reported limit and each of its windows.
+  Percentages are `UsedBasisPoints` / `RemainingBasisPoints` (hundredths of a
+  percent). `ResetBasis` and `WindowDurationBasis` say where the reset and
+  window length came from: declared by the provider, implied by the
+  provider's window name, or `Unknown`. `AbsoluteLimit` is
+  `NotExposedByProvider`: neither provider reports tokens or money per window.
+- `PaceDerivation` is `Derived(QuotaPace)` only with all its operands in the
+  reply (remaining, seconds until the named reset, window duration) and is
+  `Unknown(PaceUnknownReason)` when an operand is unknown or the reset has
+  passed. `PaceVarianceBasisPoints` is used minus even-pace used: positive
+  means ahead of an even burn.
+- `UnrecognizedWindowNames` retains provider windows that are present but not
+  understood, rather than dropping them.
+- `SessionContext` carries `ContextBasis` and `ContextFreshness`
+  (`Exact`, `Proxy`, `Superseded`, `Unknown`); a value absent from its source
+  is `None`, never zero.
+- No field carries credentials, credential paths, raw provider bodies,
+  process arguments or environment contents.
 
 ## Generation
 

@@ -1,9 +1,14 @@
 use signal_harness::{
-    AdapterExitStatus, AdapterExited, ByteViewable, ClaudeSessionLifecycle,
-    ClaudeSessionObservation, DeliveryFailed, DeliveryFailureReason, HarnessDaemonConfiguration,
+    AbsoluteLimit, AdapterExitStatus, AdapterExited, ByteViewable, ClaudeSessionLifecycle,
+    ClaudeSessionObservation, ContextBasis, ContextFreshness, ContextUnavailableReason,
+    DeliveryFailed, DeliveryFailureReason, HarnessDaemonConfiguration,
     HarnessInstanceConfiguration, HarnessKind, HarnessStreamEvent, HarnessTranscriptToken,
-    MessageDelivery, PiRpcDeliveryMode, PiRpcJsonlAdapterConfiguration, Query, Response,
-    Restorable, Signal, Signalizable, TranscriptObservation, TurnLaunch, WatchHarnessTranscript,
+    MessageDelivery, PaceDerivation, PaceUnknownReason, PiRpcDeliveryMode,
+    PiRpcJsonlAdapterConfiguration, Query, QuotaLimit, QuotaPace, QuotaWindow, ResetBasis,
+    Response, Restorable, SessionContext, SessionContextObservation, SessionContextUnavailable,
+    Signal, Signalizable, SubscriptionObservation, SubscriptionUsage, TranscriptObservation,
+    TurnLaunch, UsageProvider, UsageSnapshot, UsageSource, UsageUnavailable,
+    UsageUnavailableReason, WatchHarnessTranscript, WindowDurationBasis, WindowFreshness,
 };
 use signal_persona::OwnerIdentity;
 
@@ -22,7 +27,135 @@ fn queries() -> Vec<Query> {
             harness_name: "claude".into(),
             harness_transcript_subscription_identifier: 3,
         }),
+        Query::UsageSnapshotQuery,
     ]
+}
+
+/// One snapshot carrying every value state the reply distinguishes: a derived
+/// pace with its operands, an unknown pace, retained unrecognized windows, a
+/// deduplicated Codex account over two homes, an unavailable provider home, a
+/// proxy context, a superseded context, and an unbound thread.
+fn usage_snapshot() -> UsageSnapshot {
+    let observed_at = 1_791_600_000_000_000_000;
+    UsageSnapshot {
+        snapshot_time: observed_at,
+        subscription_observations: vec![
+            SubscriptionObservation::Observed(SubscriptionUsage {
+                usage_provider: UsageProvider::Claude,
+                usage_source: UsageSource::ClaudeOauthUsageEndpoint,
+                observation_time: observed_at,
+                plan_name_option: Some("max".into()),
+                account_homes: vec![],
+                quota_limits: vec![
+                    QuotaLimit {
+                        quota_limit_identifier: "session".into(),
+                        quota_limit_name_option: None,
+                        quota_windows: vec![QuotaWindow {
+                            provider_window_name: "session".into(),
+                            provider_scope_name_option: None,
+                            used_basis_points: 3300,
+                            remaining_basis_points: 6700,
+                            reset_basis: ResetBasis::ProviderResetTime(1_791_609_599),
+                            window_duration_basis: WindowDurationBasis::ProviderWindowNamed(300),
+                            absolute_limit: AbsoluteLimit::NotExposedByProvider,
+                            window_freshness: WindowFreshness::Current,
+                            pace_derivation: PaceDerivation::Derived(QuotaPace {
+                                remaining_basis_points: 6700,
+                                seconds_until_reset: 9599,
+                                window_duration_minutes: 300,
+                                remaining_basis_points_per_day: 60_306,
+                                even_pace_used_basis_points: 4667,
+                                pace_variance_basis_points: -1367,
+                            }),
+                        }],
+                    },
+                    QuotaLimit {
+                        quota_limit_identifier: "weekly".into(),
+                        quota_limit_name_option: None,
+                        quota_windows: vec![QuotaWindow {
+                            provider_window_name: "weekly_scoped".into(),
+                            provider_scope_name_option: Some("Fable".into()),
+                            used_basis_points: 1200,
+                            remaining_basis_points: 8800,
+                            reset_basis: ResetBasis::ProviderResetTime(1_792_069_199),
+                            window_duration_basis: WindowDurationBasis::Unknown,
+                            absolute_limit: AbsoluteLimit::NotExposedByProvider,
+                            window_freshness: WindowFreshness::Current,
+                            pace_derivation: PaceDerivation::Unknown(
+                                PaceUnknownReason::WindowDurationUnknown,
+                            ),
+                        }],
+                    },
+                ],
+                unrecognized_window_names: vec!["tangelo".into()],
+            }),
+            SubscriptionObservation::Observed(SubscriptionUsage {
+                usage_provider: UsageProvider::Codex,
+                usage_source: UsageSource::CodexAppServerRateLimits,
+                observation_time: observed_at,
+                plan_name_option: Some("pro".into()),
+                account_homes: vec![".codex-next".into(), ".codex-next-8mkkxq293hk2".into()],
+                quota_limits: vec![QuotaLimit {
+                    quota_limit_identifier: "codex".into(),
+                    quota_limit_name_option: None,
+                    quota_windows: vec![QuotaWindow {
+                        provider_window_name: "primary".into(),
+                        provider_scope_name_option: None,
+                        used_basis_points: 2200,
+                        remaining_basis_points: 7800,
+                        reset_basis: ResetBasis::ProviderResetTime(1_791_580_388),
+                        window_duration_basis: WindowDurationBasis::ProviderDeclared(10_080),
+                        absolute_limit: AbsoluteLimit::NotExposedByProvider,
+                        window_freshness: WindowFreshness::ResetPassed,
+                        pace_derivation: PaceDerivation::Unknown(PaceUnknownReason::ResetPassed),
+                    }],
+                }],
+                unrecognized_window_names: vec![],
+            }),
+            SubscriptionObservation::Unavailable(UsageUnavailable {
+                usage_provider: UsageProvider::Codex,
+                observation_time: observed_at,
+                account_home_option: Some(".codex".into()),
+                usage_unavailable_reason: UsageUnavailableReason::TransportTimedOut,
+            }),
+        ],
+        session_context_observations: vec![
+            SessionContextObservation::Observed(SessionContext {
+                usage_provider: UsageProvider::Claude,
+                session_identifier: "28d847ee-f350-4a24-8cb0-0e88abf16cbe".into(),
+                flow_identifier_option: Some("28d847".into()),
+                session_name_option: Some("Psyche.{ Opus 28d847 }".into()),
+                model_identifier_option: Some("claude-opus-5-5".into()),
+                observation_time: observed_at,
+                event_time_option: Some(1_791_599_990_000_000_000),
+                context_basis: ContextBasis::ClaudeTranscriptLastRequest,
+                context_freshness: ContextFreshness::Proxy,
+                context_tokens_option: Some(84_000),
+                context_window_tokens_option: None,
+                context_used_basis_points_option: None,
+            }),
+            SessionContextObservation::Observed(SessionContext {
+                usage_provider: UsageProvider::Codex,
+                session_identifier: "01a10384-16ed-7dd2-93b3-b6bd66c26f85".into(),
+                flow_identifier_option: None,
+                session_name_option: None,
+                model_identifier_option: Some("gpt-6-astra".into()),
+                observation_time: observed_at,
+                event_time_option: Some(1_791_599_900_000_000_000),
+                context_basis: ContextBasis::CodexRolloutLastTokenCount,
+                context_freshness: ContextFreshness::Superseded,
+                context_tokens_option: None,
+                context_window_tokens_option: Some(272_000),
+                context_used_basis_points_option: None,
+            }),
+            SessionContextObservation::Unavailable(SessionContextUnavailable {
+                usage_provider: UsageProvider::Codex,
+                session_identifier: "01a0fdcb-9409-7ba1-a656-a647de94a94b".into(),
+                observation_time: observed_at,
+                context_unavailable_reason: ContextUnavailableReason::ThreadUnbound,
+            }),
+        ],
+    }
 }
 
 fn responses() -> Vec<Response> {
@@ -37,6 +170,7 @@ fn responses() -> Vec<Response> {
             adapter_event_sequence: 8,
             adapter_exit_status: AdapterExitStatus::Success,
         }),
+        Response::UsageSnapshot(usage_snapshot()),
     ]
 }
 
@@ -162,6 +296,26 @@ fn query_round_trips_as_datom_text() {
 
 #[cfg(feature = "datom")]
 #[test]
+fn response_round_trips_as_datom_text() {
+    use datom_codec::{Actualizing, Budget, Datomizable, Potential};
+    use protos::{Protosizable, ReaderBudget, Textualizable};
+
+    for response in responses() {
+        let text = response.clone().datomize(vec![]).protosize().textualize();
+        let restored = Potential::<Response>::from(text)
+            .actualize(&mut Budget {
+                remaining: 16384,
+                reader: ReaderBudget { remaining: 16384 },
+                depth: 0,
+                maximum_depth: 1024,
+            })
+            .expect("Datom restores");
+        assert_eq!(restored, response);
+    }
+}
+
+#[cfg(feature = "datom")]
+#[test]
 fn every_canonical_datom_line_actualizes_into_a_contract_head() {
     use datom_codec::{Actualizing, Budget, Potential};
     use protos::ReaderBudget;
@@ -198,8 +352,8 @@ fn every_canonical_datom_line_actualizes_into_a_contract_head() {
         );
     }
     assert_eq!(
-        lines, 26,
-        "canonical file should carry twenty-six contract heads"
+        lines, 28,
+        "canonical file should carry twenty-eight contract heads"
     );
 }
 

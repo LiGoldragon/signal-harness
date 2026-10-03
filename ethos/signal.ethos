@@ -5,7 +5,8 @@ Signal
   DeliveryCancellation.DeliveryCancellation
   HarnessStatusQuery.HarnessStatusQuery
   WatchHarnessTranscript.WatchHarnessTranscript
-  UnwatchHarnessTranscript.HarnessTranscriptToken ]
+  UnwatchHarnessTranscript.HarnessTranscriptToken
+  UsageSnapshotQuery ]
 [ DeliveryCompleted.DeliveryCompleted
   DeliveryFailed.DeliveryFailed
   InteractionResolved.InteractionResolved
@@ -23,7 +24,8 @@ Signal
   AdapterStalled.AdapterStalled
   AdapterExited.AdapterExited
   HarnessTranscriptSnapshot.HarnessTranscriptSnapshot
-  HarnessSubscriptionRetracted.HarnessSubscriptionRetracted ]
+  HarnessSubscriptionRetracted.HarnessSubscriptionRetracted
+  UsageSnapshot.UsageSnapshot ]
 [ HarnessName.String
   HarnessKind.[ Codex Claude Pi Fixture ]
   MessageSender.String
@@ -116,4 +118,55 @@ Signal
   PiRpcJsonlAdapterConfiguration.{ PiRpcCommandPath PiRpcSessionDirectoryPath Option<PiRpcModelPattern> PiRpcDeliveryMode }
   HarnessInstanceConfiguration.{ HarnessName HarnessKind Option<TerminalSocketPath> Option<PiRpcJsonlAdapterConfiguration> }
   HarnessInstanceConfigurations.Vector<HarnessInstanceConfiguration>
-  HarnessDaemonConfiguration.{ DomainSocketPath DomainSocketMode EngineManagementSocketPath EngineManagementSocketMode OwnerIdentity HarnessInstanceConfigurations } ]
+  HarnessDaemonConfiguration.{ DomainSocketPath DomainSocketMode EngineManagementSocketPath EngineManagementSocketMode OwnerIdentity HarnessInstanceConfigurations }
+  UsageProvider.[ Claude Codex ]
+  UsageSource.[ ClaudeOauthUsageEndpoint CodexAppServerRateLimits ]
+  SnapshotTime.Integer
+  ObservationTime.Integer
+  EventTime.Integer
+  PlanName.String
+  AccountHome.String
+  AccountHomes.Vector<AccountHome>
+  QuotaLimitIdentifier.String
+  QuotaLimitName.String
+  ProviderWindowName.String
+  ProviderScopeName.String
+  UnrecognizedWindowNames.Vector<ProviderWindowName>
+  UsedBasisPoints.Integer
+  RemainingBasisPoints.Integer
+  ResetEpochSecond.Integer
+  WindowDurationMinutes.Integer
+  SecondsUntilReset.Integer
+  RemainingBasisPointsPerDay.Integer
+  EvenPaceUsedBasisPoints.Integer
+  PaceVarianceBasisPoints.Integer
+  ResetBasis.[ ProviderResetTime.ResetEpochSecond Unknown ]
+  WindowDurationBasis.[ ProviderDeclared.WindowDurationMinutes ProviderWindowNamed.WindowDurationMinutes Unknown ]
+  AbsoluteLimit.[ NotExposedByProvider ]
+  WindowFreshness.[ Current ResetPassed ]
+  PaceUnknownReason.[ ResetUnknown WindowDurationUnknown ResetPassed ResetBeyondWindow ]
+  QuotaPace.{ RemainingBasisPoints SecondsUntilReset WindowDurationMinutes RemainingBasisPointsPerDay EvenPaceUsedBasisPoints PaceVarianceBasisPoints }
+  PaceDerivation.[ Derived.QuotaPace Unknown.PaceUnknownReason ]
+  QuotaWindow.{ ProviderWindowName Option<ProviderScopeName> UsedBasisPoints RemainingBasisPoints ResetBasis WindowDurationBasis AbsoluteLimit WindowFreshness PaceDerivation }
+  QuotaWindows.Vector<QuotaWindow>
+  QuotaLimit.{ QuotaLimitIdentifier Option<QuotaLimitName> QuotaWindows }
+  QuotaLimits.Vector<QuotaLimit>
+  SubscriptionUsage.{ UsageProvider UsageSource ObservationTime Option<PlanName> AccountHomes QuotaLimits UnrecognizedWindowNames }
+  UsageUnavailableReason.[ CredentialsAbsent CredentialsUnreadable AccessTokenExpired NoLiveControlSocket TransportFailed TransportTimedOut ProviderRejected ProviderResponseUnreadable ]
+  UsageUnavailable.{ UsageProvider ObservationTime Option<AccountHome> UsageUnavailableReason }
+  SubscriptionObservation.[ Observed.SubscriptionUsage Unavailable.UsageUnavailable ]
+  SubscriptionObservations.Vector<SubscriptionObservation>
+  SessionIdentifier.String
+  FlowIdentifier.String
+  SessionName.String
+  ModelIdentifier.String
+  ContextWindowTokens.Integer
+  ContextUsedBasisPoints.Integer
+  ContextBasis.[ ClaudeTranscriptLastRequest CodexRolloutLastTokenCount ]
+  ContextFreshness.[ Exact Proxy Superseded Unknown ]
+  SessionContext.{ UsageProvider SessionIdentifier Option<FlowIdentifier> Option<SessionName> Option<ModelIdentifier> ObservationTime Option<EventTime> ContextBasis ContextFreshness Option<ContextTokens> Option<ContextWindowTokens> Option<ContextUsedBasisPoints> }
+  ContextUnavailableReason.[ ThreadUnbound TranscriptAbsent TranscriptUnreadable TransportFailed TransportTimedOut ]
+  SessionContextUnavailable.{ UsageProvider SessionIdentifier ObservationTime ContextUnavailableReason }
+  SessionContextObservation.[ Observed.SessionContext Unavailable.SessionContextUnavailable ]
+  SessionContextObservations.Vector<SessionContextObservation>
+  UsageSnapshot.{ SnapshotTime SubscriptionObservations SessionContextObservations } ]
