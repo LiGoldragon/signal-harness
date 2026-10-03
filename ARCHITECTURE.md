@@ -76,30 +76,46 @@ snapshot. It carries no subscription, watch or history.
   read only to merge homes and is never emitted, and no cross-snapshot account
   reference is carried.
 - `QuotaLimits` lists every provider-reported limit and each of its windows.
-  `WindowUsage` holds the window's share in hundredths of a percentage point:
-  `Current(QuotaShare)`; `StaleAfterReset(QuotaShare)`, the values the
-  provider reported for a window whose reset has already passed, never a fresh
-  window; or `Unreadable(UsageUnreadableReason)` when the provider's
-  percentage is absent, not finite, negative or above 100. Neither provider
-  documents an overrun, so a percentage above 100 is unreadable, never clamped.
-  `RemainingBasisPoints` is 10000 minus `UsedBasisPoints`.
-- `ResetBasis` says where the reset came from; `ResetCountdown` is the time
-  until it (`Pending`), the time since it (`Passed`), or `Unknown`. The
-  countdown is its own state: a known reset stays visible when the window's
-  duration is unknown.
+  `WindowUsage` holds the window's share in basis points (hundredths of a
+  percentage point): `Current(QuotaShare)`; `StaleAfterReset(QuotaShare)`, the
+  values the provider reported for a window whose reset has already passed,
+  never a fresh window; or `Unreadable(UsageUnreadableReason)` when the
+  provider's percentage is absent, not finite, negative or above 100. Neither
+  provider documents an overrun, so a percentage above 100 is unreadable,
+  never clamped. A `QuotaShare` carries used, remaining (10000 minus used) and
+  its `ShareConversion`: the provider percentage rounded to the basis point.
+- `ResetBasis` says where the reset came from. `ResetCountdown` is its own
+  state: `Pending` (seconds until a reset still ahead), `Passed` (seconds since
+  a reset at or before the observation; a passed reset is not zero time left)
+  or `Unknown`. `LocalReset` renders the reset instant in the daemon host's
+  configured time zone, to the source's second precision, or says why it
+  cannot (`ResetUnknown`, `TimezoneUnavailable`); no zone is invented. A known
+  reset and its local time stay visible when the window's duration is unknown.
 - `WindowDurationBasis` is `ProviderDeclared`, `ProviderWindowNamed` (only the
   provider's own named windows, such as Claude's `five_hour` and `seven_day`)
   or `Unknown`. A duration is never inferred from a shared reset time.
+  `PeriodSemantics` is `FixedPeriod` only when the source establishes a fixed
+  period; a named window or a declared duration does not, so today it is
+  `NotEstablished`.
 - `AbsoluteLimit` is `NotExposedByProvider`: neither provider reports tokens or
   money per window.
-- `BudgetDerivation` is `Derived(WallClockBudget)` only when the window is
-  current and its remaining share, its pending reset and its duration are all
-  known; otherwise `Unknown(BudgetUnknownReason)`. A `WallClockBudget` is a
-  one-snapshot wall-clock budget figure, labelled `OneSnapshotWallClock`, not
-  an observed burn: it carries its operands (remaining, seconds until reset,
-  window duration), the remaining share per wall-clock day until the reset, the
-  share an even wall-clock spend would have used by now, and the variance
-  (used minus that even share; positive means more used than an even spend).
+- Three derivations stay separate, each `Derived` with its operands or
+  `Unknown` with its reason, never dividing by zero:
+  - `RemainderRateDerivation`: the rate to use the remainder by the reset,
+    remaining divided by the positive time until it, in basis points per clock
+    hour and per clock day, rounded toward zero. Labelled
+    `OneSnapshotClockAllowance`: an allowance from one snapshot, not an
+    observed burn or a forecast. It needs a current share and a pending reset,
+    not a window duration.
+  - `UniformRateDerivation`: the window's uniform rate, one full share over
+    its known duration, in basis points per clock day (a week's is 100/7
+    percent, 1428 basis points rounded toward zero, per day).
+  - `ElapsedWindowDerivation`: the elapsed share of a fixed period,
+    `e = (W - T) / W`, and used minus it. It needs `FixedPeriod` semantics,
+    a current share, a pending reset and a positive known duration no shorter
+    than the time left.
+- `PlanningProjection` is `NotConfigured`: no usage plan is supplied, and none
+  is inferred from activity.
 - `UnrecognizedWindowNames` retains provider windows that are present but not
   understood. `UnmodeledSourceFacts` names the provider's present auxiliary
   allowance, credit and spend/control facts (Claude `extra_usage` and `spend`,

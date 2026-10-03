@@ -1,15 +1,19 @@
 use signal_harness::{
-    AbsoluteLimit, AdapterExitStatus, AdapterExited, BudgetBasis, BudgetDerivation,
-    BudgetUnknownReason, ByteViewable, ClaudeSessionLifecycle, ClaudeSessionObservation,
-    ContextBasis, ContextFreshness, ContextSourceFailureReason, ContextSourceUnavailable,
-    ContextUnavailableReason, DeliveryFailed, DeliveryFailureReason, HarnessDaemonConfiguration,
-    HarnessInstanceConfiguration, HarnessKind, HarnessStreamEvent, HarnessTranscriptToken,
-    MessageDelivery, PiRpcDeliveryMode, PiRpcJsonlAdapterConfiguration, Query, QuotaLimit,
-    QuotaShare, QuotaWindow, ResetBasis, ResetCountdown, Response, Restorable, SessionContext,
-    SessionContextObservation, SessionContextUnavailable, Signal, Signalizable,
-    SubscriptionObservation, SubscriptionUsage, TranscriptObservation, TurnLaunch, UsageProvider,
-    UsageSnapshot, UsageSource, UsageUnavailable, UsageUnavailableReason, UsageUnreadableReason,
-    WallClockBudget, WatchHarnessTranscript, WindowDurationBasis, WindowUsage,
+    AbsoluteLimit, AdapterExitStatus, AdapterExited, ByteViewable, ClaudeSessionLifecycle,
+    ClaudeSessionObservation, ContextBasis, ContextFreshness, ContextSourceFailureReason,
+    ContextSourceUnavailable, ContextUnavailableReason, DeliveryFailed, DeliveryFailureReason,
+    ElapsedUnknownReason, ElapsedWindowDerivation, ElapsedWindowPosition,
+    HarnessDaemonConfiguration, HarnessInstanceConfiguration, HarnessKind, HarnessStreamEvent,
+    HarnessTranscriptToken, LocalReset, LocalResetTime, LocalResetUnknownReason, MessageDelivery,
+    PeriodSemantics, PiRpcDeliveryMode, PiRpcJsonlAdapterConfiguration, PlanningProjection, Query,
+    QuotaLimit, QuotaShare, QuotaWindow, RateBasis, RateRounding, RemainderByResetRate,
+    RemainderRateDerivation, RemainderRateUnknownReason, ResetBasis, ResetCountdown, Response,
+    Restorable, SessionContext, SessionContextObservation, SessionContextUnavailable,
+    ShareConversion, Signal, Signalizable, SubscriptionObservation, SubscriptionUsage,
+    TranscriptObservation, TurnLaunch, UniformRateDerivation, UniformRateUnknownReason,
+    UniformWindowRate, UsageProvider, UsageSnapshot, UsageSource, UsageUnavailable,
+    UsageUnavailableReason, UsageUnreadableReason, WatchHarnessTranscript, WindowDurationBasis,
+    WindowUsage,
 };
 use signal_persona::OwnerIdentity;
 
@@ -33,16 +37,34 @@ fn queries() -> Vec<Query> {
 }
 
 /// One snapshot carrying every value state the reply distinguishes: a current
-/// window with its one-snapshot wall-clock budget, a pending reset whose window
-/// duration is unknown, a passed reset whose old values are stale, an
+/// fixed-period window with its remainder-by-reset rate, uniform rate and
+/// elapsed position, a pending reset with a local rendering and a
+/// remainder-by-reset rate whose window duration is unknown, a passed reset whose old values are stale, an
 /// unreadable percentage, retained unrecognized windows and unmodeled source
 /// facts, a deduplicated Codex account over two homes, an unavailable provider
 /// home, a failed context source, a proxy context, a superseded context, and an
 /// unbound thread.
+fn share(used: i64) -> QuotaShare {
+    QuotaShare {
+        used_basis_points: used,
+        remaining_basis_points: 10_000 - used,
+        share_conversion: ShareConversion::ProviderPercentRoundedToBasisPoint,
+    }
+}
+
+fn local(date_time: &str) -> LocalReset {
+    LocalReset::Rendered(LocalResetTime {
+        local_date_time: date_time.into(),
+        timezone_name: "America/Mexico_City".into(),
+        utc_offset_seconds: -21_600,
+    })
+}
+
 fn usage_snapshot() -> UsageSnapshot {
     let observed_at = 1_791_600_000_000_000_000;
     UsageSnapshot {
         snapshot_time: observed_at,
+        planning_projection: PlanningProjection::NotConfigured,
         subscription_observations: vec![
             SubscriptionObservation::Observed(SubscriptionUsage {
                 usage_provider: UsageProvider::Claude,
@@ -57,23 +79,40 @@ fn usage_snapshot() -> UsageSnapshot {
                         quota_windows: vec![QuotaWindow {
                             provider_window_name: "five_hour".into(),
                             provider_scope_name_option: None,
-                            window_usage: WindowUsage::Current(QuotaShare {
-                                used_basis_points: 3300,
-                                remaining_basis_points: 6700,
-                            }),
+                            window_usage: WindowUsage::Current(share(3300)),
                             reset_basis: ResetBasis::ProviderResetTime(1_791_609_599),
                             reset_countdown: ResetCountdown::Pending(9599),
+                            local_reset: local("2026-10-09T23:19:59"),
                             window_duration_basis: WindowDurationBasis::ProviderWindowNamed(300),
+                            period_semantics: PeriodSemantics::FixedPeriod,
                             absolute_limit: AbsoluteLimit::NotExposedByProvider,
-                            budget_derivation: BudgetDerivation::Derived(WallClockBudget {
-                                budget_basis: BudgetBasis::OneSnapshotWallClock,
-                                remaining_basis_points: 6700,
-                                seconds_until_reset: 9599,
-                                window_duration_minutes: 300,
-                                wall_clock_remaining_basis_points_per_day: 60_306,
-                                wall_clock_even_used_basis_points: 4667,
-                                wall_clock_variance_basis_points: -1367,
-                            }),
+                            remainder_rate_derivation: RemainderRateDerivation::Derived(
+                                RemainderByResetRate {
+                                    rate_basis: RateBasis::OneSnapshotClockAllowance,
+                                    remaining_basis_points: 6700,
+                                    seconds_until_reset: 9599,
+                                    remaining_basis_points_per_clock_hour: 2512,
+                                    remaining_basis_points_per_clock_day: 60_306,
+                                    rate_rounding: RateRounding::TowardZero,
+                                },
+                            ),
+                            uniform_rate_derivation: UniformRateDerivation::Derived(
+                                UniformWindowRate {
+                                    window_duration_minutes: 300,
+                                    uniform_basis_points_per_clock_day: 48_000,
+                                    rate_rounding: RateRounding::TowardZero,
+                                },
+                            ),
+                            elapsed_window_derivation: ElapsedWindowDerivation::Derived(
+                                ElapsedWindowPosition {
+                                    window_duration_minutes: 300,
+                                    seconds_until_reset: 9599,
+                                    elapsed_basis_points: 4667,
+                                    used_basis_points: 3300,
+                                    used_minus_elapsed_basis_points: -1367,
+                                    rate_rounding: RateRounding::TowardZero,
+                                },
+                            ),
                         }],
                     },
                     QuotaLimit {
@@ -83,16 +122,28 @@ fn usage_snapshot() -> UsageSnapshot {
                             QuotaWindow {
                                 provider_window_name: "weekly_scoped".into(),
                                 provider_scope_name_option: Some("Fable".into()),
-                                window_usage: WindowUsage::Current(QuotaShare {
-                                    used_basis_points: 1200,
-                                    remaining_basis_points: 8800,
-                                }),
+                                window_usage: WindowUsage::Current(share(1200)),
                                 reset_basis: ResetBasis::ProviderResetTime(1_792_069_199),
                                 reset_countdown: ResetCountdown::Pending(469_199),
+                                local_reset: local("2026-10-15T06:59:59"),
                                 window_duration_basis: WindowDurationBasis::Unknown,
+                                period_semantics: PeriodSemantics::NotEstablished,
                                 absolute_limit: AbsoluteLimit::NotExposedByProvider,
-                                budget_derivation: BudgetDerivation::Unknown(
-                                    BudgetUnknownReason::WindowDurationUnknown,
+                                remainder_rate_derivation: RemainderRateDerivation::Derived(
+                                    RemainderByResetRate {
+                                        rate_basis: RateBasis::OneSnapshotClockAllowance,
+                                        remaining_basis_points: 8800,
+                                        seconds_until_reset: 469_199,
+                                        remaining_basis_points_per_clock_hour: 67,
+                                        remaining_basis_points_per_clock_day: 1620,
+                                        rate_rounding: RateRounding::TowardZero,
+                                    },
+                                ),
+                                uniform_rate_derivation: UniformRateDerivation::Unknown(
+                                    UniformRateUnknownReason::WindowDurationUnknown,
+                                ),
+                                elapsed_window_derivation: ElapsedWindowDerivation::Unknown(
+                                    ElapsedUnknownReason::PeriodSemanticsNotEstablished,
                                 ),
                             },
                             QuotaWindow {
@@ -103,10 +154,20 @@ fn usage_snapshot() -> UsageSnapshot {
                                 ),
                                 reset_basis: ResetBasis::Unknown,
                                 reset_countdown: ResetCountdown::Unknown,
+                                local_reset: LocalReset::Unknown(
+                                    LocalResetUnknownReason::ResetUnknown,
+                                ),
                                 window_duration_basis: WindowDurationBasis::Unknown,
+                                period_semantics: PeriodSemantics::NotEstablished,
                                 absolute_limit: AbsoluteLimit::NotExposedByProvider,
-                                budget_derivation: BudgetDerivation::Unknown(
-                                    BudgetUnknownReason::UsageUnreadable,
+                                remainder_rate_derivation: RemainderRateDerivation::Unknown(
+                                    RemainderRateUnknownReason::UsageUnreadable,
+                                ),
+                                uniform_rate_derivation: UniformRateDerivation::Unknown(
+                                    UniformRateUnknownReason::WindowDurationUnknown,
+                                ),
+                                elapsed_window_derivation: ElapsedWindowDerivation::Unknown(
+                                    ElapsedUnknownReason::PeriodSemanticsNotEstablished,
                                 ),
                             },
                         ],
@@ -127,16 +188,25 @@ fn usage_snapshot() -> UsageSnapshot {
                     quota_windows: vec![QuotaWindow {
                         provider_window_name: "primary".into(),
                         provider_scope_name_option: None,
-                        window_usage: WindowUsage::StaleAfterReset(QuotaShare {
-                            used_basis_points: 2200,
-                            remaining_basis_points: 7800,
-                        }),
+                        window_usage: WindowUsage::StaleAfterReset(share(2200)),
                         reset_basis: ResetBasis::ProviderResetTime(1_791_580_388),
                         reset_countdown: ResetCountdown::Passed(19_612),
+                        local_reset: local("2026-10-09T15:13:08"),
                         window_duration_basis: WindowDurationBasis::ProviderDeclared(10_080),
+                        period_semantics: PeriodSemantics::NotEstablished,
                         absolute_limit: AbsoluteLimit::NotExposedByProvider,
-                        budget_derivation: BudgetDerivation::Unknown(
-                            BudgetUnknownReason::ResetPassed,
+                        remainder_rate_derivation: RemainderRateDerivation::Unknown(
+                            RemainderRateUnknownReason::UsageStale,
+                        ),
+                        uniform_rate_derivation: UniformRateDerivation::Derived(
+                            UniformWindowRate {
+                                window_duration_minutes: 10_080,
+                                uniform_basis_points_per_clock_day: 1428,
+                                rate_rounding: RateRounding::TowardZero,
+                            },
+                        ),
+                        elapsed_window_derivation: ElapsedWindowDerivation::Unknown(
+                            ElapsedUnknownReason::PeriodSemanticsNotEstablished,
                         ),
                     }],
                 }],

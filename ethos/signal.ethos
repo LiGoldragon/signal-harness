@@ -138,7 +138,8 @@ Signal
   UnmodeledSourceFacts.Vector<SourceFactName>
   UsedBasisPoints.Integer
   RemainingBasisPoints.Integer
-  QuotaShare.{ UsedBasisPoints RemainingBasisPoints }
+  ShareConversion.[ ProviderPercentRoundedToBasisPoint ]
+  QuotaShare.{ UsedBasisPoints RemainingBasisPoints ShareConversion }
   UsageUnreadableReason.[ PercentageAbsent PercentageNotFinite PercentageNegative PercentageAboveFull ]
   WindowUsage.[ Current.QuotaShare StaleAfterReset.QuotaShare Unreadable.UsageUnreadableReason ]
   ResetEpochSecond.Integer
@@ -146,17 +147,33 @@ Signal
   SecondsUntilReset.Integer
   SecondsSinceReset.Integer
   ResetCountdown.[ Pending.SecondsUntilReset Passed.SecondsSinceReset Unknown ]
+  LocalDateTime.String
+  TimezoneName.String
+  UtcOffsetSeconds.Integer
+  LocalResetTime.{ LocalDateTime TimezoneName UtcOffsetSeconds }
+  LocalResetUnknownReason.[ ResetUnknown TimezoneUnavailable ]
+  LocalReset.[ Rendered.LocalResetTime Unknown.LocalResetUnknownReason ]
   WindowDurationMinutes.Integer
   WindowDurationBasis.[ ProviderDeclared.WindowDurationMinutes ProviderWindowNamed.WindowDurationMinutes Unknown ]
+  PeriodSemantics.[ FixedPeriod NotEstablished ]
   AbsoluteLimit.[ NotExposedByProvider ]
-  BudgetBasis.[ OneSnapshotWallClock ]
-  WallClockRemainingBasisPointsPerDay.Integer
-  WallClockEvenUsedBasisPoints.Integer
-  WallClockVarianceBasisPoints.Integer
-  WallClockBudget.{ BudgetBasis RemainingBasisPoints SecondsUntilReset WindowDurationMinutes WallClockRemainingBasisPointsPerDay WallClockEvenUsedBasisPoints WallClockVarianceBasisPoints }
-  BudgetUnknownReason.[ UsageUnreadable ResetUnknown ResetPassed WindowDurationUnknown ResetBeyondWindow ]
-  BudgetDerivation.[ Derived.WallClockBudget Unknown.BudgetUnknownReason ]
-  QuotaWindow.{ ProviderWindowName Option<ProviderScopeName> WindowUsage ResetBasis ResetCountdown WindowDurationBasis AbsoluteLimit BudgetDerivation }
+  RateBasis.[ OneSnapshotClockAllowance ]
+  RateRounding.[ TowardZero ]
+  RemainingBasisPointsPerClockHour.Integer
+  RemainingBasisPointsPerClockDay.Integer
+  RemainderByResetRate.{ RateBasis RemainingBasisPoints SecondsUntilReset RemainingBasisPointsPerClockHour RemainingBasisPointsPerClockDay RateRounding }
+  RemainderRateUnknownReason.[ UsageUnreadable UsageStale ResetUnknown ResetPassed ]
+  RemainderRateDerivation.[ Derived.RemainderByResetRate Unknown.RemainderRateUnknownReason ]
+  UniformBasisPointsPerClockDay.Integer
+  UniformWindowRate.{ WindowDurationMinutes UniformBasisPointsPerClockDay RateRounding }
+  UniformRateUnknownReason.[ WindowDurationUnknown WindowDurationNotPositive ]
+  UniformRateDerivation.[ Derived.UniformWindowRate Unknown.UniformRateUnknownReason ]
+  ElapsedBasisPoints.Integer
+  UsedMinusElapsedBasisPoints.Integer
+  ElapsedWindowPosition.{ WindowDurationMinutes SecondsUntilReset ElapsedBasisPoints UsedBasisPoints UsedMinusElapsedBasisPoints RateRounding }
+  ElapsedUnknownReason.[ PeriodSemanticsNotEstablished UsageUnreadable UsageStale ResetUnknown ResetPassed WindowDurationUnknown WindowDurationNotPositive ResetBeyondWindow ]
+  ElapsedWindowDerivation.[ Derived.ElapsedWindowPosition Unknown.ElapsedUnknownReason ]
+  QuotaWindow.{ ProviderWindowName Option<ProviderScopeName> WindowUsage ResetBasis ResetCountdown LocalReset WindowDurationBasis PeriodSemantics AbsoluteLimit RemainderRateDerivation UniformRateDerivation ElapsedWindowDerivation }
   QuotaWindows.Vector<QuotaWindow>
   QuotaLimit.{ QuotaLimitIdentifier Option<QuotaLimitName> QuotaWindows }
   QuotaLimits.Vector<QuotaLimit>
@@ -180,4 +197,5 @@ Signal
   ContextSourceUnavailable.{ UsageProvider Option<AccountHome> ObservationTime ContextSourceFailureReason }
   SessionContextObservation.[ Observed.SessionContext Unavailable.SessionContextUnavailable SourceUnavailable.ContextSourceUnavailable ]
   SessionContextObservations.Vector<SessionContextObservation>
-  UsageSnapshot.{ SnapshotTime SubscriptionObservations SessionContextObservations } ]
+  PlanningProjection.[ NotConfigured ]
+  UsageSnapshot.{ SnapshotTime PlanningProjection SubscriptionObservations SessionContextObservations } ]

@@ -579,9 +579,16 @@ pub type RemainingBasisPoints = i64;
 #[rustfmt::skip]
 #[derive(rkyv::Archive, rkyv::Serialize, rkyv::Deserialize, Clone, Debug, PartialEq)]
 #[cfg_attr(feature = "datom", derive(datom_codec::Datomizable, datom_codec::Composing))]
+pub enum ShareConversion {
+    ProviderPercentRoundedToBasisPoint,
+}
+#[rustfmt::skip]
+#[derive(rkyv::Archive, rkyv::Serialize, rkyv::Deserialize, Clone, Debug, PartialEq)]
+#[cfg_attr(feature = "datom", derive(datom_codec::Datomizable, datom_codec::Composing))]
 pub struct QuotaShare {
     pub used_basis_points: UsedBasisPoints,
     pub remaining_basis_points: RemainingBasisPoints,
+    pub share_conversion: ShareConversion,
 }
 #[rustfmt::skip]
 #[derive(rkyv::Archive, rkyv::Serialize, rkyv::Deserialize, Clone, Debug, PartialEq)]
@@ -622,6 +629,34 @@ pub enum ResetCountdown {
     Unknown,
 }
 #[rustfmt::skip]
+pub type LocalDateTime = String;
+#[rustfmt::skip]
+pub type TimezoneName = String;
+#[rustfmt::skip]
+pub type UtcOffsetSeconds = i64;
+#[rustfmt::skip]
+#[derive(rkyv::Archive, rkyv::Serialize, rkyv::Deserialize, Clone, Debug, PartialEq)]
+#[cfg_attr(feature = "datom", derive(datom_codec::Datomizable, datom_codec::Composing))]
+pub struct LocalResetTime {
+    pub local_date_time: LocalDateTime,
+    pub timezone_name: TimezoneName,
+    pub utc_offset_seconds: UtcOffsetSeconds,
+}
+#[rustfmt::skip]
+#[derive(rkyv::Archive, rkyv::Serialize, rkyv::Deserialize, Clone, Debug, PartialEq)]
+#[cfg_attr(feature = "datom", derive(datom_codec::Datomizable, datom_codec::Composing))]
+pub enum LocalResetUnknownReason {
+    ResetUnknown,
+    TimezoneUnavailable,
+}
+#[rustfmt::skip]
+#[derive(rkyv::Archive, rkyv::Serialize, rkyv::Deserialize, Clone, Debug, PartialEq)]
+#[cfg_attr(feature = "datom", derive(datom_codec::Datomizable, datom_codec::Composing))]
+pub enum LocalReset {
+    Rendered(LocalResetTime),
+    Unknown(LocalResetUnknownReason),
+}
+#[rustfmt::skip]
 pub type WindowDurationMinutes = i64;
 #[rustfmt::skip]
 #[derive(rkyv::Archive, rkyv::Serialize, rkyv::Deserialize, Clone, Debug, PartialEq)]
@@ -634,49 +669,117 @@ pub enum WindowDurationBasis {
 #[rustfmt::skip]
 #[derive(rkyv::Archive, rkyv::Serialize, rkyv::Deserialize, Clone, Debug, PartialEq)]
 #[cfg_attr(feature = "datom", derive(datom_codec::Datomizable, datom_codec::Composing))]
+pub enum PeriodSemantics {
+    FixedPeriod,
+    NotEstablished,
+}
+#[rustfmt::skip]
+#[derive(rkyv::Archive, rkyv::Serialize, rkyv::Deserialize, Clone, Debug, PartialEq)]
+#[cfg_attr(feature = "datom", derive(datom_codec::Datomizable, datom_codec::Composing))]
 pub enum AbsoluteLimit {
     NotExposedByProvider,
 }
 #[rustfmt::skip]
 #[derive(rkyv::Archive, rkyv::Serialize, rkyv::Deserialize, Clone, Debug, PartialEq)]
 #[cfg_attr(feature = "datom", derive(datom_codec::Datomizable, datom_codec::Composing))]
-pub enum BudgetBasis {
-    OneSnapshotWallClock,
+pub enum RateBasis {
+    OneSnapshotClockAllowance,
 }
-#[rustfmt::skip]
-pub type WallClockRemainingBasisPointsPerDay = i64;
-#[rustfmt::skip]
-pub type WallClockEvenUsedBasisPoints = i64;
-#[rustfmt::skip]
-pub type WallClockVarianceBasisPoints = i64;
 #[rustfmt::skip]
 #[derive(rkyv::Archive, rkyv::Serialize, rkyv::Deserialize, Clone, Debug, PartialEq)]
 #[cfg_attr(feature = "datom", derive(datom_codec::Datomizable, datom_codec::Composing))]
-pub struct WallClockBudget {
-    pub budget_basis: BudgetBasis,
+pub enum RateRounding {
+    TowardZero,
+}
+#[rustfmt::skip]
+pub type RemainingBasisPointsPerClockHour = i64;
+#[rustfmt::skip]
+pub type RemainingBasisPointsPerClockDay = i64;
+#[rustfmt::skip]
+#[derive(rkyv::Archive, rkyv::Serialize, rkyv::Deserialize, Clone, Debug, PartialEq)]
+#[cfg_attr(feature = "datom", derive(datom_codec::Datomizable, datom_codec::Composing))]
+pub struct RemainderByResetRate {
+    pub rate_basis: RateBasis,
     pub remaining_basis_points: RemainingBasisPoints,
     pub seconds_until_reset: SecondsUntilReset,
-    pub window_duration_minutes: WindowDurationMinutes,
-    pub wall_clock_remaining_basis_points_per_day: WallClockRemainingBasisPointsPerDay,
-    pub wall_clock_even_used_basis_points: WallClockEvenUsedBasisPoints,
-    pub wall_clock_variance_basis_points: WallClockVarianceBasisPoints,
+    pub remaining_basis_points_per_clock_hour: RemainingBasisPointsPerClockHour,
+    pub remaining_basis_points_per_clock_day: RemainingBasisPointsPerClockDay,
+    pub rate_rounding: RateRounding,
 }
 #[rustfmt::skip]
 #[derive(rkyv::Archive, rkyv::Serialize, rkyv::Deserialize, Clone, Debug, PartialEq)]
 #[cfg_attr(feature = "datom", derive(datom_codec::Datomizable, datom_codec::Composing))]
-pub enum BudgetUnknownReason {
+pub enum RemainderRateUnknownReason {
     UsageUnreadable,
+    UsageStale,
+    ResetUnknown,
+    ResetPassed,
+}
+#[rustfmt::skip]
+#[derive(rkyv::Archive, rkyv::Serialize, rkyv::Deserialize, Clone, Debug, PartialEq)]
+#[cfg_attr(feature = "datom", derive(datom_codec::Datomizable, datom_codec::Composing))]
+pub enum RemainderRateDerivation {
+    Derived(RemainderByResetRate),
+    Unknown(RemainderRateUnknownReason),
+}
+#[rustfmt::skip]
+pub type UniformBasisPointsPerClockDay = i64;
+#[rustfmt::skip]
+#[derive(rkyv::Archive, rkyv::Serialize, rkyv::Deserialize, Clone, Debug, PartialEq)]
+#[cfg_attr(feature = "datom", derive(datom_codec::Datomizable, datom_codec::Composing))]
+pub struct UniformWindowRate {
+    pub window_duration_minutes: WindowDurationMinutes,
+    pub uniform_basis_points_per_clock_day: UniformBasisPointsPerClockDay,
+    pub rate_rounding: RateRounding,
+}
+#[rustfmt::skip]
+#[derive(rkyv::Archive, rkyv::Serialize, rkyv::Deserialize, Clone, Debug, PartialEq)]
+#[cfg_attr(feature = "datom", derive(datom_codec::Datomizable, datom_codec::Composing))]
+pub enum UniformRateUnknownReason {
+    WindowDurationUnknown,
+    WindowDurationNotPositive,
+}
+#[rustfmt::skip]
+#[derive(rkyv::Archive, rkyv::Serialize, rkyv::Deserialize, Clone, Debug, PartialEq)]
+#[cfg_attr(feature = "datom", derive(datom_codec::Datomizable, datom_codec::Composing))]
+pub enum UniformRateDerivation {
+    Derived(UniformWindowRate),
+    Unknown(UniformRateUnknownReason),
+}
+#[rustfmt::skip]
+pub type ElapsedBasisPoints = i64;
+#[rustfmt::skip]
+pub type UsedMinusElapsedBasisPoints = i64;
+#[rustfmt::skip]
+#[derive(rkyv::Archive, rkyv::Serialize, rkyv::Deserialize, Clone, Debug, PartialEq)]
+#[cfg_attr(feature = "datom", derive(datom_codec::Datomizable, datom_codec::Composing))]
+pub struct ElapsedWindowPosition {
+    pub window_duration_minutes: WindowDurationMinutes,
+    pub seconds_until_reset: SecondsUntilReset,
+    pub elapsed_basis_points: ElapsedBasisPoints,
+    pub used_basis_points: UsedBasisPoints,
+    pub used_minus_elapsed_basis_points: UsedMinusElapsedBasisPoints,
+    pub rate_rounding: RateRounding,
+}
+#[rustfmt::skip]
+#[derive(rkyv::Archive, rkyv::Serialize, rkyv::Deserialize, Clone, Debug, PartialEq)]
+#[cfg_attr(feature = "datom", derive(datom_codec::Datomizable, datom_codec::Composing))]
+pub enum ElapsedUnknownReason {
+    PeriodSemanticsNotEstablished,
+    UsageUnreadable,
+    UsageStale,
     ResetUnknown,
     ResetPassed,
     WindowDurationUnknown,
+    WindowDurationNotPositive,
     ResetBeyondWindow,
 }
 #[rustfmt::skip]
 #[derive(rkyv::Archive, rkyv::Serialize, rkyv::Deserialize, Clone, Debug, PartialEq)]
 #[cfg_attr(feature = "datom", derive(datom_codec::Datomizable, datom_codec::Composing))]
-pub enum BudgetDerivation {
-    Derived(WallClockBudget),
-    Unknown(BudgetUnknownReason),
+pub enum ElapsedWindowDerivation {
+    Derived(ElapsedWindowPosition),
+    Unknown(ElapsedUnknownReason),
 }
 #[rustfmt::skip]
 #[derive(rkyv::Archive, rkyv::Serialize, rkyv::Deserialize, Clone, Debug, PartialEq)]
@@ -687,9 +790,13 @@ pub struct QuotaWindow {
     pub window_usage: WindowUsage,
     pub reset_basis: ResetBasis,
     pub reset_countdown: ResetCountdown,
+    pub local_reset: LocalReset,
     pub window_duration_basis: WindowDurationBasis,
+    pub period_semantics: PeriodSemantics,
     pub absolute_limit: AbsoluteLimit,
-    pub budget_derivation: BudgetDerivation,
+    pub remainder_rate_derivation: RemainderRateDerivation,
+    pub uniform_rate_derivation: UniformRateDerivation,
+    pub elapsed_window_derivation: ElapsedWindowDerivation,
 }
 #[rustfmt::skip]
 pub type QuotaWindows = std::vec::Vec<QuotaWindow>;
@@ -848,8 +955,15 @@ pub type SessionContextObservations = std::vec::Vec<SessionContextObservation>;
 #[rustfmt::skip]
 #[derive(rkyv::Archive, rkyv::Serialize, rkyv::Deserialize, Clone, Debug, PartialEq)]
 #[cfg_attr(feature = "datom", derive(datom_codec::Datomizable, datom_codec::Composing))]
+pub enum PlanningProjection {
+    NotConfigured,
+}
+#[rustfmt::skip]
+#[derive(rkyv::Archive, rkyv::Serialize, rkyv::Deserialize, Clone, Debug, PartialEq)]
+#[cfg_attr(feature = "datom", derive(datom_codec::Datomizable, datom_codec::Composing))]
 pub struct UsageSnapshot {
     pub snapshot_time: SnapshotTime,
+    pub planning_projection: PlanningProjection,
     pub subscription_observations: SubscriptionObservations,
     pub session_context_observations: SessionContextObservations,
 }
