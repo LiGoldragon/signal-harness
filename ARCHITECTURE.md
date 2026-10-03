@@ -50,10 +50,14 @@ model-resolution and session-launch vocabulary the daemon and its callers
 share ahead of the operations that will carry them.
 
 `HarnessDaemonConfiguration` is the harness daemon's typed startup record. It
-imports its socket paths, socket modes and owner identity from
-`signal-persona` and carries the per-instance
+imports the ordinary and engine-management socket paths, their modes and the
+owner identity from `signal-persona`, declares the meta socket
+(`MetaSocketPath`, `MetaSocketMode`) itself, and carries the per-instance
 `HarnessInstanceConfiguration` set, including the Pi RPC JSONL adapter
-configuration.
+configuration. The meta contract has its own socket because a Signal frame is
+the bare rkyv archive of one contract's root, with no contract discriminator:
+`meta-signal-harness` and the `signal-persona` engine-management lifecycle
+cannot share one listener without guessing which contract a frame holds.
 
 ## Usage snapshot
 
@@ -63,26 +67,53 @@ snapshot. It carries no subscription, watch or history.
 - Every provider and session result carries its own `ObservationTime`
   (epoch nanoseconds); the snapshot carries `SnapshotTime`.
 - A provider result is `Observed(SubscriptionUsage)` or
-  `Unavailable(UsageUnavailable)` with a stable `UsageUnavailableReason`; one
-  provider's failure never removes another's result. A Codex result lists the
-  `AccountHomes` that answered for the same account, so same-account homes are
-  one subscription.
+  `Unavailable(UsageUnavailable)` with a stable `UsageUnavailableReason`
+  (`CollectorFailed` when the collector itself failed); one provider's or
+  home's failure never removes another's result.
+- Codex homes that answered for the same account are one
+  `SubscriptionUsage`, listing those `AccountHomes`. That record and its home
+  set are the complete grouping claim: the provider's account identifier is
+  read only to merge homes and is never emitted, and no cross-snapshot account
+  reference is carried.
 - `QuotaLimits` lists every provider-reported limit and each of its windows.
-  Percentages are `UsedBasisPoints` / `RemainingBasisPoints` (hundredths of a
-  percent). `ResetBasis` and `WindowDurationBasis` say where the reset and
-  window length came from: declared by the provider, implied by the
-  provider's window name, or `Unknown`. `AbsoluteLimit` is
-  `NotExposedByProvider`: neither provider reports tokens or money per window.
-- `PaceDerivation` is `Derived(QuotaPace)` only with all its operands in the
-  reply (remaining, seconds until the named reset, window duration) and is
-  `Unknown(PaceUnknownReason)` when an operand is unknown or the reset has
-  passed. `PaceVarianceBasisPoints` is used minus even-pace used: positive
-  means ahead of an even burn.
+  `WindowUsage` holds the window's share in hundredths of a percentage point:
+  `Current(QuotaShare)`; `StaleAfterReset(QuotaShare)`, the values the
+  provider reported for a window whose reset has already passed, never a fresh
+  window; or `Unreadable(UsageUnreadableReason)` when the provider's
+  percentage is absent, not finite, negative or above 100. Neither provider
+  documents an overrun, so a percentage above 100 is unreadable, never clamped.
+  `RemainingBasisPoints` is 10000 minus `UsedBasisPoints`.
+- `ResetBasis` says where the reset came from; `ResetCountdown` is the time
+  until it (`Pending`), the time since it (`Passed`), or `Unknown`. The
+  countdown is its own state: a known reset stays visible when the window's
+  duration is unknown.
+- `WindowDurationBasis` is `ProviderDeclared`, `ProviderWindowNamed` (only the
+  provider's own named windows, such as Claude's `five_hour` and `seven_day`)
+  or `Unknown`. A duration is never inferred from a shared reset time.
+- `AbsoluteLimit` is `NotExposedByProvider`: neither provider reports tokens or
+  money per window.
+- `BudgetDerivation` is `Derived(WallClockBudget)` only when the window is
+  current and its remaining share, its pending reset and its duration are all
+  known; otherwise `Unknown(BudgetUnknownReason)`. A `WallClockBudget` is a
+  one-snapshot wall-clock budget figure, labelled `OneSnapshotWallClock`, not
+  an observed burn: it carries its operands (remaining, seconds until reset,
+  window duration), the remaining share per wall-clock day until the reset, the
+  share an even wall-clock spend would have used by now, and the variance
+  (used minus that even share; positive means more used than an even spend).
 - `UnrecognizedWindowNames` retains provider windows that are present but not
-  understood, rather than dropping them.
+  understood. `UnmodeledSourceFacts` names the provider's present auxiliary
+  allowance, credit and spend/control facts (Claude `extra_usage` and `spend`,
+  Codex `credits`, `spendControlReached`, `rateLimitReachedType` and the like)
+  without modelling them and without making a quota window of them.
+- A context result is `Observed(SessionContext)`,
+  `Unavailable(SessionContextUnavailable)` for one session, or
+  `SourceUnavailable(ContextSourceUnavailable)` for an attempted collector,
+  home or control socket that could not be read, with its cause.
 - `SessionContext` carries `ContextBasis` and `ContextFreshness`
   (`Exact`, `Proxy`, `Superseded`, `Unknown`); a value absent from its source
-  is `None`, never zero.
+  is `None`, never zero. `FlowIdentifier` is present only with an exact,
+  separately witnessed session-to-Flow binding; a session's display name or
+  identifier prefix is not one.
 - No field carries credentials, credential paths, raw provider bodies,
   process arguments or environment contents.
 

@@ -1,14 +1,15 @@
 use signal_harness::{
-    AbsoluteLimit, AdapterExitStatus, AdapterExited, ByteViewable, ClaudeSessionLifecycle,
-    ClaudeSessionObservation, ContextBasis, ContextFreshness, ContextUnavailableReason,
-    DeliveryFailed, DeliveryFailureReason, HarnessDaemonConfiguration,
+    AbsoluteLimit, AdapterExitStatus, AdapterExited, BudgetBasis, BudgetDerivation,
+    BudgetUnknownReason, ByteViewable, ClaudeSessionLifecycle, ClaudeSessionObservation,
+    ContextBasis, ContextFreshness, ContextSourceFailureReason, ContextSourceUnavailable,
+    ContextUnavailableReason, DeliveryFailed, DeliveryFailureReason, HarnessDaemonConfiguration,
     HarnessInstanceConfiguration, HarnessKind, HarnessStreamEvent, HarnessTranscriptToken,
-    MessageDelivery, PaceDerivation, PaceUnknownReason, PiRpcDeliveryMode,
-    PiRpcJsonlAdapterConfiguration, Query, QuotaLimit, QuotaPace, QuotaWindow, ResetBasis,
-    Response, Restorable, SessionContext, SessionContextObservation, SessionContextUnavailable,
-    Signal, Signalizable, SubscriptionObservation, SubscriptionUsage, TranscriptObservation,
-    TurnLaunch, UsageProvider, UsageSnapshot, UsageSource, UsageUnavailable,
-    UsageUnavailableReason, WatchHarnessTranscript, WindowDurationBasis, WindowFreshness,
+    MessageDelivery, PiRpcDeliveryMode, PiRpcJsonlAdapterConfiguration, Query, QuotaLimit,
+    QuotaShare, QuotaWindow, ResetBasis, ResetCountdown, Response, Restorable, SessionContext,
+    SessionContextObservation, SessionContextUnavailable, Signal, Signalizable,
+    SubscriptionObservation, SubscriptionUsage, TranscriptObservation, TurnLaunch, UsageProvider,
+    UsageSnapshot, UsageSource, UsageUnavailable, UsageUnavailableReason, UsageUnreadableReason,
+    WallClockBudget, WatchHarnessTranscript, WindowDurationBasis, WindowUsage,
 };
 use signal_persona::OwnerIdentity;
 
@@ -31,10 +32,13 @@ fn queries() -> Vec<Query> {
     ]
 }
 
-/// One snapshot carrying every value state the reply distinguishes: a derived
-/// pace with its operands, an unknown pace, retained unrecognized windows, a
-/// deduplicated Codex account over two homes, an unavailable provider home, a
-/// proxy context, a superseded context, and an unbound thread.
+/// One snapshot carrying every value state the reply distinguishes: a current
+/// window with its one-snapshot wall-clock budget, a pending reset whose window
+/// duration is unknown, a passed reset whose old values are stale, an
+/// unreadable percentage, retained unrecognized windows and unmodeled source
+/// facts, a deduplicated Codex account over two homes, an unavailable provider
+/// home, a failed context source, a proxy context, a superseded context, and an
+/// unbound thread.
 fn usage_snapshot() -> UsageSnapshot {
     let observed_at = 1_791_600_000_000_000_000;
     UsageSnapshot {
@@ -48,46 +52,68 @@ fn usage_snapshot() -> UsageSnapshot {
                 account_homes: vec![],
                 quota_limits: vec![
                     QuotaLimit {
-                        quota_limit_identifier: "session".into(),
+                        quota_limit_identifier: "five_hour".into(),
                         quota_limit_name_option: None,
                         quota_windows: vec![QuotaWindow {
-                            provider_window_name: "session".into(),
+                            provider_window_name: "five_hour".into(),
                             provider_scope_name_option: None,
-                            used_basis_points: 3300,
-                            remaining_basis_points: 6700,
+                            window_usage: WindowUsage::Current(QuotaShare {
+                                used_basis_points: 3300,
+                                remaining_basis_points: 6700,
+                            }),
                             reset_basis: ResetBasis::ProviderResetTime(1_791_609_599),
+                            reset_countdown: ResetCountdown::Pending(9599),
                             window_duration_basis: WindowDurationBasis::ProviderWindowNamed(300),
                             absolute_limit: AbsoluteLimit::NotExposedByProvider,
-                            window_freshness: WindowFreshness::Current,
-                            pace_derivation: PaceDerivation::Derived(QuotaPace {
+                            budget_derivation: BudgetDerivation::Derived(WallClockBudget {
+                                budget_basis: BudgetBasis::OneSnapshotWallClock,
                                 remaining_basis_points: 6700,
                                 seconds_until_reset: 9599,
                                 window_duration_minutes: 300,
-                                remaining_basis_points_per_day: 60_306,
-                                even_pace_used_basis_points: 4667,
-                                pace_variance_basis_points: -1367,
+                                wall_clock_remaining_basis_points_per_day: 60_306,
+                                wall_clock_even_used_basis_points: 4667,
+                                wall_clock_variance_basis_points: -1367,
                             }),
                         }],
                     },
                     QuotaLimit {
                         quota_limit_identifier: "weekly".into(),
                         quota_limit_name_option: None,
-                        quota_windows: vec![QuotaWindow {
-                            provider_window_name: "weekly_scoped".into(),
-                            provider_scope_name_option: Some("Fable".into()),
-                            used_basis_points: 1200,
-                            remaining_basis_points: 8800,
-                            reset_basis: ResetBasis::ProviderResetTime(1_792_069_199),
-                            window_duration_basis: WindowDurationBasis::Unknown,
-                            absolute_limit: AbsoluteLimit::NotExposedByProvider,
-                            window_freshness: WindowFreshness::Current,
-                            pace_derivation: PaceDerivation::Unknown(
-                                PaceUnknownReason::WindowDurationUnknown,
-                            ),
-                        }],
+                        quota_windows: vec![
+                            QuotaWindow {
+                                provider_window_name: "weekly_scoped".into(),
+                                provider_scope_name_option: Some("Fable".into()),
+                                window_usage: WindowUsage::Current(QuotaShare {
+                                    used_basis_points: 1200,
+                                    remaining_basis_points: 8800,
+                                }),
+                                reset_basis: ResetBasis::ProviderResetTime(1_792_069_199),
+                                reset_countdown: ResetCountdown::Pending(469_199),
+                                window_duration_basis: WindowDurationBasis::Unknown,
+                                absolute_limit: AbsoluteLimit::NotExposedByProvider,
+                                budget_derivation: BudgetDerivation::Unknown(
+                                    BudgetUnknownReason::WindowDurationUnknown,
+                                ),
+                            },
+                            QuotaWindow {
+                                provider_window_name: "weekly_mystery".into(),
+                                provider_scope_name_option: None,
+                                window_usage: WindowUsage::Unreadable(
+                                    UsageUnreadableReason::PercentageAboveFull,
+                                ),
+                                reset_basis: ResetBasis::Unknown,
+                                reset_countdown: ResetCountdown::Unknown,
+                                window_duration_basis: WindowDurationBasis::Unknown,
+                                absolute_limit: AbsoluteLimit::NotExposedByProvider,
+                                budget_derivation: BudgetDerivation::Unknown(
+                                    BudgetUnknownReason::UsageUnreadable,
+                                ),
+                            },
+                        ],
                     },
                 ],
                 unrecognized_window_names: vec!["tangelo".into()],
+                unmodeled_source_facts: vec!["extra_usage".into(), "spend".into()],
             }),
             SubscriptionObservation::Observed(SubscriptionUsage {
                 usage_provider: UsageProvider::Codex,
@@ -101,16 +127,21 @@ fn usage_snapshot() -> UsageSnapshot {
                     quota_windows: vec![QuotaWindow {
                         provider_window_name: "primary".into(),
                         provider_scope_name_option: None,
-                        used_basis_points: 2200,
-                        remaining_basis_points: 7800,
+                        window_usage: WindowUsage::StaleAfterReset(QuotaShare {
+                            used_basis_points: 2200,
+                            remaining_basis_points: 7800,
+                        }),
                         reset_basis: ResetBasis::ProviderResetTime(1_791_580_388),
+                        reset_countdown: ResetCountdown::Passed(19_612),
                         window_duration_basis: WindowDurationBasis::ProviderDeclared(10_080),
                         absolute_limit: AbsoluteLimit::NotExposedByProvider,
-                        window_freshness: WindowFreshness::ResetPassed,
-                        pace_derivation: PaceDerivation::Unknown(PaceUnknownReason::ResetPassed),
+                        budget_derivation: BudgetDerivation::Unknown(
+                            BudgetUnknownReason::ResetPassed,
+                        ),
                     }],
                 }],
                 unrecognized_window_names: vec![],
+                unmodeled_source_facts: vec!["codex.credits".into()],
             }),
             SubscriptionObservation::Unavailable(UsageUnavailable {
                 usage_provider: UsageProvider::Codex,
@@ -123,7 +154,7 @@ fn usage_snapshot() -> UsageSnapshot {
             SessionContextObservation::Observed(SessionContext {
                 usage_provider: UsageProvider::Claude,
                 session_identifier: "28d847ee-f350-4a24-8cb0-0e88abf16cbe".into(),
-                flow_identifier_option: Some("28d847".into()),
+                flow_identifier_option: None,
                 session_name_option: Some("Psyche.{ Opus 28d847 }".into()),
                 model_identifier_option: Some("claude-opus-5-5".into()),
                 observation_time: observed_at,
@@ -153,6 +184,12 @@ fn usage_snapshot() -> UsageSnapshot {
                 session_identifier: "01a0fdcb-9409-7ba1-a656-a647de94a94b".into(),
                 observation_time: observed_at,
                 context_unavailable_reason: ContextUnavailableReason::ThreadUnbound,
+            }),
+            SessionContextObservation::SourceUnavailable(ContextSourceUnavailable {
+                usage_provider: UsageProvider::Codex,
+                account_home_option: Some(".codex".into()),
+                observation_time: observed_at,
+                context_source_failure_reason: ContextSourceFailureReason::TransportTimedOut,
             }),
         ],
     }
@@ -203,6 +240,8 @@ fn configuration() -> HarnessDaemonConfiguration {
     HarnessDaemonConfiguration {
         domain_socket_path: "/run/persona/harness.sock".into(),
         domain_socket_mode: 0o600,
+        meta_socket_path: "/run/persona/meta-harness.sock".into(),
+        meta_socket_mode: 0o600,
         engine_management_socket_path: "/run/persona/harness-meta.sock".into(),
         engine_management_socket_mode: 0o600,
         owner_identity: OwnerIdentity::UnixUser(1000),

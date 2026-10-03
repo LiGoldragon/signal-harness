@@ -516,11 +516,17 @@ pub struct HarnessInstanceConfiguration {
 #[rustfmt::skip]
 pub type HarnessInstanceConfigurations = std::vec::Vec<HarnessInstanceConfiguration>;
 #[rustfmt::skip]
+pub type MetaSocketPath = String;
+#[rustfmt::skip]
+pub type MetaSocketMode = i64;
+#[rustfmt::skip]
 #[derive(rkyv::Archive, rkyv::Serialize, rkyv::Deserialize, Clone, Debug, PartialEq)]
 #[cfg_attr(feature = "datom", derive(datom_codec::Datomizable, datom_codec::Composing))]
 pub struct HarnessDaemonConfiguration {
     pub domain_socket_path: signal_persona::DomainSocketPath,
     pub domain_socket_mode: signal_persona::DomainSocketMode,
+    pub meta_socket_path: MetaSocketPath,
+    pub meta_socket_mode: MetaSocketMode,
     pub engine_management_socket_path: signal_persona::EngineManagementSocketPath,
     pub engine_management_socket_mode: signal_persona::EngineManagementSocketMode,
     pub owner_identity: signal_persona::OwnerIdentity,
@@ -563,21 +569,39 @@ pub type ProviderScopeName = String;
 #[rustfmt::skip]
 pub type UnrecognizedWindowNames = std::vec::Vec<ProviderWindowName>;
 #[rustfmt::skip]
+pub type SourceFactName = String;
+#[rustfmt::skip]
+pub type UnmodeledSourceFacts = std::vec::Vec<SourceFactName>;
+#[rustfmt::skip]
 pub type UsedBasisPoints = i64;
 #[rustfmt::skip]
 pub type RemainingBasisPoints = i64;
 #[rustfmt::skip]
+#[derive(rkyv::Archive, rkyv::Serialize, rkyv::Deserialize, Clone, Debug, PartialEq)]
+#[cfg_attr(feature = "datom", derive(datom_codec::Datomizable, datom_codec::Composing))]
+pub struct QuotaShare {
+    pub used_basis_points: UsedBasisPoints,
+    pub remaining_basis_points: RemainingBasisPoints,
+}
+#[rustfmt::skip]
+#[derive(rkyv::Archive, rkyv::Serialize, rkyv::Deserialize, Clone, Debug, PartialEq)]
+#[cfg_attr(feature = "datom", derive(datom_codec::Datomizable, datom_codec::Composing))]
+pub enum UsageUnreadableReason {
+    PercentageAbsent,
+    PercentageNotFinite,
+    PercentageNegative,
+    PercentageAboveFull,
+}
+#[rustfmt::skip]
+#[derive(rkyv::Archive, rkyv::Serialize, rkyv::Deserialize, Clone, Debug, PartialEq)]
+#[cfg_attr(feature = "datom", derive(datom_codec::Datomizable, datom_codec::Composing))]
+pub enum WindowUsage {
+    Current(QuotaShare),
+    StaleAfterReset(QuotaShare),
+    Unreadable(UsageUnreadableReason),
+}
+#[rustfmt::skip]
 pub type ResetEpochSecond = i64;
-#[rustfmt::skip]
-pub type WindowDurationMinutes = i64;
-#[rustfmt::skip]
-pub type SecondsUntilReset = i64;
-#[rustfmt::skip]
-pub type RemainingBasisPointsPerDay = i64;
-#[rustfmt::skip]
-pub type EvenPaceUsedBasisPoints = i64;
-#[rustfmt::skip]
-pub type PaceVarianceBasisPoints = i64;
 #[rustfmt::skip]
 #[derive(rkyv::Archive, rkyv::Serialize, rkyv::Deserialize, Clone, Debug, PartialEq)]
 #[cfg_attr(feature = "datom", derive(datom_codec::Datomizable, datom_codec::Composing))]
@@ -585,6 +609,20 @@ pub enum ResetBasis {
     ProviderResetTime(ResetEpochSecond),
     Unknown,
 }
+#[rustfmt::skip]
+pub type SecondsUntilReset = i64;
+#[rustfmt::skip]
+pub type SecondsSinceReset = i64;
+#[rustfmt::skip]
+#[derive(rkyv::Archive, rkyv::Serialize, rkyv::Deserialize, Clone, Debug, PartialEq)]
+#[cfg_attr(feature = "datom", derive(datom_codec::Datomizable, datom_codec::Composing))]
+pub enum ResetCountdown {
+    Pending(SecondsUntilReset),
+    Passed(SecondsSinceReset),
+    Unknown,
+}
+#[rustfmt::skip]
+pub type WindowDurationMinutes = i64;
 #[rustfmt::skip]
 #[derive(rkyv::Archive, rkyv::Serialize, rkyv::Deserialize, Clone, Debug, PartialEq)]
 #[cfg_attr(feature = "datom", derive(datom_codec::Datomizable, datom_codec::Composing))]
@@ -602,36 +640,43 @@ pub enum AbsoluteLimit {
 #[rustfmt::skip]
 #[derive(rkyv::Archive, rkyv::Serialize, rkyv::Deserialize, Clone, Debug, PartialEq)]
 #[cfg_attr(feature = "datom", derive(datom_codec::Datomizable, datom_codec::Composing))]
-pub enum WindowFreshness {
-    Current,
-    ResetPassed,
+pub enum BudgetBasis {
+    OneSnapshotWallClock,
+}
+#[rustfmt::skip]
+pub type WallClockRemainingBasisPointsPerDay = i64;
+#[rustfmt::skip]
+pub type WallClockEvenUsedBasisPoints = i64;
+#[rustfmt::skip]
+pub type WallClockVarianceBasisPoints = i64;
+#[rustfmt::skip]
+#[derive(rkyv::Archive, rkyv::Serialize, rkyv::Deserialize, Clone, Debug, PartialEq)]
+#[cfg_attr(feature = "datom", derive(datom_codec::Datomizable, datom_codec::Composing))]
+pub struct WallClockBudget {
+    pub budget_basis: BudgetBasis,
+    pub remaining_basis_points: RemainingBasisPoints,
+    pub seconds_until_reset: SecondsUntilReset,
+    pub window_duration_minutes: WindowDurationMinutes,
+    pub wall_clock_remaining_basis_points_per_day: WallClockRemainingBasisPointsPerDay,
+    pub wall_clock_even_used_basis_points: WallClockEvenUsedBasisPoints,
+    pub wall_clock_variance_basis_points: WallClockVarianceBasisPoints,
 }
 #[rustfmt::skip]
 #[derive(rkyv::Archive, rkyv::Serialize, rkyv::Deserialize, Clone, Debug, PartialEq)]
 #[cfg_attr(feature = "datom", derive(datom_codec::Datomizable, datom_codec::Composing))]
-pub enum PaceUnknownReason {
+pub enum BudgetUnknownReason {
+    UsageUnreadable,
     ResetUnknown,
-    WindowDurationUnknown,
     ResetPassed,
+    WindowDurationUnknown,
     ResetBeyondWindow,
 }
 #[rustfmt::skip]
 #[derive(rkyv::Archive, rkyv::Serialize, rkyv::Deserialize, Clone, Debug, PartialEq)]
 #[cfg_attr(feature = "datom", derive(datom_codec::Datomizable, datom_codec::Composing))]
-pub struct QuotaPace {
-    pub remaining_basis_points: RemainingBasisPoints,
-    pub seconds_until_reset: SecondsUntilReset,
-    pub window_duration_minutes: WindowDurationMinutes,
-    pub remaining_basis_points_per_day: RemainingBasisPointsPerDay,
-    pub even_pace_used_basis_points: EvenPaceUsedBasisPoints,
-    pub pace_variance_basis_points: PaceVarianceBasisPoints,
-}
-#[rustfmt::skip]
-#[derive(rkyv::Archive, rkyv::Serialize, rkyv::Deserialize, Clone, Debug, PartialEq)]
-#[cfg_attr(feature = "datom", derive(datom_codec::Datomizable, datom_codec::Composing))]
-pub enum PaceDerivation {
-    Derived(QuotaPace),
-    Unknown(PaceUnknownReason),
+pub enum BudgetDerivation {
+    Derived(WallClockBudget),
+    Unknown(BudgetUnknownReason),
 }
 #[rustfmt::skip]
 #[derive(rkyv::Archive, rkyv::Serialize, rkyv::Deserialize, Clone, Debug, PartialEq)]
@@ -639,13 +684,12 @@ pub enum PaceDerivation {
 pub struct QuotaWindow {
     pub provider_window_name: ProviderWindowName,
     pub provider_scope_name_option: Option<ProviderScopeName>,
-    pub used_basis_points: UsedBasisPoints,
-    pub remaining_basis_points: RemainingBasisPoints,
+    pub window_usage: WindowUsage,
     pub reset_basis: ResetBasis,
+    pub reset_countdown: ResetCountdown,
     pub window_duration_basis: WindowDurationBasis,
     pub absolute_limit: AbsoluteLimit,
-    pub window_freshness: WindowFreshness,
-    pub pace_derivation: PaceDerivation,
+    pub budget_derivation: BudgetDerivation,
 }
 #[rustfmt::skip]
 pub type QuotaWindows = std::vec::Vec<QuotaWindow>;
@@ -670,6 +714,7 @@ pub struct SubscriptionUsage {
     pub account_homes: AccountHomes,
     pub quota_limits: QuotaLimits,
     pub unrecognized_window_names: UnrecognizedWindowNames,
+    pub unmodeled_source_facts: UnmodeledSourceFacts,
 }
 #[rustfmt::skip]
 #[derive(rkyv::Archive, rkyv::Serialize, rkyv::Deserialize, Clone, Debug, PartialEq)]
@@ -683,6 +728,7 @@ pub enum UsageUnavailableReason {
     TransportTimedOut,
     ProviderRejected,
     ProviderResponseUnreadable,
+    CollectorFailed,
 }
 #[rustfmt::skip]
 #[derive(rkyv::Archive, rkyv::Serialize, rkyv::Deserialize, Clone, Debug, PartialEq)]
@@ -769,9 +815,33 @@ pub struct SessionContextUnavailable {
 #[rustfmt::skip]
 #[derive(rkyv::Archive, rkyv::Serialize, rkyv::Deserialize, Clone, Debug, PartialEq)]
 #[cfg_attr(feature = "datom", derive(datom_codec::Datomizable, datom_codec::Composing))]
+pub enum ContextSourceFailureReason {
+    RegistryAbsent,
+    RegistryUnreadable,
+    RegistryEntryUnreadable,
+    NoLiveControlSocket,
+    TransportFailed,
+    TransportTimedOut,
+    ProviderRejected,
+    ProviderResponseUnreadable,
+    CollectorFailed,
+}
+#[rustfmt::skip]
+#[derive(rkyv::Archive, rkyv::Serialize, rkyv::Deserialize, Clone, Debug, PartialEq)]
+#[cfg_attr(feature = "datom", derive(datom_codec::Datomizable, datom_codec::Composing))]
+pub struct ContextSourceUnavailable {
+    pub usage_provider: UsageProvider,
+    pub account_home_option: Option<AccountHome>,
+    pub observation_time: ObservationTime,
+    pub context_source_failure_reason: ContextSourceFailureReason,
+}
+#[rustfmt::skip]
+#[derive(rkyv::Archive, rkyv::Serialize, rkyv::Deserialize, Clone, Debug, PartialEq)]
+#[cfg_attr(feature = "datom", derive(datom_codec::Datomizable, datom_codec::Composing))]
 pub enum SessionContextObservation {
     Observed(SessionContext),
     Unavailable(SessionContextUnavailable),
+    SourceUnavailable(ContextSourceUnavailable),
 }
 #[rustfmt::skip]
 pub type SessionContextObservations = std::vec::Vec<SessionContextObservation>;

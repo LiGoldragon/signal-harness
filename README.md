@@ -11,8 +11,8 @@ projection of every contract type.
 
 Three roots carry the traffic:
 
-- `Query` — the six router-initiated operations.
-- `Response` — the eighteen harness-initiated replies and observations.
+- `Query` — the seven router- and CLI-initiated operations.
+- `Response` — the nineteen harness-initiated replies and observations.
 - `HarnessStreamEvent` — the per-subscription transcript observations.
 
 `HarnessDaemonConfiguration` is the harness daemon's typed startup record —

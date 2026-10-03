@@ -118,7 +118,9 @@ Signal
   PiRpcJsonlAdapterConfiguration.{ PiRpcCommandPath PiRpcSessionDirectoryPath Option<PiRpcModelPattern> PiRpcDeliveryMode }
   HarnessInstanceConfiguration.{ HarnessName HarnessKind Option<TerminalSocketPath> Option<PiRpcJsonlAdapterConfiguration> }
   HarnessInstanceConfigurations.Vector<HarnessInstanceConfiguration>
-  HarnessDaemonConfiguration.{ DomainSocketPath DomainSocketMode EngineManagementSocketPath EngineManagementSocketMode OwnerIdentity HarnessInstanceConfigurations }
+  MetaSocketPath.String
+  MetaSocketMode.Integer
+  HarnessDaemonConfiguration.{ DomainSocketPath DomainSocketMode MetaSocketPath MetaSocketMode EngineManagementSocketPath EngineManagementSocketMode OwnerIdentity HarnessInstanceConfigurations }
   UsageProvider.[ Claude Codex ]
   UsageSource.[ ClaudeOauthUsageEndpoint CodexAppServerRateLimits ]
   SnapshotTime.Integer
@@ -132,27 +134,34 @@ Signal
   ProviderWindowName.String
   ProviderScopeName.String
   UnrecognizedWindowNames.Vector<ProviderWindowName>
+  SourceFactName.String
+  UnmodeledSourceFacts.Vector<SourceFactName>
   UsedBasisPoints.Integer
   RemainingBasisPoints.Integer
+  QuotaShare.{ UsedBasisPoints RemainingBasisPoints }
+  UsageUnreadableReason.[ PercentageAbsent PercentageNotFinite PercentageNegative PercentageAboveFull ]
+  WindowUsage.[ Current.QuotaShare StaleAfterReset.QuotaShare Unreadable.UsageUnreadableReason ]
   ResetEpochSecond.Integer
-  WindowDurationMinutes.Integer
-  SecondsUntilReset.Integer
-  RemainingBasisPointsPerDay.Integer
-  EvenPaceUsedBasisPoints.Integer
-  PaceVarianceBasisPoints.Integer
   ResetBasis.[ ProviderResetTime.ResetEpochSecond Unknown ]
+  SecondsUntilReset.Integer
+  SecondsSinceReset.Integer
+  ResetCountdown.[ Pending.SecondsUntilReset Passed.SecondsSinceReset Unknown ]
+  WindowDurationMinutes.Integer
   WindowDurationBasis.[ ProviderDeclared.WindowDurationMinutes ProviderWindowNamed.WindowDurationMinutes Unknown ]
   AbsoluteLimit.[ NotExposedByProvider ]
-  WindowFreshness.[ Current ResetPassed ]
-  PaceUnknownReason.[ ResetUnknown WindowDurationUnknown ResetPassed ResetBeyondWindow ]
-  QuotaPace.{ RemainingBasisPoints SecondsUntilReset WindowDurationMinutes RemainingBasisPointsPerDay EvenPaceUsedBasisPoints PaceVarianceBasisPoints }
-  PaceDerivation.[ Derived.QuotaPace Unknown.PaceUnknownReason ]
-  QuotaWindow.{ ProviderWindowName Option<ProviderScopeName> UsedBasisPoints RemainingBasisPoints ResetBasis WindowDurationBasis AbsoluteLimit WindowFreshness PaceDerivation }
+  BudgetBasis.[ OneSnapshotWallClock ]
+  WallClockRemainingBasisPointsPerDay.Integer
+  WallClockEvenUsedBasisPoints.Integer
+  WallClockVarianceBasisPoints.Integer
+  WallClockBudget.{ BudgetBasis RemainingBasisPoints SecondsUntilReset WindowDurationMinutes WallClockRemainingBasisPointsPerDay WallClockEvenUsedBasisPoints WallClockVarianceBasisPoints }
+  BudgetUnknownReason.[ UsageUnreadable ResetUnknown ResetPassed WindowDurationUnknown ResetBeyondWindow ]
+  BudgetDerivation.[ Derived.WallClockBudget Unknown.BudgetUnknownReason ]
+  QuotaWindow.{ ProviderWindowName Option<ProviderScopeName> WindowUsage ResetBasis ResetCountdown WindowDurationBasis AbsoluteLimit BudgetDerivation }
   QuotaWindows.Vector<QuotaWindow>
   QuotaLimit.{ QuotaLimitIdentifier Option<QuotaLimitName> QuotaWindows }
   QuotaLimits.Vector<QuotaLimit>
-  SubscriptionUsage.{ UsageProvider UsageSource ObservationTime Option<PlanName> AccountHomes QuotaLimits UnrecognizedWindowNames }
-  UsageUnavailableReason.[ CredentialsAbsent CredentialsUnreadable AccessTokenExpired NoLiveControlSocket TransportFailed TransportTimedOut ProviderRejected ProviderResponseUnreadable ]
+  SubscriptionUsage.{ UsageProvider UsageSource ObservationTime Option<PlanName> AccountHomes QuotaLimits UnrecognizedWindowNames UnmodeledSourceFacts }
+  UsageUnavailableReason.[ CredentialsAbsent CredentialsUnreadable AccessTokenExpired NoLiveControlSocket TransportFailed TransportTimedOut ProviderRejected ProviderResponseUnreadable CollectorFailed ]
   UsageUnavailable.{ UsageProvider ObservationTime Option<AccountHome> UsageUnavailableReason }
   SubscriptionObservation.[ Observed.SubscriptionUsage Unavailable.UsageUnavailable ]
   SubscriptionObservations.Vector<SubscriptionObservation>
@@ -167,6 +176,8 @@ Signal
   SessionContext.{ UsageProvider SessionIdentifier Option<FlowIdentifier> Option<SessionName> Option<ModelIdentifier> ObservationTime Option<EventTime> ContextBasis ContextFreshness Option<ContextTokens> Option<ContextWindowTokens> Option<ContextUsedBasisPoints> }
   ContextUnavailableReason.[ ThreadUnbound TranscriptAbsent TranscriptUnreadable TransportFailed TransportTimedOut ]
   SessionContextUnavailable.{ UsageProvider SessionIdentifier ObservationTime ContextUnavailableReason }
-  SessionContextObservation.[ Observed.SessionContext Unavailable.SessionContextUnavailable ]
+  ContextSourceFailureReason.[ RegistryAbsent RegistryUnreadable RegistryEntryUnreadable NoLiveControlSocket TransportFailed TransportTimedOut ProviderRejected ProviderResponseUnreadable CollectorFailed ]
+  ContextSourceUnavailable.{ UsageProvider Option<AccountHome> ObservationTime ContextSourceFailureReason }
+  SessionContextObservation.[ Observed.SessionContext Unavailable.SessionContextUnavailable SourceUnavailable.ContextSourceUnavailable ]
   SessionContextObservations.Vector<SessionContextObservation>
   UsageSnapshot.{ SnapshotTime SubscriptionObservations SessionContextObservations } ]
