@@ -4,16 +4,16 @@ use signal_harness::{
     ContextSourceUnavailable, ContextUnavailableReason, DeliveryFailed, DeliveryFailureReason,
     ElapsedUnknownReason, ElapsedWindowDerivation, ElapsedWindowPosition,
     HarnessDaemonConfiguration, HarnessInstanceConfiguration, HarnessKind, HarnessStreamEvent,
-    HarnessTranscriptToken, LocalReset, LocalResetTime, LocalResetUnknownReason, MessageDelivery,
-    PeriodSemantics, PiRpcDeliveryMode, PiRpcJsonlAdapterConfiguration, PlanningProjection, Query,
-    QuotaLimit, QuotaShare, QuotaWindow, RateBasis, RateRounding, RemainderByResetRate,
-    RemainderRateDerivation, RemainderRateUnknownReason, ResetBasis, ResetCountdown, Response,
-    Restorable, SessionContext, SessionContextObservation, SessionContextUnavailable,
-    ShareConversion, Signal, Signalizable, SubscriptionObservation, SubscriptionUsage,
-    TranscriptObservation, TurnLaunch, UniformRateDerivation, UniformRateUnknownReason,
-    UniformWindowRate, UsageProvider, UsageSnapshot, UsageSource, UsageUnavailable,
-    UsageUnavailableReason, UsageUnreadableReason, WatchHarnessTranscript, WindowDurationBasis,
-    WindowUsage,
+    HarnessTranscriptEvent, HarnessTranscriptToken, LocalReset, LocalResetTime,
+    LocalResetUnknownReason, MessageDelivery, PeriodSemantics, PiRpcDeliveryMode,
+    PiRpcJsonlAdapterConfiguration, PlanningProjection, Query, QuotaLimit, QuotaShare, QuotaWindow,
+    RateBasis, RateRounding, RemainderByResetRate, RemainderRateDerivation,
+    RemainderRateUnknownReason, ResetBasis, ResetCountdown, Response, Restorable, SessionContext,
+    SessionContextObservation, SessionContextUnavailable, ShareConversion, Signal, Signalizable,
+    SubscriptionObservation, SubscriptionUsage, TranscriptObservation, TurnLaunch,
+    UniformRateDerivation, UniformRateUnknownReason, UniformWindowRate, UsageProvider,
+    UsageSnapshot, UsageSource, UsageUnavailable, UsageUnavailableReason, UsageUnreadableReason,
+    WatchHarnessTranscript, WindowDurationBasis, WindowUsage,
 };
 use signal_persona::OwnerIdentity;
 
@@ -278,6 +278,19 @@ fn responses() -> Vec<Response> {
             adapter_exit_status: AdapterExitStatus::Success,
         }),
         Response::UsageSnapshot(usage_snapshot()),
+        Response::HarnessTranscriptEvent(HarnessTranscriptEvent {
+            harness_transcript_token: HarnessTranscriptToken {
+                harness_name: "claude".into(),
+                harness_transcript_subscription_identifier: 3,
+            },
+            harness_stream_event: HarnessStreamEvent::TranscriptObservation(
+                TranscriptObservation {
+                    harness_name: "claude".into(),
+                    harness_transcript_sequence: 44,
+                    transcript_line: "> jj st".into(),
+                },
+            ),
+        }),
     ]
 }
 
@@ -461,8 +474,8 @@ fn every_canonical_datom_line_actualizes_into_a_contract_head() {
         );
     }
     assert_eq!(
-        lines, 28,
-        "canonical file should carry twenty-eight contract heads"
+        lines, 29,
+        "canonical file should carry twenty-nine contract heads"
     );
 }
 

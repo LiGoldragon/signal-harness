@@ -99,6 +99,7 @@ pub enum HarnessOperationKind {
     QueryHarnessStatus,
     WatchTranscript,
     UnwatchTranscript,
+    ReadUsageSnapshot,
 }
 #[rustfmt::skip]
 #[derive(rkyv::Archive, rkyv::Serialize, rkyv::Deserialize, Clone, Debug, PartialEq)]
@@ -476,6 +477,13 @@ pub struct ClaudeSessionObservation {
 pub enum HarnessStreamEvent {
     TranscriptObservation(TranscriptObservation),
     ClaudeSessionObservation(ClaudeSessionObservation),
+}
+#[rustfmt::skip]
+#[derive(rkyv::Archive, rkyv::Serialize, rkyv::Deserialize, Clone, Debug, PartialEq)]
+#[cfg_attr(feature = "datom", derive(datom_codec::Datomizable, datom_codec::Composing))]
+pub struct HarnessTranscriptEvent {
+    pub harness_transcript_token: HarnessTranscriptToken,
+    pub harness_stream_event: HarnessStreamEvent,
 }
 #[rustfmt::skip]
 pub type TerminalSocketPath = String;
@@ -1002,4 +1010,5 @@ pub enum Response {
     HarnessTranscriptSnapshot(HarnessTranscriptSnapshot),
     HarnessSubscriptionRetracted(HarnessSubscriptionRetracted),
     UsageSnapshot(UsageSnapshot),
+    HarnessTranscriptEvent(HarnessTranscriptEvent),
 }

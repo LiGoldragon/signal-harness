@@ -13,8 +13,12 @@ is open.
 ## Surface
 
 `ethos/signal.ethos` is the single source of the contract. Its request root
-generates `Query`, its reply root generates `Response`, and the declared
-`HarnessStreamEvent` enum carries the per-subscription stream.
+generates `Query` and its reply root generates `Response`. The declared
+`HarnessStreamEvent` enum is the per-subscription stream's payload; it rides
+the wire inside the `Response::HarnessTranscriptEvent` reply with the token of
+the subscription it belongs to, so every frame the daemon writes on a
+connection is one `Response` archive and two subscriptions on one connection
+stay distinguishable.
 
 | Request | Meaning |
 |---|---|
@@ -37,6 +41,7 @@ generates `Query`, its reply root generates `Response`, and the declared
 | `HarnessTranscriptSnapshot` | A subscription opened; carries its token and the current sequence. |
 | `HarnessSubscriptionRetracted` | The subscription the token names is closed. |
 | `UsageSnapshot` | One read-only usage snapshot: per-provider `SubscriptionObservation`s and per-session `SessionContextObservation`s. |
+| `HarnessTranscriptEvent` | One `HarnessStreamEvent` on the open transcript subscription its `HarnessTranscriptToken` names. |
 
 | Stream event | Meaning |
 |---|---|
@@ -147,10 +152,17 @@ is hand-written for a declared type.
 A bare ethos enum variant whose name matches a declared type generates a
 payload-carrying variant. `HarnessOperationKind` is a pure tag, so its variants
 are named `DeliverMessage`, `PromptInteraction`, `CancelDelivery`,
-`QueryHarnessStatus`, `WatchTranscript`, `UnwatchTranscript` — names that are
+`QueryHarnessStatus`, `WatchTranscript`, `UnwatchTranscript`, `ReadUsageSnapshot` — names that are
 not themselves declared types.
 
 ## Frames
+
+One request is one length-prefixed `signal` frame holding the rkyv archive of
+`Query`; one answer, and each later event on a watched connection, is one
+frame of `Response`. A frame carries no envelope, exchange identifier or
+contract discriminator: the root heads discriminate, the connection
+correlates, and on a watch connection the replies keep the order in which the
+daemon wrote them.
 
 `src/lib.rs` carries the portable frame surface only: `Signal<T>`,
 `Signalizable`, `ByteViewable`, and `Restorable<T>`. Archiving is rkyv;

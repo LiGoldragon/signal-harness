@@ -17,8 +17,9 @@
 //! Transcript watching opens a per-subscription flow: `WatchHarnessTranscript`
 //! is answered with a `HarnessTranscriptSnapshot` carrying the
 //! `HarnessTranscriptToken`, the token's observations arrive as
-//! [`HarnessStreamEvent`] frames, and `UnwatchHarnessTranscript` closes the
-//! subscription.
+//! `Response::HarnessTranscriptEvent` replies, each carrying its token, on the
+//! same connection, and
+//! `UnwatchHarnessTranscript` closes the subscription.
 //!
 //! `HarnessDaemonConfiguration` is the harness daemon's typed startup record —
 //! the binary configuration message the Persona manager encodes, never flags.

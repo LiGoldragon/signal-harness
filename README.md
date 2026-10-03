@@ -9,11 +9,13 @@ committed `src/generated/signal.rs` matches a fresh `ethos-zero` generation.
 The wire is binary rkyv. The optional `datom` feature adds the Datom text
 projection of every contract type.
 
-Three roots carry the traffic:
+Two roots carry the traffic:
 
 - `Query` — the seven router- and CLI-initiated operations.
-- `Response` — the nineteen harness-initiated replies and observations.
-- `HarnessStreamEvent` — the per-subscription transcript observations.
+- `Response` — the twenty harness-initiated replies and observations, transcript
+  stream events among them.
+- `HarnessStreamEvent` — the per-subscription transcript observation a
+  `Response::HarnessTranscriptEvent` reply carries with its token.
 
 `HarnessDaemonConfiguration` is the harness daemon's typed startup record —
 the binary configuration message the Persona manager encodes, never flags.

@@ -25,7 +25,8 @@ Signal
   AdapterExited.AdapterExited
   HarnessTranscriptSnapshot.HarnessTranscriptSnapshot
   HarnessSubscriptionRetracted.HarnessSubscriptionRetracted
-  UsageSnapshot.UsageSnapshot ]
+  UsageSnapshot.UsageSnapshot
+  HarnessTranscriptEvent.HarnessTranscriptEvent ]
 [ HarnessName.String
   HarnessKind.[ Codex Claude Pi Fixture ]
   MessageSender.String
@@ -44,7 +45,7 @@ Signal
   DeliveryFailed.{ HarnessName MessageSlot DeliveryFailureReason }
   InteractionChoice.String
   InteractionResolved.{ HarnessName InteractionIdentifier InteractionChoice }
-  HarnessOperationKind.[ DeliverMessage PromptInteraction CancelDelivery QueryHarnessStatus WatchTranscript UnwatchTranscript ]
+  HarnessOperationKind.[ DeliverMessage PromptInteraction CancelDelivery QueryHarnessStatus WatchTranscript UnwatchTranscript ReadUsageSnapshot ]
   HarnessUnimplementedReason.[ NotBuiltYet DependencyTrackNotLanded ]
   HarnessRequestUnimplemented.{ HarnessName HarnessOperationKind HarnessUnimplementedReason }
   HarnessHealth.[ Running Degraded Stopped ]
@@ -110,6 +111,7 @@ Signal
   ClaudeSessionLifecycle.[ Ready Active Completed Exited.AdapterExitStatus ]
   ClaudeSessionObservation.{ HarnessName Option<ClaudeSessionIdentifier> Option<ClaudeModel> TurnLaunch ReachedEndOfTurn StreamedEventCount ToolCallCount StatusTransitionCount Option<TranscriptPath> Option<AssistantResponseText> Option<ContextTokens> TimestampNanoseconds ClaudeSessionLifecycle }
   HarnessStreamEvent.[ TranscriptObservation.TranscriptObservation ClaudeSessionObservation.ClaudeSessionObservation ]
+  HarnessTranscriptEvent.{ HarnessTranscriptToken HarnessStreamEvent }
   TerminalSocketPath.String
   PiRpcCommandPath.String
   PiRpcSessionDirectoryPath.String
