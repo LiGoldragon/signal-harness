@@ -20,17 +20,18 @@ use signal_persona::OwnerIdentity;
 fn queries() -> Vec<Query> {
     vec![
         Query::MessageDelivery(MessageDelivery {
-            harness_name: "claude".into(),
-            message_sender: "operator".into(),
-            message_body: "rebase onto main, please".into(),
-            message_slot: 7,
+            harness_name: signal_harness::HarnessName("claude".into()),
+            message_sender: signal_harness::MessageSender("operator".into()),
+            message_body: signal_harness::MessageBody("rebase onto main, please".into()),
+            message_slot: signal_harness::MessageSlot(7),
         }),
         Query::WatchHarnessTranscript(WatchHarnessTranscript {
-            harness_name: "claude".into(),
+            harness_name: signal_harness::HarnessName("claude".into()),
         }),
         Query::UnwatchHarnessTranscript(HarnessTranscriptToken {
-            harness_name: "claude".into(),
-            harness_transcript_subscription_identifier: 3,
+            harness_name: signal_harness::HarnessName("claude".into()),
+            harness_transcript_subscription_identifier:
+                signal_harness::HarnessTranscriptSubscriptionIdentifier(3),
         }),
         Query::UsageSnapshotQuery,
     ]
@@ -46,85 +47,115 @@ fn queries() -> Vec<Query> {
 /// unbound thread.
 fn share(used: i64) -> QuotaShare {
     QuotaShare {
-        used_basis_points: used,
-        remaining_basis_points: 10_000 - used,
+        used_basis_points: signal_harness::UsedBasisPoints(used),
+        remaining_basis_points: signal_harness::RemainingBasisPoints(10_000 - used),
         share_conversion: ShareConversion::ProviderPercentRoundedToBasisPoint,
     }
 }
 
 fn local(date_time: &str) -> LocalReset {
     LocalReset::Rendered(LocalResetTime {
-        local_date_time: date_time.into(),
-        timezone_name: "America/Mexico_City".into(),
-        utc_offset_seconds: -21_600,
+        local_date_time: signal_harness::LocalDateTime(date_time.into()),
+        timezone_name: signal_harness::TimezoneName("America/Mexico_City".into()),
+        utc_offset_seconds: signal_harness::UtcOffsetSeconds(-21_600),
     })
 }
 
 fn usage_snapshot() -> UsageSnapshot {
     let observed_at = 1_791_600_000_000_000_000;
     UsageSnapshot {
-        snapshot_time: observed_at,
+        snapshot_time: signal_harness::SnapshotTime(observed_at),
         planning_projection: PlanningProjection::NotConfigured,
-        subscription_observations: vec![
+        subscription_observations: signal_harness::SubscriptionObservations(vec![
             SubscriptionObservation::Observed(SubscriptionUsage {
                 usage_provider: UsageProvider::Claude,
                 usage_source: UsageSource::ClaudeOauthUsageEndpoint,
-                observation_time: observed_at,
-                plan_name_option: Some("max".into()),
-                account_homes: vec![],
-                quota_limits: vec![
+                observation_time: signal_harness::ObservationTime(observed_at),
+                plan_name_option: Some(signal_harness::PlanName("max".into())),
+                account_homes: signal_harness::AccountHomes(vec![]),
+                quota_limits: signal_harness::QuotaLimits(vec![
                     QuotaLimit {
-                        quota_limit_identifier: "five_hour".into(),
+                        quota_limit_identifier: signal_harness::QuotaLimitIdentifier(
+                            "five_hour".into(),
+                        ),
                         quota_limit_name_option: None,
-                        quota_windows: vec![QuotaWindow {
-                            provider_window_name: "five_hour".into(),
+                        quota_windows: signal_harness::QuotaWindows(vec![QuotaWindow {
+                            provider_window_name: signal_harness::ProviderWindowName(
+                                "five_hour".into(),
+                            ),
                             provider_scope_name_option: None,
                             window_usage: WindowUsage::Current(share(3300)),
-                            reset_basis: ResetBasis::ProviderResetTime(1_791_609_599),
-                            reset_countdown: ResetCountdown::Pending(9599),
+                            reset_basis: ResetBasis::ProviderResetTime(
+                                signal_harness::ResetEpochSecond(1_791_609_599),
+                            ),
+                            reset_countdown: ResetCountdown::Pending(
+                                signal_harness::SecondsUntilReset(9599),
+                            ),
                             local_reset: local("2026-10-09T23:19:59"),
-                            window_duration_basis: WindowDurationBasis::ProviderWindowNamed(300),
+                            window_duration_basis: WindowDurationBasis::ProviderWindowNamed(
+                                signal_harness::WindowDurationMinutes(300),
+                            ),
                             period_semantics: PeriodSemantics::FixedPeriod,
                             absolute_limit: AbsoluteLimit::NotExposedByProvider,
                             remainder_rate_derivation: RemainderRateDerivation::Derived(
                                 RemainderByResetRate {
                                     rate_basis: RateBasis::OneSnapshotClockAllowance,
-                                    remaining_basis_points: 6700,
-                                    seconds_until_reset: 9599,
-                                    remaining_basis_points_per_clock_hour: 2512,
-                                    remaining_basis_points_per_clock_day: 60_306,
+                                    remaining_basis_points: signal_harness::RemainingBasisPoints(
+                                        6700,
+                                    ),
+                                    seconds_until_reset: signal_harness::SecondsUntilReset(9599),
+                                    remaining_basis_points_per_clock_hour:
+                                        signal_harness::RemainingBasisPointsPerClockHour(2512),
+                                    remaining_basis_points_per_clock_day:
+                                        signal_harness::RemainingBasisPointsPerClockDay(60_306),
                                     rate_rounding: RateRounding::TowardZero,
                                 },
                             ),
                             uniform_rate_derivation: UniformRateDerivation::Derived(
                                 UniformWindowRate {
-                                    window_duration_minutes: 300,
-                                    uniform_basis_points_per_clock_day: 48_000,
+                                    window_duration_minutes: signal_harness::WindowDurationMinutes(
+                                        300,
+                                    ),
+                                    uniform_basis_points_per_clock_day:
+                                        signal_harness::UniformBasisPointsPerClockDay(48_000),
                                     rate_rounding: RateRounding::TowardZero,
                                 },
                             ),
                             elapsed_window_derivation: ElapsedWindowDerivation::Derived(
                                 ElapsedWindowPosition {
-                                    window_duration_minutes: 300,
-                                    seconds_until_reset: 9599,
-                                    elapsed_basis_points: 4667,
-                                    used_basis_points: 3300,
-                                    used_minus_elapsed_basis_points: -1367,
+                                    window_duration_minutes: signal_harness::WindowDurationMinutes(
+                                        300,
+                                    ),
+                                    seconds_until_reset: signal_harness::SecondsUntilReset(9599),
+                                    elapsed_basis_points: signal_harness::ElapsedBasisPoints(4667),
+                                    used_basis_points: signal_harness::UsedBasisPoints(3300),
+                                    used_minus_elapsed_basis_points:
+                                        signal_harness::UsedMinusElapsedBasisPoints(-1367),
                                     rate_rounding: RateRounding::TowardZero,
                                 },
                             ),
-                        }],
+                        }]),
                     },
                     QuotaLimit {
-                        quota_limit_identifier: "weekly".into(),
+                        quota_limit_identifier: signal_harness::QuotaLimitIdentifier(
+                            "weekly".into(),
+                        ),
                         quota_limit_name_option: None,
-                        quota_windows: vec![
+                        quota_windows: signal_harness::QuotaWindows(vec![
                             QuotaWindow {
-                                provider_window_name: "weekly_scoped".into(),
-                                provider_scope_name_option: Some("Fable".into()),
+                                provider_window_name: signal_harness::ProviderWindowName(
+                                    "weekly_scoped".into(),
+                                ),
+                                provider_scope_name_option: Some(
+                                    signal_harness::ProviderScopeName("Fable".into()),
+                                ),
                                 window_usage: WindowUsage::Current(share(1200)),
-                                reset_basis: ResetBasis::ProviderResetTime(1_792_069_199),
-                                reset_countdown: ResetCountdown::Pending(469_199),
+                                reset_basis: ResetBasis::ProviderResetTime(
+                                    signal_harness::ResetEpochSecond(1_792_069_199),
+                                ),
+                                reset_countdown: ResetCountdown::Pending(
+                                    signal_harness::SecondsUntilReset(469_199),
+                                ),
                                 local_reset: local("2026-10-15T06:59:59"),
                                 window_duration_basis: WindowDurationBasis::Unknown,
                                 period_semantics: PeriodSemantics::NotEstablished,
@@ -132,10 +163,15 @@ fn usage_snapshot() -> UsageSnapshot {
                                 remainder_rate_derivation: RemainderRateDerivation::Derived(
                                     RemainderByResetRate {
                                         rate_basis: RateBasis::OneSnapshotClockAllowance,
-                                        remaining_basis_points: 8800,
-                                        seconds_until_reset: 469_199,
-                                        remaining_basis_points_per_clock_hour: 67,
-                                        remaining_basis_points_per_clock_day: 1620,
+                                        remaining_basis_points:
+                                            signal_harness::RemainingBasisPoints(8800),
+                                        seconds_until_reset: signal_harness::SecondsUntilReset(
+                                            469_199,
+                                        ),
+                                        remaining_basis_points_per_clock_hour:
+                                            signal_harness::RemainingBasisPointsPerClockHour(67),
+                                        remaining_basis_points_per_clock_day:
+                                            signal_harness::RemainingBasisPointsPerClockDay(1620),
                                         rate_rounding: RateRounding::TowardZero,
                                     },
                                 ),
@@ -147,7 +183,9 @@ fn usage_snapshot() -> UsageSnapshot {
                                 ),
                             },
                             QuotaWindow {
-                                provider_window_name: "weekly_mystery".into(),
+                                provider_window_name: signal_harness::ProviderWindowName(
+                                    "weekly_mystery".into(),
+                                ),
                                 provider_scope_name_option: None,
                                 window_usage: WindowUsage::Unreadable(
                                     UsageUnreadableReason::PercentageAboveFull,
@@ -170,29 +208,43 @@ fn usage_snapshot() -> UsageSnapshot {
                                     ElapsedUnknownReason::PeriodSemanticsNotEstablished,
                                 ),
                             },
-                        ],
+                        ]),
                     },
-                ],
-                unrecognized_window_names: vec!["tangelo".into()],
-                unmodeled_source_facts: vec!["extra_usage".into(), "spend".into()],
+                ]),
+                unrecognized_window_names: signal_harness::UnrecognizedWindowNames(vec![
+                    signal_harness::ProviderWindowName("tangelo".into()),
+                ]),
+                unmodeled_source_facts: signal_harness::UnmodeledSourceFacts(vec![
+                    signal_harness::SourceFactName("extra_usage".into()),
+                    signal_harness::SourceFactName("spend".into()),
+                ]),
             }),
             SubscriptionObservation::Observed(SubscriptionUsage {
                 usage_provider: UsageProvider::Codex,
                 usage_source: UsageSource::CodexAppServerRateLimits,
-                observation_time: observed_at,
-                plan_name_option: Some("pro".into()),
-                account_homes: vec![".codex-next".into(), ".codex-next-8mkkxq293hk2".into()],
-                quota_limits: vec![QuotaLimit {
-                    quota_limit_identifier: "codex".into(),
+                observation_time: signal_harness::ObservationTime(observed_at),
+                plan_name_option: Some(signal_harness::PlanName("pro".into())),
+                account_homes: signal_harness::AccountHomes(vec![
+                    signal_harness::AccountHome(".codex-next".into()),
+                    signal_harness::AccountHome(".codex-next-8mkkxq293hk2".into()),
+                ]),
+                quota_limits: signal_harness::QuotaLimits(vec![QuotaLimit {
+                    quota_limit_identifier: signal_harness::QuotaLimitIdentifier("codex".into()),
                     quota_limit_name_option: None,
-                    quota_windows: vec![QuotaWindow {
-                        provider_window_name: "primary".into(),
+                    quota_windows: signal_harness::QuotaWindows(vec![QuotaWindow {
+                        provider_window_name: signal_harness::ProviderWindowName("primary".into()),
                         provider_scope_name_option: None,
                         window_usage: WindowUsage::StaleAfterReset(share(2200)),
-                        reset_basis: ResetBasis::ProviderResetTime(1_791_580_388),
-                        reset_countdown: ResetCountdown::Passed(19_612),
+                        reset_basis: ResetBasis::ProviderResetTime(
+                            signal_harness::ResetEpochSecond(1_791_580_388),
+                        ),
+                        reset_countdown: ResetCountdown::Passed(signal_harness::SecondsSinceReset(
+                            19_612,
+                        )),
                         local_reset: local("2026-10-09T15:13:08"),
-                        window_duration_basis: WindowDurationBasis::ProviderDeclared(10_080),
+                        window_duration_basis: WindowDurationBasis::ProviderDeclared(
+                            signal_harness::WindowDurationMinutes(10_080),
+                        ),
                         period_semantics: PeriodSemantics::NotEstablished,
                         absolute_limit: AbsoluteLimit::NotExposedByProvider,
                         remainder_rate_derivation: RemainderRateDerivation::Unknown(
@@ -200,94 +252,112 @@ fn usage_snapshot() -> UsageSnapshot {
                         ),
                         uniform_rate_derivation: UniformRateDerivation::Derived(
                             UniformWindowRate {
-                                window_duration_minutes: 10_080,
-                                uniform_basis_points_per_clock_day: 1428,
+                                window_duration_minutes: signal_harness::WindowDurationMinutes(
+                                    10_080,
+                                ),
+                                uniform_basis_points_per_clock_day:
+                                    signal_harness::UniformBasisPointsPerClockDay(1428),
                                 rate_rounding: RateRounding::TowardZero,
                             },
                         ),
                         elapsed_window_derivation: ElapsedWindowDerivation::Unknown(
                             ElapsedUnknownReason::PeriodSemanticsNotEstablished,
                         ),
-                    }],
-                }],
-                unrecognized_window_names: vec![],
-                unmodeled_source_facts: vec!["codex.credits".into()],
+                    }]),
+                }]),
+                unrecognized_window_names: signal_harness::UnrecognizedWindowNames(vec![]),
+                unmodeled_source_facts: signal_harness::UnmodeledSourceFacts(vec![
+                    signal_harness::SourceFactName("codex.credits".into()),
+                ]),
             }),
             SubscriptionObservation::Unavailable(UsageUnavailable {
                 usage_provider: UsageProvider::Codex,
-                observation_time: observed_at,
-                account_home_option: Some(".codex".into()),
+                observation_time: signal_harness::ObservationTime(observed_at),
+                account_home_option: Some(signal_harness::AccountHome(".codex".into())),
                 usage_unavailable_reason: UsageUnavailableReason::TransportTimedOut,
             }),
-        ],
-        session_context_observations: vec![
+        ]),
+        session_context_observations: signal_harness::SessionContextObservations(vec![
             SessionContextObservation::Observed(SessionContext {
                 usage_provider: UsageProvider::Claude,
-                session_identifier: "28d847ee-f350-4a24-8cb0-0e88abf16cbe".into(),
+                session_identifier: signal_harness::SessionIdentifier(
+                    "28d847ee-f350-4a24-8cb0-0e88abf16cbe".into(),
+                ),
                 flow_identifier_option: None,
-                session_name_option: Some("Psyche.{ Opus 28d847 }".into()),
-                model_identifier_option: Some("claude-opus-5-5".into()),
-                observation_time: observed_at,
-                event_time_option: Some(1_791_599_990_000_000_000),
+                session_name_option: Some(signal_harness::SessionName(
+                    "Psyche.{ Opus 28d847 }".into(),
+                )),
+                model_identifier_option: Some(signal_harness::ModelIdentifier(
+                    "claude-opus-5-5".into(),
+                )),
+                observation_time: signal_harness::ObservationTime(observed_at),
+                event_time_option: Some(signal_harness::EventTime(1_791_599_990_000_000_000)),
                 context_basis: ContextBasis::ClaudeTranscriptLastRequest,
                 context_freshness: ContextFreshness::Proxy,
-                context_tokens_option: Some(84_000),
+                context_tokens_option: Some(signal_harness::ContextTokens(84_000)),
                 context_window_tokens_option: None,
                 context_used_basis_points_option: None,
             }),
             SessionContextObservation::Observed(SessionContext {
                 usage_provider: UsageProvider::Codex,
-                session_identifier: "01a10384-16ed-7dd2-93b3-b6bd66c26f85".into(),
+                session_identifier: signal_harness::SessionIdentifier(
+                    "01a10384-16ed-7dd2-93b3-b6bd66c26f85".into(),
+                ),
                 flow_identifier_option: None,
                 session_name_option: None,
-                model_identifier_option: Some("gpt-6-astra".into()),
-                observation_time: observed_at,
-                event_time_option: Some(1_791_599_900_000_000_000),
+                model_identifier_option: Some(signal_harness::ModelIdentifier(
+                    "gpt-6-astra".into(),
+                )),
+                observation_time: signal_harness::ObservationTime(observed_at),
+                event_time_option: Some(signal_harness::EventTime(1_791_599_900_000_000_000)),
                 context_basis: ContextBasis::CodexRolloutLastTokenCount,
                 context_freshness: ContextFreshness::Superseded,
                 context_tokens_option: None,
-                context_window_tokens_option: Some(272_000),
+                context_window_tokens_option: Some(signal_harness::ContextWindowTokens(272_000)),
                 context_used_basis_points_option: None,
             }),
             SessionContextObservation::Unavailable(SessionContextUnavailable {
                 usage_provider: UsageProvider::Codex,
-                session_identifier: "01a0fdcb-9409-7ba1-a656-a647de94a94b".into(),
-                observation_time: observed_at,
+                session_identifier: signal_harness::SessionIdentifier(
+                    "01a0fdcb-9409-7ba1-a656-a647de94a94b".into(),
+                ),
+                observation_time: signal_harness::ObservationTime(observed_at),
                 context_unavailable_reason: ContextUnavailableReason::ThreadUnbound,
             }),
             SessionContextObservation::SourceUnavailable(ContextSourceUnavailable {
                 usage_provider: UsageProvider::Codex,
-                account_home_option: Some(".codex".into()),
-                observation_time: observed_at,
+                account_home_option: Some(signal_harness::AccountHome(".codex".into())),
+                observation_time: signal_harness::ObservationTime(observed_at),
                 context_source_failure_reason: ContextSourceFailureReason::TransportTimedOut,
             }),
-        ],
+        ]),
     }
 }
 
 fn responses() -> Vec<Response> {
     vec![
         Response::DeliveryFailed(DeliveryFailed {
-            harness_name: "claude".into(),
-            message_slot: 7,
+            harness_name: signal_harness::HarnessName("claude".into()),
+            message_slot: signal_harness::MessageSlot(7),
             delivery_failure_reason: DeliveryFailureReason::TransportRejected,
         }),
         Response::AdapterExited(AdapterExited {
-            harness_name: "claude".into(),
-            adapter_event_sequence: 8,
+            harness_name: signal_harness::HarnessName("claude".into()),
+            adapter_event_sequence: signal_harness::AdapterEventSequence(8),
             adapter_exit_status: AdapterExitStatus::Success,
         }),
         Response::UsageSnapshot(usage_snapshot()),
         Response::HarnessTranscriptEvent(HarnessTranscriptEvent {
             harness_transcript_token: HarnessTranscriptToken {
-                harness_name: "claude".into(),
-                harness_transcript_subscription_identifier: 3,
+                harness_name: signal_harness::HarnessName("claude".into()),
+                harness_transcript_subscription_identifier:
+                    signal_harness::HarnessTranscriptSubscriptionIdentifier(3),
             },
             harness_stream_event: HarnessStreamEvent::TranscriptObservation(
                 TranscriptObservation {
-                    harness_name: "claude".into(),
-                    harness_transcript_sequence: 44,
-                    transcript_line: "> jj st".into(),
+                    harness_name: signal_harness::HarnessName("claude".into()),
+                    harness_transcript_sequence: signal_harness::HarnessTranscriptSequence(44),
+                    transcript_line: signal_harness::TranscriptLine("> jj st".into()),
                 },
             ),
         }),
@@ -297,23 +367,27 @@ fn responses() -> Vec<Response> {
 fn stream_events() -> Vec<HarnessStreamEvent> {
     vec![
         HarnessStreamEvent::TranscriptObservation(TranscriptObservation {
-            harness_name: "claude".into(),
-            harness_transcript_sequence: 43,
-            transcript_line: "> jj log".into(),
+            harness_name: signal_harness::HarnessName("claude".into()),
+            harness_transcript_sequence: signal_harness::HarnessTranscriptSequence(43),
+            transcript_line: signal_harness::TranscriptLine("> jj log".into()),
         }),
         HarnessStreamEvent::ClaudeSessionObservation(ClaudeSessionObservation {
-            harness_name: "claude".into(),
-            claude_session_identifier_option: Some("session-abc".into()),
+            harness_name: signal_harness::HarnessName("claude".into()),
+            claude_session_identifier_option: Some(signal_harness::ClaudeSessionIdentifier(
+                "session-abc".into(),
+            )),
             claude_model_option: None,
             turn_launch: TurnLaunch::Resumed,
-            reached_end_of_turn: true,
-            streamed_event_count: 12,
-            tool_call_count: 3,
-            status_transition_count: 4,
+            reached_end_of_turn: signal_harness::ReachedEndOfTurn(true),
+            streamed_event_count: signal_harness::StreamedEventCount(12),
+            tool_call_count: signal_harness::ToolCallCount(3),
+            status_transition_count: signal_harness::StatusTransitionCount(4),
             transcript_path_option: None,
-            assistant_response_text_option: Some("rebase complete".into()),
-            context_tokens_option: Some(120_000),
-            timestamp_nanoseconds: 1_757_600_000_000_000_000,
+            assistant_response_text_option: Some(signal_harness::AssistantResponseText(
+                "rebase complete".into(),
+            )),
+            context_tokens_option: Some(signal_harness::ContextTokens(120_000)),
+            timestamp_nanoseconds: signal_persona::TimestampNanoseconds(1_757_600_000_000_000_000),
             claude_session_lifecycle: ClaudeSessionLifecycle::Active,
         }),
     ]
@@ -321,24 +395,32 @@ fn stream_events() -> Vec<HarnessStreamEvent> {
 
 fn configuration() -> HarnessDaemonConfiguration {
     HarnessDaemonConfiguration {
-        domain_socket_path: "/run/persona/harness.sock".into(),
-        domain_socket_mode: 0o600,
-        meta_socket_path: "/run/persona/meta-harness.sock".into(),
-        meta_socket_mode: 0o600,
-        engine_management_socket_path: "/run/persona/harness-meta.sock".into(),
-        engine_management_socket_mode: 0o600,
-        owner_identity: OwnerIdentity::UnixUser(1000),
-        harness_instance_configurations: vec![HarnessInstanceConfiguration {
-            harness_name: "pi".into(),
-            harness_kind: HarnessKind::Pi,
-            terminal_socket_path_option: None,
-            pi_rpc_jsonl_adapter_configuration_option: Some(PiRpcJsonlAdapterConfiguration {
-                pi_rpc_command_path: "/run/current-system/sw/bin/pi".into(),
-                pi_rpc_session_directory_path: "/var/lib/persona/pi".into(),
-                pi_rpc_model_pattern_option: None,
-                pi_rpc_delivery_mode: PiRpcDeliveryMode::Prompt,
-            }),
-        }],
+        domain_socket_path: signal_persona::DomainSocketPath("/run/persona/harness.sock".into()),
+        domain_socket_mode: signal_persona::DomainSocketMode(0o600),
+        meta_socket_path: signal_harness::MetaSocketPath("/run/persona/meta-harness.sock".into()),
+        meta_socket_mode: signal_harness::MetaSocketMode(0o600),
+        engine_management_socket_path: signal_persona::EngineManagementSocketPath(
+            "/run/persona/harness-meta.sock".into(),
+        ),
+        engine_management_socket_mode: signal_persona::EngineManagementSocketMode(0o600),
+        owner_identity: OwnerIdentity::UnixUser(signal_persona::UnixUserIdentifier(1000)),
+        harness_instance_configurations: signal_harness::HarnessInstanceConfigurations(vec![
+            HarnessInstanceConfiguration {
+                harness_name: signal_harness::HarnessName("pi".into()),
+                harness_kind: HarnessKind::Pi,
+                terminal_socket_path_option: None,
+                pi_rpc_jsonl_adapter_configuration_option: Some(PiRpcJsonlAdapterConfiguration {
+                    pi_rpc_command_path: signal_harness::PiRpcCommandPath(
+                        "/run/current-system/sw/bin/pi".into(),
+                    ),
+                    pi_rpc_session_directory_path: signal_harness::PiRpcSessionDirectoryPath(
+                        "/var/lib/persona/pi".into(),
+                    ),
+                    pi_rpc_model_pattern_option: None,
+                    pi_rpc_delivery_mode: PiRpcDeliveryMode::Prompt,
+                }),
+            },
+        ]),
     }
 }
 
@@ -407,7 +489,7 @@ fn query_round_trips_as_datom_text() {
         let restored = Potential::<Query>::from(text)
             .actualize(&mut Budget {
                 remaining: 4096,
-                reader: ReaderBudget { remaining: 4096 },
+                reader: ReaderBudget::try_from(4096).expect("bounded reader budget"),
                 depth: 0,
                 maximum_depth: 1024,
             })
@@ -427,7 +509,7 @@ fn response_round_trips_as_datom_text() {
         let restored = Potential::<Response>::from(text)
             .actualize(&mut Budget {
                 remaining: 16384,
-                reader: ReaderBudget { remaining: 16384 },
+                reader: ReaderBudget::try_from(16384).expect("bounded reader budget"),
                 depth: 0,
                 maximum_depth: 1024,
             })
@@ -445,7 +527,7 @@ fn every_canonical_datom_line_actualizes_into_a_contract_head() {
     fn budget() -> Budget {
         Budget {
             remaining: 8192,
-            reader: ReaderBudget { remaining: 8192 },
+            reader: ReaderBudget::try_from(8192).expect("bounded reader budget"),
             depth: 0,
             maximum_depth: 1024,
         }
@@ -503,9 +585,10 @@ fn one_generic_transport_carries_harness_and_persona_frames() {
     }
 
     let harness_query = Query::WatchHarnessTranscript(WatchHarnessTranscript {
-        harness_name: "claude".into(),
+        harness_name: signal_harness::HarnessName("claude".into()),
     });
-    let persona_query = signal_persona::Query::Stop(String::from("router"));
+    let persona_query =
+        signal_persona::Query::Stop(signal_persona::ComponentName(String::from("router")));
 
     let landed_harness: Query = land(ship(&harness_query));
     let landed_persona: signal_persona::Query = land(ship(&persona_query));
