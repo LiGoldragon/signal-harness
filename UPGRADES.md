@@ -1,5 +1,14 @@
 # Upgrades
 
+## 8.1.0 → 8.1.1: generator ethos-zero 22.0.0
+
+- Build-dependency ethos-zero ccacc21 (22.0.0), which brings its own datom-codec 5cd6219
+  (0.33.1) into the lock as a build dependency only. ethos-zero 5a5daca (19.2.0) stays
+  in the lock as the build dependency of signal and signal-persona.
+- `ethos/signal.ethos` writes each variant named for the type it carries bare
+  (`X.X` becomes `X`), which 22.0.0 requires. The generated Rust is byte-identical;
+  the Rust API is unchanged.
+
 ## 8.0.0 → 8.1.0: Datom 0.33 readers required for new text
 
 The authored schema and binary archive configuration are unchanged. Generated
