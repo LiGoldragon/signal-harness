@@ -1,6 +1,6 @@
 [package]
 name = "signal-harness"
-version = "0.1.0"
+version = "0.2.0"
 edition = "2024"
 rust-version = "1.89"
 license = "MIT OR Apache-2.0"
@@ -12,7 +12,7 @@ default = []
 datom = ["dep:datom-codec", "dep:protos", "harness/datom", "flow/datom"]
 
 [dependencies]
-harness = { package = "harness-nexus-library", git = "https://github.com/LiGoldragon/harness-nexus-library", rev = "3613d63d0994de7841bcf6f070c83bebb0ddfa5a", default-features = false }
+harness = { package = "harness-nexus-library", git = "https://github.com/LiGoldragon/harness-nexus-library", rev = "ae7e008700972b7f033de6ba94c36e6c49fc93f8", default-features = false }
 flow = { package = "flow-ethos", git = "https://github.com/LiGoldragon/flow", rev = "062ef9e1", default-features = false }
 rkyv = { version = "0.8", default-features = false, features = ["std", "bytecheck", "little_endian", "pointer_width_32", "unaligned"] }
 datom-codec = { git = "https://github.com/LiGoldragon/datom-codec", rev = "09a0526", optional = true }

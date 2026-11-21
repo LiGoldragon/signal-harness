@@ -120,8 +120,8 @@ dependencies = [
 
 [[package]]
 name = "harness-nexus-library"
-version = "0.1.0"
-source = "git+https://github.com/LiGoldragon/harness-nexus-library?rev=3613d63d0994de7841bcf6f070c83bebb0ddfa5a#3613d63d0994de7841bcf6f070c83bebb0ddfa5a"
+version = "0.3.0"
+source = "git+https://github.com/LiGoldragon/harness-nexus-library?rev=ae7e008700972b7f033de6ba94c36e6c49fc93f8#ae7e008700972b7f033de6ba94c36e6c49fc93f8"
 dependencies = [
  "datom-codec",
  "flow-ethos",
@@ -300,7 +300,7 @@ checksum = "cf54715a573b99ac80df0bc206da022bcd442c974952c7b9720069370852e21f"
 
 [[package]]
 name = "signal-harness"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "datom-codec",
  "flow-ethos",
