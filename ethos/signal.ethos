@@ -1,7 +1,6 @@
 Signal
-[ harness:[ Event State Observed ]
-  flow:[ FlowId ] ]
+[ harness:[ SessionId Event State Observed ] ]
 [ Subscribe ]
 [ Subscribed.Vector<Observed>
   Changed ]
-[ Changed.{ FlowId Event State } ]
+[ Changed.{ SessionId Event State } ]
